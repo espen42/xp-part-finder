@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "sourceMap": true,
+    "allowJs": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "types": ["@types/webpack-env", "@item-enonic-types/global"],
+    "rootDirs": [
+      "./src/main/resources",
+      "./.xp-codegen"
+    ],
+    "paths": {
+      "/lib/tineikt/freemarker": ["./node_modules/@item-enonic-types/lib-freemarker"],
+      "/lib/xp/*": ["./node_modules/@enonic-types/lib-*"],
+      "/lib/*": [ "./node_modules/@item-enonic-types/lib-*" ,"./src/main/resources/lib/*"],
+      "/site/*": ["./.xp-codegen/site/*"]
+    }
+  },
+  "include": [
+    "./.xp-codegen/**/*",
+    "./src/main/resources/**/*"
+  ],
+  "exclude": [
+    "./build/*",
+    "./src/main/resources/polyfills.js"
+  ]
+}

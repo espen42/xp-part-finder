@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<application xmlns="urn:enonic:xp:model:1.0">
+  <description>Developer utilities for working with xp components</description>
+</application>
