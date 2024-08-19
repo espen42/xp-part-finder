@@ -16,9 +16,12 @@ app {
 
 dependencies {
   implementation "com.enonic.xp:script-api:${xpVersion}"
+  include "com.enonic.xp:lib-admin:${xpVersion}"
+  include "com.enonic.xp:lib-app:${xpVersion}"
   include "com.enonic.xp:lib-portal:${xpVersion}"
   include "com.enonic.xp:lib-content:${xpVersion}"
   include "com.enonic.xp:lib-context:${xpVersion}"
+  include "com.enonic.xp:lib-repo:${xpVersion}"
   include "com.enonic.xp:lib-schema:${xpVersion}"
   include "com.enonic.xp:lib-i18n:${xpVersion}"
   include "com.enonic.xp:lib-i18n:${xpVersion}"
