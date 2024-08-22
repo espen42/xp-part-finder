@@ -32,17 +32,22 @@ Temporary Items
 .gradle
 build/
 
+# Node
+node_modules/
+
 # Ignore Gradle GUI config
 gradle-app.setting
 
 # Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
 !gradle-wrapper.jar
 
-### VSCode ###
-*.code-workspace
-
 ### WebStorm ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm
+
+# VSCode
+bin/
+/settings.gradle
+/.vscode
 
 *.iml
 
@@ -93,10 +98,11 @@ crashlytics-build.properties
 .sass-cache
 *.css.map
 
+# Jest
+/coverage
 
-### Node ###
-node_modules
-npm-debug.log
+# ES lint
+/.eslintcache
 
-### Project ###
-*.map
+*storybook.log
+.env

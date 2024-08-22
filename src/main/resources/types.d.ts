@@ -1,11 +1,10 @@
-/* eslint-disable */
 declare const resolve: (path: string) => import("@enonic-types/core").ResourceKey;
 
 declare const app: {
   /**
    * The name of the application.
    */
-  name: "no.item.componentrodeo";
+  name: "no.item.starter";
 
   /**
    * Version of the application.
@@ -41,70 +40,3 @@ declare const log: {
    */
   error: (...args: unknown[]) => void;
 };
-
-declare interface ScriptValue {
-  isArray(): boolean;
-
-  isObject(): boolean;
-
-  isValue(): boolean;
-
-  isFunction(): boolean;
-
-  getValue(): unknown;
-
-  getKeys(): string[];
-
-  hasMember(key: string): boolean;
-
-  getMember(key: string): ScriptValue;
-
-  getArray(): ScriptValue[];
-
-  getMap(): Record<string, unknown>;
-
-  getList(): object[];
-}
-
-interface XpBeans {}
-
-type NewBean = <T = unknown, Bean extends keyof XpBeans | string = string>(bean: Bean) =>
-  Bean extends keyof XpBeans ? XpBeans[Bean] : T;
-
-declare const __: {
-  /**
-   * Creates a new JavaScript bean that wraps the given Java class and makes its methods available to be called from JavaScript.
-   */
-  newBean: NewBean;
-
-  /**
-   * Converts arrays or complex Java objects to JSON.
-   */
-  toNativeObject: <T = unknown>(value: T) => T;
-
-  /**
-   * Converts JSON to a Java Map structure that can be used as parameters to a Java method on a bean created with newBean.
-   */
-  toScriptValue: <T = object>(value: T) => ScriptValue;
-
-  /**
-   * Add a disposer that is called when the app is stopped.
-   */
-  disposer: (callback: (...args: unknown[]) => unknown) => void;
-
-  /**
-   * Converts a JavaScript variable that is undefined to a Java <code>null</code> object.
-   * If the JavaScript variable is defined, it is returned as is.
-   */
-  nullOrValue: <T = object>(value: T) => T | null | undefined;
-
-  /**
-   * Doc registerMock.
-   */
-  registerMock: (name: string, value: object) => void;
-};
-
-declare const Java: {
-  type<A = any>(className: string): A;
-}
-/* eslint-enable */

@@ -1,0 +1,36 @@
+.navigation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-8);
+
+  nav {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: var(--spacing-32);
+  }
+
+  a[href] {
+    text-decoration: none;
+    color: currentColor;
+
+    &[aria-current] {
+      color: var(--color-accent);
+    }
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .label {
+    font-size: var(--font-size-small);
+    text-transform: uppercase;
+  }
+
+  .component-link {
+    padding-block: var(--spacing-8);
+  }
+}
+
+
+

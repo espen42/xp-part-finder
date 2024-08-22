@@ -1,0 +1,14 @@
+@import "reset.css";
+@import "core.css";
+@import "../../admin/components/navigation/navigation.css";
+@import "../../admin/components/navigation/navigation.css";
+@import "../../admin/components/component-view/component-view.css";
+@import "../../admin/tools/part-finder/part-finder.css";
+
+a[href]:not([class]) {
+  color: var(--color-accent);
+}
+
+a:not([href]) {
+  color: var(--color-gray-2);
+}

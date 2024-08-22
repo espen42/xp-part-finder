@@ -1,32 +1,62 @@
-{
-  "compilerOptions": {
-    "target": "es2022",
-    "sourceMap": true,
-    "allowJs": true,
-    "noImplicitAny": true,
-    "noImplicitReturns": true,
-    "noImplicitThis": true,
-    "strictNullChecks": true,
+{ // https://www.typescriptlang.org/tsconfig
+	"compilerOptions": {
+		//──────────────────────────────────────────────────────────────────────
+		// Modules
+		//──────────────────────────────────────────────────────────────────────
+		"allowUmdGlobalAccess": true,
+		"baseUrl": "./",
     "module": "commonjs",
-    "moduleResolution": "node",
-    "types": ["@types/webpack-env", "@item-enonic-types/global"],
+		"moduleResolution": "node",
+    "strict": true,
     "rootDirs": [
       "./src/main/resources",
       "./.xp-codegen"
     ],
-    "paths": {
+    "types": ["@item-enonic-types/global", "@itemconsulting/xp-storybook-utils/global"],
+		"paths": {
       "/lib/tineikt/freemarker": ["./node_modules/@item-enonic-types/lib-freemarker"],
-      "/lib/xp/*": ["./node_modules/@enonic-types/lib-*"],
-      "/lib/*": [ "./node_modules/@item-enonic-types/lib-*" ,"./src/main/resources/lib/*"],
-      "/site/*": ["./.xp-codegen/site/*"]
-    }
-  },
-  "include": [
-    "./.xp-codegen/**/*",
-    "./src/main/resources/**/*"
-  ],
-  "exclude": [
-    "./build/*",
-    "./src/main/resources/polyfills.js"
+			"/lib/xp/*": ["./node_modules/@enonic-types/lib-*"],
+      "/lib/*": ["./src/main/resources/lib/*", "./node_modules/@item-enonic-types/lib-*"],
+      "/*": ["./src/main/resources/*","./.xp-codegen/*", "./node_modules/@item-enonic-types/lib-item-blocks/dist/*"], // So one can import local files using absolute path (same as Enonic does during runtime).
+		},
+
+
+		//──────────────────────────────────────────────────────────────────────
+		// Emit
+		//──────────────────────────────────────────────────────────────────────
+		// "declaration": true, // tsup overrides this
+		// "declarationDir": "build/types", // Doesn't work with tsup
+
+		//──────────────────────────────────────────────────────────────────────
+		// Interop Constraints
+		//──────────────────────────────────────────────────────────────────────
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+
+		//──────────────────────────────────────────────────────────────────────
+		// Language and Environment
+		//──────────────────────────────────────────────────────────────────────
+		"lib": [],
+
+		// We set target in tsup.config.ts instead
+		//"target": "ES3", // tsup WARNING Unrecognized target environment "ES3"
+		//"target": "ES5", // tsup Transforming const to the configured target environment ("ES5") is not supported yet
+
+		//──────────────────────────────────────────────────────────────────────
+		// Completeness
+		//──────────────────────────────────────────────────────────────────────
+		"skipLibCheck": true,
+	},
+	"exclude": [
+		"src/main/resources/assets/**/*.*",
+    "**/*.stories.ts"
+	],
+	"include": [
+		// Make sure default types matches Nashorn
+		"node_modules/typescript/lib/lib.es5.d.ts",
+
+		"src/main/resources/**/*.ts",
+    ".xp-codegen/**/*.d.ts",
+    ".storybook/**/*"
   ]
 }

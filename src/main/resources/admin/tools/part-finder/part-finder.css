@@ -1,0 +1,48 @@
+.part-finder {
+  --content-grid--padding-inline: var(--spacing-16);
+  --content-grid--full: minmax(var(--content-grid--padding-inline), 1fr);
+  --content-grid--nav: min(600px, 100% - var(--content-grid--padding-inline) * 2);
+  --content-grid--content: min(600px, 100% - var(--content-grid--padding-inline) * 2);
+
+  display: grid;
+  height: 100dvh;
+  grid-template-areas:
+    ". header header ."
+    ". sidebar main .";
+  grid-template-columns: minmax(var(--content-grid--padding-inline), 1fr) fit-content(500px) 4fr minmax(var(--content-grid--padding-inline), 1fr);
+  grid-template-rows: fit-content(100px) auto;
+  column-gap: var(--spacing-32);
+
+  .part-finder--filters {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-16);
+    margin-bottom: var(--spacing-32);
+
+    a {
+      border-radius: 5px;
+      padding: 3px 5px;
+      color: white;
+      background-color: gray;
+      text-decoration: none;
+
+      &[aria-current] {
+        background-color: var(--color-accent);
+      }
+    }
+
+  }
+
+  .layout--header {
+    grid-area: header;
+  }
+
+  .layout--nav {
+    grid-area: sidebar;
+    overflow-y: scroll;
+  }
+
+  .layout--content {
+    grid-area: main;
+  }
+}
