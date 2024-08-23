@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="[@assetUrl path='styles/bundle.css'/]" />
 
     <script type="module" src="[@assetUrl path='hotwired__turbo/8.0.4/dist/turbo.es2017-esm.js'/]"></script>
+    <script type="module" src="[@assetUrl path='scripts/move-aria-current-on-click.mjs'/]"></script>
 
 		<title>Part Finder</title>
 	</head>

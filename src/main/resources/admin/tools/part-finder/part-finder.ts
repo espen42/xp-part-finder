@@ -20,8 +20,8 @@ const view = resolve("part-finder.ftl");
 const componentView = resolve("../../components/component-view/component-view.ftl");
 
 export function all(req: XP.Request): XP.Response {
-  const currentItemKey = req.params.key;
   const currentItemType = parseComponentType(req.params.type);
+  const currentItemKey = req.params.key;
   const appKey = req.params.appKey;
 
   const cmsRepos = listRepos()
@@ -33,8 +33,8 @@ export function all(req: XP.Request): XP.Response {
     // TODO Use web-socket to update aria-current
 
     const component = getComponent({
-      key: currentItemKey,
       type: currentItemType,
+      key: currentItemKey,
     }) as Component;
 
     if (component) {
@@ -97,7 +97,7 @@ export function all(req: XP.Request): XP.Response {
 
   return {
     body: render<ComponentList & ComponentViewParams & ToolbarParams>(view, {
-      currentItemKey,
+      currentItemKey: currentItemKey ?? currentItem.key,
       currentItem,
       filters: [
         {
@@ -167,7 +167,7 @@ function getComponentUsages(component: Component, repository: string): Component
     total: res.total,
     key: component.key,
     displayName: component.displayName,
-    url: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${component.key}&type=${component.type}`,
+    url: `${getToolUrl("no.item.partfinder", "part-finder")}?type=${component.type}&key=${component.key}`,
     contents: res.hits.map((hit) => ({
       url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${hit._id}`,
       displayName: hit.displayName,

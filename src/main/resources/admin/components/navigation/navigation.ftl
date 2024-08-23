@@ -1,16 +1,14 @@
 [#macro render itemLists currentItemKey=""]
-
-
-  <div class="navigation">
+  <move-aria-current-on-click class="navigation">
     [#list itemLists as itemList]
       [#local labelId=itemList.title?lower_case]
       <small class="label" id="${labelId}">${itemList.title}</small>
-
       <nav aria-labelledby="${labelId}">
         [#list itemList.items as item]
           <a
             class="component-link"
             data-turbo-frame="content-view"
+            data-turbo-action="advance"
             [#if item.total > 0]href="${item.url}"[/#if]
             [#if item.key == currentItemKey]aria-current="page"[/#if]>
 
@@ -19,5 +17,5 @@
         [/#list]
       </nav>
     [/#list]
-  </div>
+  </move-aria-current-on-click>
 [/#macro]
