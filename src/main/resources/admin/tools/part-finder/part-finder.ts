@@ -1,8 +1,7 @@
 import { render } from "/lib/tineikt/freemarker";
 import { getToolUrl } from "/lib/xp/admin";
 import { query } from "/lib/xp/content";
-import { list as listApps } from "/lib/xp/app";
-import { run } from "/lib/xp/context";
+import { list as listApps, type Application } from "/lib/xp/app";
 import { list as listRepos } from "/lib/xp/repo";
 import {
   listComponents,
@@ -12,9 +11,9 @@ import {
   type PartDescriptor,
   type ComponentDescriptorType,
 } from "/lib/xp/schema";
-import { ComponentItem, ComponentList, Link, ToolbarParams } from "./part-finder.freemarker";
+import { find, flatMap, notNullOrUndefined, runAsAdmin, startsWith, stringAfterLast } from "/lib/part-finder/utils";
+import type { ComponentItem, ComponentList, Link, ToolbarParams } from "./part-finder.freemarker";
 import type { ComponentViewParams } from "/admin/components/component-view/component-view.freemarker";
-import { find, flatMap, notNullOrUndefined, startsWith, stringAfterLast } from "/lib/part-finder/utils";
 
 const view = resolve("part-finder.ftl");
 const componentView = resolve("../../components/component-view/component-view.ftl");
@@ -24,14 +23,10 @@ export function all(req: XP.Request): XP.Response {
   const currentItemKey = req.params.key;
   const appKey = req.params.appKey;
 
-  const cmsRepos = listRepos()
-    .map((repo) => repo.id)
-    .filter((repoId) => startsWith(repoId, "com.enonic.cms"));
+  const cmsRepoIds = getCMSRepoIds();
 
   // If in Turbo Frame, only render the component view
   if (req.headers["turbo-frame"] === "content-view" && currentItemKey && currentItemType) {
-    // TODO Use web-socket to update aria-current
-
     const component = getComponent({
       type: currentItemType,
       key: currentItemKey,
@@ -40,38 +35,21 @@ export function all(req: XP.Request): XP.Response {
     if (component) {
       return {
         body: render<ComponentViewParams>(componentView, {
-          currentItem: getComponentUsagesInRepo(component, cmsRepos),
+          currentItem: getComponentUsagesInRepo(component, cmsRepoIds),
         }),
       };
     }
   }
 
-  const installedApps = listApps();
+  const installedApps = runAsAdmin(() => listApps());
 
-  const allParts = flatMap(installedApps, (app) =>
-    listComponents({
-      application: app.key,
-      type: "PART",
-    }),
-  );
+  const allParts = listComponentsInApplication(installedApps, "PART");
+  const allLayouts = listComponentsInApplication(installedApps, "LAYOUT");
+  const allPages = listComponentsInApplication(installedApps, "PAGE");
 
-  const allLayouts = flatMap(installedApps, (app) =>
-    listComponents({
-      application: app.key,
-      type: "LAYOUT",
-    }),
-  );
-
-  const allPages = flatMap(installedApps, (app) =>
-    listComponents({
-      application: app.key,
-      type: "PAGE",
-    }),
-  );
-
-  const parts = allParts.map((component) => getComponentUsagesInRepo(component, cmsRepos));
-  const layouts = allLayouts.map((component) => getComponentUsagesInRepo(component, cmsRepos));
-  const pages = allPages.map((component) => getComponentUsagesInRepo(component, cmsRepos));
+  const parts = allParts.map((component) => getComponentUsagesInRepo(component, cmsRepoIds));
+  const layouts = allLayouts.map((component) => getComponentUsagesInRepo(component, cmsRepoIds));
+  const pages = allPages.map((component) => getComponentUsagesInRepo(component, cmsRepoIds));
 
   const allItems = parts.concat(layouts).concat(pages);
 
@@ -124,6 +102,25 @@ export function all(req: XP.Request): XP.Response {
   };
 }
 
+function getCMSRepoIds(): string[] {
+  return runAsAdmin(() =>
+    listRepos()
+      .map((repo) => repo.id)
+      .filter((repoId) => startsWith(repoId, "com.enonic.cms")),
+  );
+}
+
+function listComponentsInApplication(installedApps: Application[], type: ComponentDescriptorType): PartDescriptor[] {
+  return runAsAdmin(() =>
+    flatMap(installedApps, (app) =>
+      listComponents({
+        application: app.key,
+        type,
+      }),
+    ),
+  );
+}
+
 function getComponentUsagesInRepo(component: Component, repositories: string[]): ComponentItem {
   return repositories
     .map((repository) => getComponentUsages(component, repository))
@@ -148,17 +145,15 @@ function getComponentUsagesInRepo(component: Component, repositories: string[]):
 }
 
 function getComponentUsages(component: Component, repository: string): ComponentItem {
-  const res = run(
-    {
-      branch: "draft",
-      repository,
-      principals: ["role:system.admin"],
-    },
+  const res = runAsAdmin(
     () =>
       query({
         query: `components.${component.type}.descriptor = '${component.key}'`,
         count: 100,
       }),
+    {
+      repository,
+    },
   );
 
   const repo = stringAfterLast(repository, ".");

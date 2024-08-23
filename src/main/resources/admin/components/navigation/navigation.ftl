@@ -1,5 +1,5 @@
 [#macro render itemLists currentItemKey=""]
-  <move-aria-current-on-click class="navigation">
+  <move-aria-current-on-visit class="navigation">
     [#list itemLists as itemList]
       [#local labelId=itemList.title?lower_case]
       <small class="label" id="${labelId}">${itemList.title}</small>
@@ -17,5 +17,5 @@
         [/#list]
       </nav>
     [/#list]
-  </move-aria-current-on-click>
+  </move-aria-current-on-visit>
 [/#macro]

@@ -1,6 +1,9 @@
 # Part Finder
 
-Find the content where your parts, layouts and pages are used!
+When you are working on an XP-part you want to know where on your site it's being used, so that you can test it or
+update the configuration.
+
+This application gives insight into which content uses which of your components.
 
 ## Setup
 

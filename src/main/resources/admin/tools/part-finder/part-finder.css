@@ -30,7 +30,6 @@
         background-color: var(--color-accent);
       }
     }
-
   }
 
   .layout--header {
@@ -44,5 +43,6 @@
 
   .layout--content {
     grid-area: main;
+    overflow-y: scroll;
   }
 }

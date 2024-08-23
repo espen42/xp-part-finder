@@ -1,3 +1,5 @@
+import { run, type ContextParams } from "/lib/xp/context";
+
 export function notNullOrUndefined<T>(val: T | null | undefined): val is T {
   return val !== null && val !== undefined;
 }
@@ -20,4 +22,16 @@ export function flatMap<A, B>(arr: A[], f: (val: A) => B[]): B[] {
 
 export function stringAfterLast(str: string, delimiter: string): string {
   return str.substring(str.lastIndexOf(delimiter) + 1);
+}
+
+export function runAsAdmin<T>(callback: () => T, params: ContextParams = {}): T {
+  return run(
+    {
+      branch: "draft",
+      //repository,
+      principals: ["role:system.admin"],
+      ...params,
+    },
+    callback,
+  );
 }
