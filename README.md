@@ -5,6 +5,8 @@ update the configuration.
 
 This application gives insight into which content uses which of your components.
 
+![Part finder icon](./src/main/resources/application.svg)
+
 ## Setup
 
 Install npm-dependencies

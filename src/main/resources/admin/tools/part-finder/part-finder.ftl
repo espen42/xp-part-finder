@@ -11,6 +11,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="view-transition" content="same-origin" />
 
+    <link rel="icon" href="[@assetUrl path='images/favicon.svg'/]">
+    <link rel=”mask-icon” href=”[@assetUrl path='images/favicon.svg'/]” color=”#000000">
     <link rel="stylesheet" href="[@assetUrl path='styles/bundle.css'/]" />
 
     <script type="module" src="[@assetUrl path='hotwired__turbo/8.0.4/dist/turbo.es2017-esm.js'/]"></script>
