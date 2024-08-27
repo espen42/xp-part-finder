@@ -1,6 +1,7 @@
 export type ComponentList = {
   itemLists: ItemList[];
   currentItemKey?: string;
+  currentAppKey?: string;
 };
 
 export type ItemList = {
@@ -20,14 +21,4 @@ export type Usage = {
   url: string;
   displayName: string;
   path: string;
-};
-
-export type ToolbarParams = {
-  filters: Link[];
-};
-
-export type Link = {
-  text: string;
-  url: string;
-  current: boolean;
 };

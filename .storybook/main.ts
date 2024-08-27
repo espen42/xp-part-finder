@@ -12,7 +12,7 @@ const config: StorybookConfig = {
     "@storybook/addon-a11y",
     "@itemconsulting/preset-enonic-xp",
   ],
-  staticDirs: ["../src/main/resources/assets", "./images"],
+  staticDirs: ["../src/main/resources/assets"],
   framework: {
     name: "@storybook/server-webpack5",
     options: {},

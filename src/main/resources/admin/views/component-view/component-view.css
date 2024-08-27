@@ -1,0 +1,20 @@
+table.table {
+  border-collapse: collapse;
+  border: 1px solid var(--color-black-contrast-2);
+  width: 100%;
+
+  caption {
+    text-align: left;
+  }
+
+  th,
+  td {
+    text-align: left;
+    border: 1px solid var(--color-black-contrast-2);
+    padding: var(--spacing-8) var(--spacing-16);
+
+    &:first-child {
+      min-width: 160px;
+    }
+  }
+}

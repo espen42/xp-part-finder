@@ -1,0 +1,111 @@
+:root {
+  color-scheme: light dark;
+
+  /* Accent */
+  --color-accent-background-default: var(--color-purple-1);
+  --color-accent-base-default: var(--color-purple-9);
+  --color-accent-base-hover: var(--color-purple-10);
+  --color-accent-base-active: var(--color-purple-11);
+  --color-accent-text-subtle: var(--color-purple-12);
+  --color-accent-text-default: var(--color-purple-13);
+  --color-accent-contrast-default: var(--color-purple-contrast-1);
+  --color-accent-contrast-subtle: var(--color-purple-contrast-2);
+
+  /* Neutral */
+  --color-neutral-background-default: var(--color-white-1);
+  --color-neutral-base-default: var(--color-white-9);
+  --color-neutral-base-hover: var(--color-white-10);
+  --color-neutral-base-active: var(--color-white-11);
+  --color-neutral-text-subtle: var(--color-white-12);
+  --color-neutral-text-default: var(--color-white-13);
+  --color-neutral-contrast-default: var(--color-white-contrast-1);
+  --color-neutral-contrast-subtle: var(--color-white-contrast-2);
+
+  .theme-accent {
+    /* Create theme flavor of accent */
+    --color-theme-background-default: var(--color-accent-background-default);
+    --color-theme-base-default: var(--color-accent-base-default);
+    --color-theme-base-hover: var(--color-accent-base-hover);
+    --color-theme-base-active: var(--color-accent-base-active);
+    --color-theme-text-subtle: var(--color-accent-text-subtle);
+    --color-theme-text-default: var(--color-accent-text-default);
+    --color-theme-contrast-default: var(--color-accent-contrast-default);
+    --color-theme-contrast-subtle: var(--color-accent-contrast-subtle);
+
+    /* Accent over accent background cant be same colors */
+    --color-accent-text-subtle: var(--color-turquoise-12);
+    --color-accent-text-default: var(--color-turquoise-13);
+  }
+
+  .theme-neutral {
+    /* Create theme flavor of neutral */
+    --color-theme-background-default: var(--color-neutral-background-default);
+    --color-theme-base-default: var(--color-neutral-base-default);
+    --color-theme-base-hover: var(--color-neutral-base-hover);
+    --color-theme-base-active: var(--color-neutral-base-active);
+    --color-theme-text-subtle: var(--color-neutral-text-subtle);
+    --color-theme-text-default: var(--color-neutral-text-default);
+    --color-theme-contrast-default: var(--color-neutral-contrast-default);
+    --color-theme-contrast-subtle: var(--color-neutral-contrast-subtle);
+  }
+
+  .theme-brand1 {
+    --color-theme-background-default: var(--color-petroleum-1);
+    --color-theme-base-default: var(--color-petroleum-9);
+    --color-theme-base-hover: var(--color-petroleum-10);
+    --color-theme-base-active: var(--color-petroleum-11);
+    --color-theme-text-subtle: var(--color-petroleum-12);
+    --color-theme-text-default: var(--color-black-1);
+    --color-theme-contrast-default: var(--color-petroleum-contrast-1);
+    --color-theme-contrast-subtle: var(--color-petroleum-contrast-2);
+
+    /* Use accent color with more contrast */
+    --color-accent-text-subtle: var(--color-turquoise-12);
+    --color-accent-text-default: var(--color-turquoise-13);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: only dark;
+
+    /* Accent */
+    --color-accent-background-default: var(--color-turquoise-1);
+    --color-accent-base-default: var(--color-turquoise-9);
+    --color-accent-base-hover: var(--color-turquoise-10);
+    --color-accent-base-active: var(--color-turquoise-11);
+    --color-accent-text-subtle: var(--color-turquoise-12);
+    --color-accent-text-default: var(--color-turquoise-13);
+    --color-accent-contrast-default: var(--color-turquoise-contrast-1);
+    --color-accent-contrast-subtle: var(--color-turquoise-contrast-2);
+
+    /* Neutral */
+    --color-neutral-background-default: var(--color-dark-1);
+    --color-neutral-base-default: var(--color-dark-9);
+    --color-neutral-base-hover: var(--color-dark-10);
+    --color-neutral-base-active: var(--color-dark-11);
+    --color-neutral-text-subtle: var(--color-dark-12);
+    --color-neutral-text-default: var(--color-black-1);
+    --color-neutral-contrast-default: var(--color-dark-contrast-1);
+    --color-neutral-contrast-subtle: var(--color-dark-contrast-2);
+
+    .theme-accent,
+    .theme-neutral,
+    .theme-brand1 {
+      --color-theme-background-default: var(--color-dark-1);
+      --color-theme-base-default: var(--color-dark-9);
+      --color-theme-base-hover: var(--color-dark-10);
+      --color-theme-base-active: var(--color-dark-11);
+      --color-theme-text-subtle: var(--color-dark-12);
+      --color-theme-text-default: var(--color-black-1);
+      --color-theme-contrast-default: var(--color-dark-contrast-1);
+      --color-theme-contrast-subtle: var(--color-dark-contrast-2);
+    }
+
+    .theme-neutral {
+      --color-theme-base-default: transparent;
+      --color-theme-base-hover: transparent;
+      --color-theme-base-active: transparent;
+    }
+  }
+}

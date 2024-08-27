@@ -1,9 +1,8 @@
 <?xml version="1.0"?>
 <tool xmlns="urn:enonic:xp:model:1.0">
   <display-name>Part Finder</display-name>
-  <description>Find where in the content tree your parts are used!</description>
+  <description>See where your parts are used!</description>
   <allow>
-    <principal>role:system.admin</principal>
     <principal>role:system.admin.login</principal>
   </allow>
 </tool>

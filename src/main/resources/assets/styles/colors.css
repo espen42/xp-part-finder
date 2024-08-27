@@ -1,0 +1,71 @@
+:root {
+  /* White */
+  --color-white-1: #ffffff;
+  --color-white-9: #ffffff;
+  --color-white-10: #151c27;
+  --color-white-11: #151c27;
+  --color-white-12: #151c27;
+  --color-white-13: #000814;
+  --color-white-contrast-1: #000814;
+  --color-white-contrast-2: #92969a;
+
+  /* Black */
+  --color-black-1: #ffffff;
+  --color-black-9: #000814;
+  --color-black-10: #000814;
+  --color-black-11: #000814;
+  --color-black-12: #5e636b;
+  --color-black-13: #2a303b;
+  --color-black-contrast-1: #ffffff;
+  --color-black-contrast-2: #92969a;
+
+  /* Purple */
+  --color-purple-1: #fefeff;
+  --color-purple-9: #8812e2;
+  --color-purple-10: #8812e2;
+  --color-purple-11: #8812e2;
+  --color-purple-12: #8f20e4;
+  --color-purple-13: #480a78;
+  --color-purple-contrast-1: #ffffff;
+  --color-purple-contrast-2: #fefeff;
+
+  /* Petroleum */
+  --color-petroleum-1: #fefefe;
+  --color-petroleum-9: #0b3c49;
+  --color-petroleum-10: #0b3c49;
+  --color-petroleum-11: #0b3c49;
+  --color-petroleum-12: #436973;
+  --color-petroleum-13: #0a3540;
+  --color-petroleum-contrast-1: #ffffff;
+  --color-petroleum-contrast-2: #c4d0d3;
+
+  /* Turquoise */
+  --color-turquoise-1: #f9fffe;
+  --color-turquoise-9: #0affd2;
+  --color-turquoise-10: #0affd2;
+  --color-turquoise-11: #0affd2;
+  --color-turquoise-12: #0affd2;
+  --color-turquoise-13: #08cda9;
+  --color-turquoise-contrast-1: #000000;
+  --color-turquoise-contrast-2: #095143;
+
+  /* Light turquoise */
+  --color-light-1: #f9fffe;
+  --color-light-9: #ebfffb;
+  --color-light-10: #ebfffb;
+  --color-light-11: #ebfffb;
+  --color-light-12: #5d6463;
+  --color-light-13: #2d3030;
+  --color-light-contrast-1: #000000;
+  --color-light-contrast-2: #535b59;
+
+  /* Dark */
+  --color-dark-1: #000814;
+  --color-dark-9: #0d1420;
+  --color-dark-10: #0d1420;
+  --color-dark-11: #0d1420;
+  --color-dark-12: #9b9ea3;
+  --color-dark-13: #dedfe1;
+  --color-dark-contrast-1: #ffffff;
+  --color-dark-contrast-2: #ffffff;
+}

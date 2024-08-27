@@ -4,7 +4,9 @@ class MoveAriaCurrentOnVisit extends HTMLElement {
   connectedCallback() {
     this.allLinkEls = this.querySelectorAll("a[href]");
     document.addEventListener("turbo:visit", (event) => {
-      this.updateAriaSelected(decodeURIComponent(event.detail.url));
+      if (event.detail.url) {
+        this.updateAriaSelected(event.detail.url);
+      }
     });
   }
 

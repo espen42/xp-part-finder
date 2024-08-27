@@ -1,0 +1,64 @@
+.header {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-theme-contrast-default);
+  padding-block: var(--spacing-16);
+  gap: var(--spacing-16);
+
+  h1:before {
+    content: "";
+    mask-repeat: no-repeat;
+    mask-size: contain;
+    mask-image: var(--icon-app);
+    display: inline-block;
+    background-color: currentColor;
+    height: 1em;
+    width: 1em;
+    transform: translateY(4px);
+    margin-right: var(--spacing-8);
+  }
+
+  .header--toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-12)
+  }
+
+  .header--nav-label {
+    font-size: var(--font-size-small);
+    font-weight: bold;
+  }
+
+  .header--filters {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-16);
+    margin-bottom: var(--spacing-16);
+  }
+}
+
+a.pill {
+  --pill--color: var(--color-theme-text-default);
+  --pill--color-background: transparent;
+  border-radius: 30px;
+  padding: 2px 20px;
+  color: var(--pill--color);
+  background-color: var(--pill--color-background);
+  border: 1px solid var(--pill--color);
+  text-decoration: none;
+  transition: transform 100ms ease-in-out;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:active {
+    transform: translateY(2px);
+  }
+
+  &[aria-current] {
+    --pill--color-background: var(--color-theme-contrast-default);
+    --pill--color: var(--color-theme-base-default);
+    border: 0;
+  }
+}

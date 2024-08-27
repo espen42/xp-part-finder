@@ -9,7 +9,7 @@ export default {
       id,
       params: {
         template: `
-          [#import "/admin/components/navigation/navigation.ftl" as Navigation]
+          [#import "/admin/views/navigation/navigation.ftl" as Navigation]
           [@Navigation.render itemLists=itemLists /]
         `,
       },
@@ -27,6 +27,58 @@ export const navigation: StoryObj<ComponentList> = {
           {
             displayName: "Article Header",
             key: "no.item.starter:article-header",
+            total: 3,
+            url: "#",
+            contents: [
+              {
+                url: "#",
+                displayName: "Article",
+                path: "/testing/_templates/article",
+              },
+            ],
+          },
+          {
+            displayName: "BlocksView",
+            key: "no.item.starter:blocks-view",
+            total: 1,
+            url: "#",
+            contents: [
+              {
+                url: "#",
+                displayName: "Article",
+                path: "/testing/_templates/article",
+              },
+            ],
+          },
+          {
+            displayName: "BlocksView",
+            key: "no.item.starter:blocks-view",
+            total: 1,
+            url: "#",
+            contents: [
+              {
+                url: "#",
+                displayName: "Article",
+                path: "/testing/_templates/article",
+              },
+            ],
+          },
+          {
+            displayName: "BlocksView",
+            key: "no.item.starter:blocks-view",
+            total: 2,
+            url: "#",
+            contents: [
+              {
+                url: "#",
+                displayName: "Article",
+                path: "/testing/_templates/article",
+              },
+            ],
+          },
+          {
+            displayName: "BlocksView",
+            key: "no.item.starter:blocks-view",
             total: 3,
             url: "#",
             contents: [

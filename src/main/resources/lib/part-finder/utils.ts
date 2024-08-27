@@ -12,6 +12,14 @@ export function find<A>(arr: A[], predicate: (value: A) => boolean): A | undefin
   }
 }
 
+export function unique(arr: string[]): string[] {
+  return arr.filter((value, index, all) => all.indexOf(value) === index);
+}
+
+export function objectKeys<Obj extends object>(obj: Obj): (keyof Obj)[] {
+  return Object.keys(obj) as (keyof Obj)[];
+}
+
 export function startsWith(str: string, searchString: string): boolean {
   return str.substring(0, searchString.length) === searchString;
 }

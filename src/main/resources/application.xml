@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <application xmlns="urn:enonic:xp:model:1.0">
-  <description>Admin tool to find where parts or layouts are used</description>
+  <description>Admin tool to see where parts or layouts are used</description>
 </application>

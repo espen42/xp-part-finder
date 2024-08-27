@@ -1,6 +1,9 @@
+[#-- @ftlvariable name="currentItem" type="Object" --]
+[#-- @ftlvariable name="currentItem.key" type="String" --]
+[#-- @ftlvariable name="currentItem.contents" type="java.util.ArrayList" --]
 <turbo-frame id="content-view">
   <table class="table">
-    <caption>${currentItem.displayName}</caption>
+    <caption class="label-big">${currentItem.key}</caption>
 
     <tr>
       <th scope="col">Display name</th>
