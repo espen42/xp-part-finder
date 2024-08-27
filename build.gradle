@@ -5,6 +5,9 @@ plugins {
   id "com.github.node-gradle.node" version "7.0.2"
 }
 
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
+
 app {
   name = "${appName}"
   displayName = "${appDisplayName}"
