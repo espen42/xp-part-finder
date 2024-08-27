@@ -5,6 +5,8 @@ update the configuration.
 
 This application gives insight into which content uses which of your components.
 
+[![](https://jitpack.io/v/no.item/xp-part-finder.svg)](https://jitpack.io/#no.item/xp-part-finder)
+
 ![Part finder icon](./src/main/resources/application.svg)
 
 ## Setup
