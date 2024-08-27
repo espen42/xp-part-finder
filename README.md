@@ -54,3 +54,7 @@ To deploy to a local sandbox, run the following command
 ```bash
 enonic project deploy
 ```
+
+## Deploy to Jitpack
+
+Go to the [Jitpack page for xp-part-finder](https://jitpack.io/#no.item/xp-part-finder) to deploy from Github.
