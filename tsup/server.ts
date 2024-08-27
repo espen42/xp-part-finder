@@ -140,7 +140,7 @@ export default function buildServerConfig(): Options {
     platform: "neutral",
     silent: ["QUIET", "WARN"].includes(process.env.LOG_LEVEL_FROM_GRADLE || ""),
     shims: false, // https://tsup.egoist.dev/#inject-cjs-and-esm-shims
-    splitting: true,
+    splitting: false,
     sourcemap: false,
     target: "es5",
   };

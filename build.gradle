@@ -1,5 +1,6 @@
 plugins {
   id "java"
+  id "maven-publish"
   id "com.enonic.xp.app" version "3.4.0"
   id "com.github.node-gradle.node" version "7.0.2"
 }
@@ -105,4 +106,15 @@ processResources {
   exclude "**/*.json"
   exclude "**/*.png"
   exclude "**/*.ts"
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+      groupId group
+      artifactId projectName
+      version version
+    }
+  }
 }

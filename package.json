@@ -1,12 +1,13 @@
 {
-  "description": "Item starter",
+  "name": "@itemconsulting/xp-part-finder",
+  "description": "Part finder",
   "version": "1.0.0",
-  "homepage": "https://github.com/ItemConsulting/starter-item",
+  "homepage": "https://github.com/ItemConsulting/xp-part-finder",
   "license": "MIT",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ItemConsulting/starter-item"
+    "url": "git+https://github.com/ItemConsulting/part-finder"
   },
   "scripts": {
     "clean": "rimraf build",
@@ -47,7 +48,7 @@
     "@storybook/server": "^8.2.9",
     "@storybook/server-webpack5": "^8.2.9",
     "@storybook/test": "^8.2.9",
-    "@swc/core": "^1.7.14",
+    "@swc/core": "^1.7.18",
     "autoprefixer": "^10.4.20",
     "concurrently": "^8",
     "cssnano": "^7.0.5",
@@ -70,6 +71,6 @@
     "storybook": "^8.2.9",
     "tsup": "^8",
     "typescript": "^5.5.4",
-    "typescript-eslint": "^8.2.0"
+    "typescript-eslint": "^8.3.0"
   }
 }
