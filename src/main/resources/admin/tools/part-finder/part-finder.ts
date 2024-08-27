@@ -32,6 +32,7 @@ type PartFinderQueryParams = {
   type: string;
 };
 
+const PAGE_TITLE = "Part finder";
 const view = resolve("part-finder.ftl");
 const componentView = resolve("../../views/component-view/component-view.ftl");
 
@@ -50,8 +51,11 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
     if (component) {
       return {
-        body: render<ComponentViewParams>(componentView, {
-          currentItem: getComponentUsagesInRepo(component, cmsRepoIds),
+        body: wrapInHtml({
+          markup: render<ComponentViewParams>(componentView, {
+            currentItem: getComponentUsagesInRepo(component, cmsRepoIds),
+          }),
+          title: `${PAGE_TITLE} - ${component.displayName}`,
         }),
       };
     }
@@ -98,7 +102,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
   return {
     body: render<ComponentList & ComponentViewParams & Header>(view, {
-      displayName: "Part finder",
+      title: `${PAGE_TITLE} - ${currentItem?.displayName}`,
+      displayName: PAGE_TITLE,
       filters,
       currentItemKey: componentKey,
       currentAppKey,
@@ -131,6 +136,10 @@ function getPartFinderUrl(params: PartFinderQueryParams): string {
     .join("&");
 
   return `${getToolUrl("no.item.partfinder", "part-finder")}?${queryParams}`;
+}
+
+function wrapInHtml({ markup, title }: { markup: string; title: string }): string {
+  return `<!DOCTYPE html><html lang="en"><head><title>${title}</title></head><body>${markup}</body></html>`;
 }
 
 function getCMSRepoIds(): string[] {

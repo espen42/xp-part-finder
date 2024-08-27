@@ -1,3 +1,4 @@
+[#-- @ftlvariable name="title" type="String" --]
 [#-- @ftlvariable name="displayName" type="String" --]
 [#-- @ftlvariable name="filters" type="java.util.ArrayList" --]
 [#-- @ftlvariable name="itemLists" type="java.util.ArrayList" --]
@@ -19,7 +20,7 @@
     <script type="module" src="[@assetUrl path='hotwired__turbo/8.0.4/dist/turbo.es2017-esm.js'/]"></script>
     <script type="module" src="[@assetUrl path='scripts/move-aria-current-on-visit.mjs'/]"></script>
 
-		<title>${displayName}</title>
+		<title>${title}</title>
 	</head>
 	<body>
     <div class="part-finder">

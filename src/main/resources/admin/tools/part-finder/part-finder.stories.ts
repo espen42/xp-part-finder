@@ -13,6 +13,7 @@ export default {
 
 export const partFinder: StoryObj = {
   args: {
+    title: "Part finder - Part name",
     displayName: header.args?.displayName,
     currentAppKey: header.args?.currentAppKey,
     filters: header.args?.filters,
