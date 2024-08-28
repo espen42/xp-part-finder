@@ -5,8 +5,8 @@ plugins {
   id "com.github.node-gradle.node" version "7.0.2"
 }
 
-sourceCompatibility = JavaVersion.VERSION_11
-targetCompatibility = JavaVersion.VERSION_11
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
 
 app {
   name = "${appName}"
@@ -118,6 +118,17 @@ publishing {
       groupId group
       artifactId projectName
       version version
+    }
+  }
+
+  repositories {
+    maven {
+      name = "GitHubPackages"
+      url = "https://maven.pkg.github.com/ItemConsulting/xp-part-finder"
+      credentials {
+        username = System.getenv("GITHUB_ACTOR")
+        password = System.getenv("GITHUB_TOKEN")
+      }
     }
   }
 }
