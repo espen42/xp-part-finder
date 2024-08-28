@@ -106,7 +106,7 @@ processResources {
 
 publishing {
   publications {
-    mavenJava(MavenPublication) {
+    gpr(MavenPublication) {
       from components.java
       groupId group
       artifactId projectName
