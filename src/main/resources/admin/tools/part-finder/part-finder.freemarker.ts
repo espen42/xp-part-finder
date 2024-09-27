@@ -21,4 +21,5 @@ export type Usage = {
   url: string;
   displayName: string;
   path: string;
+  id: string;
 };

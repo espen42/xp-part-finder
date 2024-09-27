@@ -210,6 +210,7 @@ function getComponentUsages(component: Component, repository: string): Component
       url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${hit._id}`,
       displayName: hit.displayName,
       path: hit._path,
+      id: hit._id,
     })),
   };
 }
