@@ -32,6 +32,8 @@ type PartFinderQueryParams = {
   type: string;
 };
 
+const PART_KEY = "PART";
+
 const PAGE_TITLE = "Part finder";
 const view = resolve("part-finder.ftl");
 const componentView = resolve("../../views/component-view/component-view.ftl");
@@ -63,7 +65,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
   const installedApps = runAsAdmin(() => listApps());
 
-  const allParts = listComponentsInApplication(installedApps, "PART");
+  const allParts = listComponentsInApplication(installedApps, PART_KEY);
   const allLayouts = listComponentsInApplication(installedApps, "LAYOUT");
   const allPages = listComponentsInApplication(installedApps, "PAGE");
 
@@ -170,6 +172,7 @@ function getComponentUsagesInRepo(component: Component, repositories: string[]):
           url: componentUsage.url,
           total: usages.total + componentUsage.total,
           key: usages.key,
+          type: usages.type,
           displayName: usages.displayName,
           contents: usages.contents.concat(componentUsage.contents),
         };
@@ -178,6 +181,7 @@ function getComponentUsagesInRepo(component: Component, repositories: string[]):
         url: "",
         total: 0,
         key: component.key,
+        type: component.type,
         displayName: component.displayName,
         contents: [],
       },
@@ -201,6 +205,7 @@ function getComponentUsages(component: Component, repository: string): Component
   return {
     total: res.total,
     key: component.key,
+    type: component.type,
     displayName: component.displayName,
     url: getPartFinderUrl({
       key: component.key,
@@ -218,7 +223,7 @@ function getComponentUsages(component: Component, repository: string): Component
 function parseComponentType(str: string = ""): ComponentDescriptorType | undefined {
   const uppercasedStr = str.toUpperCase();
 
-  if (uppercasedStr === "PAGE" || uppercasedStr === "LAYOUT" || uppercasedStr === "PART") {
+  if (uppercasedStr === "PAGE" || uppercasedStr === "LAYOUT" || uppercasedStr === PART_KEY) {
     return uppercasedStr;
   }
 

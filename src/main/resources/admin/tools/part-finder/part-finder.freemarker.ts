@@ -11,6 +11,7 @@ export type ItemList = {
 
 export type ComponentItem = {
   key: string;
+  type: string;
   displayName: string;
   total: number;
   url: string;
