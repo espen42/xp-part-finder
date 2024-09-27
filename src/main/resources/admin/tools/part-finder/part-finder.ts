@@ -229,3 +229,28 @@ function parseComponentType(str: string = ""): ComponentDescriptorType | undefin
 
   return undefined;
 }
+
+//-----------
+
+export function post(req: XP.Request): XP.Response {
+  const sourceKey = req.params.key;
+  const targetKey = req.params.new_part_ref;
+  const contentItems = Object.keys(req.params)
+    .filter((k) => k.indexOf("select-change--") === 0)
+    .map((k) => req.params[k]);
+
+  return {
+    body:
+      '<turbo-frame id="content-view">' +
+      "<p>" +
+      'Okidokie, you want to change "' +
+      sourceKey +
+      '" into "' +
+      targetKey +
+      '" on ' +
+      contentItems.length +
+      " items:</p><br /><ol><li>" +
+      contentItems.join(",</li><li>") +
+      "</li></ol></turbo-frame>",
+  };
+}

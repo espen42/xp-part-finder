@@ -3,13 +3,17 @@
 [#-- @ftlvariable name="currentItem.contents" type="java.util.ArrayList" --]
 <turbo-frame id="content-view">
 
-  <form action="part-finder">
+  [#if currentItem.type == "PART"]
+    <form action="./part-finder?key=${currentItem.key}&type=PART" method="post">
+  [/#if]
+
     <table class="table">
       <caption class="label-big">${currentItem.type}: ${currentItem.key}</caption>
 
       <tr>
         <th scope="col">Display name</th>
         <th scope="col">Path</th>
+
         [#if currentItem.type == "PART"]
           <th scope="col" style="position:relative;">
             Replace part
@@ -27,12 +31,14 @@
               </label>
           </th>
         [/#if]
+
       </tr>
 
       [#list currentItem.contents as content]
         <tr>
           <td>${content.displayName}</td>
           <td><a href="${content.url}" target="_top">${content.path}</a></td>
+
           [#if currentItem.type == "PART"]
             <td>
                 <input type="checkbox"
@@ -48,13 +54,15 @@
                 </label>
             </td>
           [/#if]
+
         </tr>
       [/#list]
     </table>
 
 
     [#if currentItem.type == "PART"]
-      <br /><br />
+      <br />
+      <br />
       <label for="new_part_ref">Replace part '${currentItem.key}' with:</label>
       <br/>
       <input type="text"
@@ -64,17 +72,18 @@
       >
       <br />
       <br/>
-      <input type="button"
+      <input type="submit"
              id="btn_change_part"
              value="⚠ Change part name ⚠"
-             style="padding:7px 20px;background-color:#0b3c49;color:white;font-weight:bold;border:0;cursor:not-allowed"
+             style="padding:7px 20px;background-color:#0b3c49;color:white;font-weight:bold;border:0;cursor:pointer"
              title="This will change content data and may break page display. DON'T, unless you know what you're doing."
+             onMouseOver="this.style.backgroundColor='red'"
+             onMouseOut="this.style.backgroundColor='#0b3c49'"
       />
     </form>
 
     <script>
       window._pf_ = {}
-      window._pf_.submitBtnElem = document.getElementById("btn_change_part");
       window._pf_.selectAllElem = document.getElementById("_select_change_all_");
       window._pf_.targetPartNameElem = document.getElementById("new_part_ref");
 
@@ -109,12 +118,6 @@
           document.getElementById("select-change--" + id).checked = (window._pf_.selectedIds.indexOf(id) !== -1);
         })
       })
-
-      window._pf_.submitBtnElem.addEventListener("click", function() {
-        const targetName = window._pf_.targetPartNameElem.value
-        alert("Change to " + targetName + " in: " + JSON.stringify(window._pf_.selectedIds, null, 2))
-      });
-
     </script>
   [/#if]
 </turbo-frame>
