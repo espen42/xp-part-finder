@@ -18,3 +18,55 @@ table.table {
     }
   }
 }
+
+.part-selectall-col {
+  position: relative;
+}
+.part-selectall-check {
+  position:absolute;
+  bottom:12px;
+}
+
+.part-selectall-label {
+  cursor:pointer;
+  font-weight:normal;
+  margin-left:22px;
+}
+.part-select-check {
+  cursor:pointer;
+  height:15px;
+  width:15px;
+}
+.part-select-label {
+  cursor:pointer;
+  font-weight:normal;
+  display: inline-block;
+  height: 18px;
+  width: 82px;
+  background-color: transparent;
+  margin-left: -30px;
+}
+
+.new-part-label {
+  margin: 40px 0 10px;
+  display: block;
+}
+.new-part-textfield {
+  display: block;
+  padding:10px 15px;
+  width:400px;
+  max-width:100%;
+}
+.new-part-button {
+  padding:7px 20px;
+  background-color:#0b3c49;
+  color:white;
+  font-weight:bold;
+  border:0;
+  cursor:pointer;
+  margin-top: 15px;
+}
+.new-part-button:hover {
+  background-color: red;
+  cursor: not-allowed;
+}
