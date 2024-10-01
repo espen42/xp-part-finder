@@ -2,9 +2,8 @@
 [#-- @ftlvariable name="currentItem.key" type="String" --]
 [#-- @ftlvariable name="currentItem.contents" type="java.util.ArrayList" --]
 <turbo-frame id="content-view">
-
-  [#if currentItem.type == "PART"]
-    <form action="./part-finder?key=${currentItem.key}&type=PART" method="post">
+  [#if displayReplacer]
+    <form action="./part-finder?key=${currentItem.key}&type=${currentItem.type}" method="post">
   [/#if]
 
     <table class="table">
@@ -14,7 +13,7 @@
         <th scope="col">Display name</th>
         <th scope="col">Path</th>
 
-        [#if currentItem.type == "PART"]
+        [#if displayReplacer]
           <th class="part-selectall-col" scope="col">
             Replace part
             <br/>
@@ -37,7 +36,7 @@
           <td>${content.displayName}</td>
           <td><a href="${content.url}" target="_top">${content.path}</a></td>
 
-          [#if currentItem.type == "PART"]
+          [#if displayReplacer]
             <td>
                 <input type="checkbox"
                        id="select-change--${content.id}"
@@ -54,7 +53,7 @@
     </table>
 
 
-    [#if currentItem.type == "PART"]
+    [#if displayReplacer]
       <label for="new_part_ref" class="new-part-label">Replace part '${currentItem.key}' with:</label>
       <input type="text"
              placeholder="Format: full.app.key:part-name" id="new_part_ref"
@@ -66,7 +65,7 @@
              id="btn_change_part"
              value="⚠ Replace part"
              class="new-part-button"
-             title="UNSAFE! Changes content data, may break page display and cause deep errors."
+             title="CAREFUL! This will change content data, may break page display and cause deep errors."
       />
     </form>
 
@@ -88,17 +87,18 @@
       pf.checkSelection = function() {
         if (pf.timeoutId) window.clearTimeout(pf.timeoutId)
         pf.timeoutId = window.setTimeout(() => {
+          const btn = document.getElementById("btn_change_part")
           if (
             pf.selectedIds.length &&
             (pf.targetPartNameElem.value || '')
               .trim()
-              .match(/^[a-zA-Z\._]+\:[a-zA-Z][a-zA-Z0-9\-_]*$/)
+              .match(/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z_]+)*\:[a-zA-Z][a-zA-Z0-9\-_]*$/)
           ) {
-            console.log("Enable the button")
+            btn.disabled = false;
           } else {
-            console.log("Disable the button")
+            btn.disabled = true;
           }
-        }, 300)
+        }, 100)
       }
 
       // Check or uncheck a single select-checkbox

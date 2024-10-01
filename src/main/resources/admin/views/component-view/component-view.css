@@ -66,7 +66,13 @@ table.table {
   cursor:pointer;
   margin-top: 15px;
 }
-.new-part-button:hover {
+.new-part-button:not(:disabled):hover {
   background-color: red;
   cursor: not-allowed;
+}
+.new-part-button:disabled {
+  border: 1px solid var(--color-petroleum-contrast-2);
+  color: var(--color-petroleum-contrast-2);
+  background-color: transparent;
+  cursor: initial;
 }

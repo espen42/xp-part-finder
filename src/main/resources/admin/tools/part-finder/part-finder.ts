@@ -33,10 +33,15 @@ type PartFinderQueryParams = {
 };
 
 const PART_KEY = "PART";
+const LAYOUT_KEY = "LAYOUT";
+const PAGE_KEY = "PAGE";
 
 const PAGE_TITLE = "Part finder";
 const view = resolve("part-finder.ftl");
 const componentView = resolve("../../views/component-view/component-view.ftl");
+
+const shouldDisplayReplacer = (currentItemType?: string) =>
+  PART_KEY === currentItemType || LAYOUT_KEY === currentItemType;
 
 export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const currentItemType = parseComponentType(req.params.type);
@@ -52,10 +57,13 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     }) as Component;
 
     if (component) {
+      const currentItem = getComponentUsagesInRepo(component, cmsRepoIds);
+
       return {
         body: wrapInHtml({
           markup: render<ComponentViewParams>(componentView, {
-            currentItem: getComponentUsagesInRepo(component, cmsRepoIds),
+            currentItem,
+            displayReplacer: shouldDisplayReplacer(currentItem?.type),
           }),
           title: `${PAGE_TITLE} - ${component.displayName}`,
         }),
@@ -66,8 +74,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const installedApps = runAsAdmin(() => listApps());
 
   const allParts = listComponentsInApplication(installedApps, PART_KEY);
-  const allLayouts = listComponentsInApplication(installedApps, "LAYOUT");
-  const allPages = listComponentsInApplication(installedApps, "PAGE");
+  const allLayouts = listComponentsInApplication(installedApps, LAYOUT_KEY);
+  const allPages = listComponentsInApplication(installedApps, PAGE_KEY);
 
   const parts = allParts.map((component) => getComponentUsagesInRepo(component, cmsRepoIds));
   const layouts = allLayouts.map((component) => getComponentUsagesInRepo(component, cmsRepoIds));
@@ -102,29 +110,32 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
   const currentAppKey = getAppKey(componentKey);
 
+  const model = {
+    title: `${PAGE_TITLE} - ${currentItem?.displayName}`,
+    displayName: PAGE_TITLE,
+    filters,
+    currentItemKey: componentKey,
+    currentAppKey,
+    currentItem,
+    displayReplacer: shouldDisplayReplacer(currentItem?.type),
+    itemLists: [
+      {
+        title: "Parts",
+        items: parts.filter((part) => startsWith(part.key, currentAppKey)),
+      },
+      {
+        title: "Layouts",
+        items: layouts.filter((layout) => startsWith(layout.key, currentAppKey)),
+      },
+      {
+        title: "Pages",
+        items: pages.filter((page) => startsWith(page.key, currentAppKey)),
+      },
+    ].filter((list) => list.items.length > 0),
+  };
+
   return {
-    body: render<ComponentList & ComponentViewParams & Header>(view, {
-      title: `${PAGE_TITLE} - ${currentItem?.displayName}`,
-      displayName: PAGE_TITLE,
-      filters,
-      currentItemKey: componentKey,
-      currentAppKey,
-      currentItem,
-      itemLists: [
-        {
-          title: "Parts",
-          items: parts.filter((part) => startsWith(part.key, currentAppKey)),
-        },
-        {
-          title: "Layouts",
-          items: layouts.filter((layout) => startsWith(layout.key, currentAppKey)),
-        },
-        {
-          title: "Pages",
-          items: pages.filter((page) => startsWith(page.key, currentAppKey)),
-        },
-      ].filter((list) => list.items.length > 0),
-    }),
+    body: render<ComponentList & ComponentViewParams & Header>(view, model),
   };
 }
 
@@ -223,7 +234,7 @@ function getComponentUsages(component: Component, repository: string): Component
 function parseComponentType(str: string = ""): ComponentDescriptorType | undefined {
   const uppercasedStr = str.toUpperCase();
 
-  if (uppercasedStr === "PAGE" || uppercasedStr === "LAYOUT" || uppercasedStr === PART_KEY) {
+  if (uppercasedStr === PAGE_KEY || uppercasedStr === LAYOUT_KEY || uppercasedStr === PART_KEY) {
     return uppercasedStr;
   }
 
