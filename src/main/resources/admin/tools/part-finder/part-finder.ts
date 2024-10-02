@@ -300,48 +300,51 @@ export function post(req: XP.Request): XP.Response {
 
     const editor = (oldItem /*: ContentItem */) => {
 
-      oldItem._indexConfig.configs = oldItem._indexConfig.configs.map((config) => {
+      contentItem._indexConfig.configs = contentItem._indexConfig.configs.map((config) => {
         if ((config.path || "").match(configSearchPattern)) {
 
           const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
+
+          config.path = newPath;
         }
         return config;
       });
 
       /* oldItem.components = */
-      oldItem.components = oldItem.components.map((component) => {
+      contentItem.components = contentItem.components.map((component) => {
         if (
-          component.type === componentType &&
-          component[componentType].descriptor === `${oldAppKey}:${oldComponentKey}`
+          component.type !== componentType ||
+          component[componentType].descriptor !== `${oldAppKey}:${oldComponentKey}`
         ) {
-
-          const newComponent = {
-            ...component,
-            [componentType]: {
-              ...component[componentType],
-              descriptor: `${newAppKey}:${newComponentKey}`,
-              config: {
-                ...component[componentType].config,
-                [newAppKeyDashed]: {
-                  ...component[componentType].config[oldAppKeyDashed],
-                  [newComponentKey]: component[componentType].config[oldAppKeyDashed][oldComponentKey],
-                },
-              },
-            },
-          };
-
-          if (oldAppKeyDashed !== newAppKeyDashed) {
-            delete newComponent[componentType].config[oldAppKeyDashed];
-          }
-          if (oldComponentKey !== newComponentKey) {
-            delete newComponent[componentType].config[newAppKeyDashed][oldComponentKey];
-          }
+          return component;
         }
 
-        return component;
+        const newComponent = {
+          ...component,
+          [componentType]: {
+            ...component[componentType],
+            descriptor: `${newAppKey}:${newComponentKey}`,
+            config: {
+              ...component[componentType].config,
+              [newAppKeyDashed]: {
+                ...component[componentType].config[oldAppKeyDashed],
+                [newComponentKey]: component[componentType].config[oldAppKeyDashed][oldComponentKey],
+              },
+            },
+          },
+        };
+
+        if (oldAppKeyDashed !== newAppKeyDashed) {
+          delete newComponent[componentType].config[oldAppKeyDashed];
+        }
+        if (oldComponentKey !== newComponentKey) {
+          delete newComponent[componentType].config[newAppKeyDashed][oldComponentKey];
+        }
+
+        return newComponent;
       });
 
-      return oldItem;
+      return contentItem;
     };
 
     return editor;
@@ -411,15 +414,9 @@ export function post(req: XP.Request): XP.Response {
   return {
     body:
       '<turbo-frame id="content-view">' +
-      "<p>" +
-      'Okidokie, you want to change "' +
-      sourceKey +
-      '" into "' +
-      targetKey +
-      '" on ' +
-      targetIds.length +
-      " items:</p><br /><ol><li>" +
-      targetIds.join(",</li><li>") +
+      `<pre>${JSON.stringify({ okays, errors }, null, 2)}</pre>` +
+      "<br /><ol><li>" +
+      targetIds.join("</li><li>") +
       "</li></ol></turbo-frame>",
   };
 }
