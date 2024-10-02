@@ -1,7 +1,7 @@
 import { render } from "/lib/tineikt/freemarker";
 import { getToolUrl } from "/lib/xp/admin";
 
-import { get as getContent } from "/lib/xp/content";
+import { Content, get as getContent } from "/lib/xp/content";
 import { run as runInContext } from "/lib/xp/context";
 import { connect as nodeConnect } from "/lib/xp/node";
 import { hasRole as hasAuthRole } from "/lib/xp/auth";
@@ -263,11 +263,11 @@ export function post(req: XP.Request): XP.Response {
 
   const targetBranch = "draft";
 
-  const undo: boolean = !!req.params.undo;
+  // const undo: boolean = !!req.params.undo;
 
-  const targetIds = Object.keys(req.params)
+  const targetIds: string[] = Object.keys(req.params)
     .filter((k) => k.startsWith("select-change--"))
-    .map((k) => req.params[k]);
+    .map((k) => req.params[k] || "");
 
   const args: { [key: string]: string } = {
     key: sourceKey,
@@ -298,11 +298,9 @@ export function post(req: XP.Request): XP.Response {
     const configReplacePattern = new RegExp("^(" + pathPatternString + "\\b)");
     const configReplaceTarget = "components." + componentType + ".config." + newAppKeyDashed + "." + newComponentKey;
 
-    const editor = (oldItem /*: ContentItem */) => {
-
+    const editor = (contentItem) => {
       contentItem._indexConfig.configs = contentItem._indexConfig.configs.map((config) => {
         if ((config.path || "").match(configSearchPattern)) {
-
           const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
 
           config.path = newPath;
@@ -373,7 +371,8 @@ export function post(req: XP.Request): XP.Response {
         principals: ["role:system.admin"],
       },
       () => {
-        let i, id, item;
+        let i: number, id: string, item: Content | null;
+
         for (i = 0; i < targetIds.length; i++) {
           id = targetIds[i];
           item = null;
@@ -383,7 +382,6 @@ export function post(req: XP.Request): XP.Response {
               key: id,
             });
             if (item) {
-
               repo.modify({
                 key: id,
                 editor: editor,
@@ -392,8 +390,8 @@ export function post(req: XP.Request): XP.Response {
               okays.push({
                 id,
                 url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-                displayName: item?.displayName,
-                path: item?._path,
+                displayName: item?.displayName || "",
+                path: item?._path || "",
               });
             }
           } catch (e) {
@@ -401,8 +399,8 @@ export function post(req: XP.Request): XP.Response {
             errors.push({
               id,
               url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-              displayName: item?.displayName,
-              path: item?._path,
+              displayName: item?.displayName || "",
+              path: item?._path || "",
               message: e instanceof Error ? e.message : "Unknown error",
             });
           }

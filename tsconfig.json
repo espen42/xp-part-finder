@@ -46,6 +46,7 @@
 		// Completeness
 		//──────────────────────────────────────────────────────────────────────
 		"skipLibCheck": true,
+    "noImplicitAny": false
 	},
 	"exclude": [
 		"src/main/resources/assets/**/*.*",
