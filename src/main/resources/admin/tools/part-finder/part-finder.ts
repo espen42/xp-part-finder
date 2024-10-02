@@ -285,42 +285,60 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
-  const createEditorFunc = (
-    oldAppKey: string,
-    oldComponentKey: string,
-  ) => {
+  const createEditorFunc = (oldAppKey: string, oldComponentKey: string, newAppKey: string, newComponentKey: string) => {
     const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
-    //const newAppKeyDashed = newAppKey.replace(/\./g, '-');
+    const newAppKeyDashed = newAppKey.replace(/\./g, "-");
+
+    const pathPatternString =
+      "components\\." + componentType + "\\.config\\." + oldAppKeyDashed + "\\." + oldComponentKey;
 
     // Looks for "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.<something more whatever>"
     // but not "components.<componentType>.config.<oldAppKeyDashed>.<key that starts with oldComponentKey but continues before the dot or end>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.." etc:
-    const configSearchPattern = new RegExp(
-      "^components\\." +
-        componentType +
-        "\\.config\\." +
-        oldAppKeyDashed +
-        "\\." +
-        oldComponentKey +
-        "($|\\.(?!\\.|$))",
-    );
+    const configSearchPattern = new RegExp("^" + pathPatternString + "($|\\.(?!\\.|$))");
+    const configReplacePattern = new RegExp("^(" + pathPatternString + "\\b)");
+    const configReplaceTarget = "components." + componentType + ".config." + newAppKeyDashed + "." + newComponentKey;
 
     const editor = (oldItem /*: ContentItem */) => {
-      /* oldItem._indexConfig.configs = */
-      oldItem._indexConfig.configs.forEach((config) => {
+
+      oldItem._indexConfig.configs = oldItem._indexConfig.configs.map((config) => {
         if ((config.path || "").match(configSearchPattern)) {
+
+          const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
         }
-        /* return config; */
+        return config;
       });
 
       /* oldItem.components = */
-      oldItem.components.forEach((component) => {
+      oldItem.components = oldItem.components.map((component) => {
         if (
           component.type === componentType &&
           component[componentType].descriptor === `${oldAppKey}:${oldComponentKey}`
         ) {
+
+          const newComponent = {
+            ...component,
+            [componentType]: {
+              ...component[componentType],
+              descriptor: `${newAppKey}:${newComponentKey}`,
+              config: {
+                ...component[componentType].config,
+                [newAppKeyDashed]: {
+                  ...component[componentType].config[oldAppKeyDashed],
+                  [newComponentKey]: component[componentType].config[oldAppKeyDashed][oldComponentKey],
+                },
+              },
+            },
+          };
+
+          if (oldAppKeyDashed !== newAppKeyDashed) {
+            delete newComponent[componentType].config[oldAppKeyDashed];
+          }
+          if (oldComponentKey !== newComponentKey) {
+            delete newComponent[componentType].config[newAppKeyDashed][oldComponentKey];
+          }
         }
 
-        // return component
+        return component;
       });
 
       return oldItem;
@@ -330,8 +348,8 @@ export function post(req: XP.Request): XP.Response {
   };
 
   const [oldAppKey, oldComponentKey] = sourceKey.split(":");
-  //const [newAppKey, newComponentKey] = targetKey.split(":")
-  const editor = createEditorFunc(oldAppKey, oldComponentKey); //, newAppKey, newComponentKey)
+  const [newAppKey, newComponentKey] = targetKey.split(":");
+  const editor = createEditorFunc(oldAppKey, oldComponentKey, newAppKey, newComponentKey);
 
   const okays: { id: string; url: string; displayName: string; path: string }[] = [];
   const errors: { id: string; url: string; displayName: string; path: string; message: string }[] = [];
