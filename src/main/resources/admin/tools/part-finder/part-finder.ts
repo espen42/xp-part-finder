@@ -1,5 +1,11 @@
 import { render } from "/lib/tineikt/freemarker";
 import { getToolUrl } from "/lib/xp/admin";
+
+import { get as getContent } from "/lib/xp/content";
+import { run as runInContext } from "/lib/xp/context";
+import { connect as nodeConnect } from "/lib/xp/node";
+import { hasRole as hasAuthRole } from "/lib/xp/auth";
+
 import { query } from "/lib/xp/content";
 import { list as listApps, type Application } from "/lib/xp/app";
 import { list as listRepos } from "/lib/xp/repo";
@@ -244,11 +250,145 @@ function parseComponentType(str: string = ""): ComponentDescriptorType | undefin
 //-----------
 
 export function post(req: XP.Request): XP.Response {
-  const sourceKey = req.params.key;
-  const targetKey = req.params.new_part_ref;
-  const contentItems = Object.keys(req.params)
-    .filter((k) => k.indexOf("select-change--") === 0)
+  if (!hasAuthRole("system.admin")) {
+    return {
+      status: 403,
+      body: "FORBIDDEN",
+    };
+  }
+
+  const sourceKey = (req.params.key || "").trim();
+  const targetKey = (req.params.new_part_ref || "").trim();
+  const componentType /*: CompType */ = ((req.params.type || "") + "").trim().toLowerCase(); /*as CompType;*/
+
+  const targetBranch = "draft";
+
+  const undo: boolean = !!req.params.undo;
+
+  const targetIds = Object.keys(req.params)
+    .filter((k) => k.startsWith("select-change--"))
     .map((k) => req.params[k]);
+
+  const args: { [key: string]: string } = {
+    key: sourceKey,
+    new_part_ref: targetKey,
+    type: componentType,
+  };
+
+  const missingArgs = Object.keys(args)
+    .filter((key) => !args[key])
+    .map((key) => key);
+  if (missingArgs.length > 0) {
+    return {
+      status: 400,
+      body: "BAD REQUEST. Missing POST parameters: " + JSON.stringify(missingArgs),
+    };
+  }
+
+  const createEditorFunc = (
+    oldAppKey: string,
+    oldComponentKey: string,
+  ) => {
+    const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
+    //const newAppKeyDashed = newAppKey.replace(/\./g, '-');
+
+    // Looks for "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.<something more whatever>"
+    // but not "components.<componentType>.config.<oldAppKeyDashed>.<key that starts with oldComponentKey but continues before the dot or end>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.." etc:
+    const configSearchPattern = new RegExp(
+      "^components\\." +
+        componentType +
+        "\\.config\\." +
+        oldAppKeyDashed +
+        "\\." +
+        oldComponentKey +
+        "($|\\.(?!\\.|$))",
+    );
+
+    const editor = (oldItem /*: ContentItem */) => {
+      /* oldItem._indexConfig.configs = */
+      oldItem._indexConfig.configs.forEach((config) => {
+        if ((config.path || "").match(configSearchPattern)) {
+        }
+        /* return config; */
+      });
+
+      /* oldItem.components = */
+      oldItem.components.forEach((component) => {
+        if (
+          component.type === componentType &&
+          component[componentType].descriptor === `${oldAppKey}:${oldComponentKey}`
+        ) {
+        }
+
+        // return component
+      });
+
+      return oldItem;
+    };
+
+    return editor;
+  };
+
+  const [oldAppKey, oldComponentKey] = sourceKey.split(":");
+  //const [newAppKey, newComponentKey] = targetKey.split(":")
+  const editor = createEditorFunc(oldAppKey, oldComponentKey); //, newAppKey, newComponentKey)
+
+  const okays: { id: string; url: string; displayName: string; path: string }[] = [];
+  const errors: { id: string; url: string; displayName: string; path: string; message: string }[] = [];
+
+  const repoIds = getCMSRepoIds();
+  repoIds.forEach((targetRepo) => {
+    const repo = nodeConnect({
+      repoId: targetRepo,
+      branch: targetBranch,
+    });
+
+    const repoName = stringAfterLast(targetRepo, ".");
+
+    runInContext(
+      {
+        repository: targetRepo,
+        branch: targetBranch,
+        principals: ["role:system.admin"],
+      },
+      () => {
+        let i, id, item;
+        for (i = 0; i < targetIds.length; i++) {
+          id = targetIds[i];
+          item = null;
+
+          try {
+            item = getContent({
+              key: id,
+            });
+            if (item) {
+
+              repo.modify({
+                key: id,
+                editor: editor,
+              });
+
+              okays.push({
+                id,
+                url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
+                displayName: item?.displayName,
+                path: item?._path,
+              });
+            }
+          } catch (e) {
+            log.error(e);
+            errors.push({
+              id,
+              url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
+              displayName: item?.displayName,
+              path: item?._path,
+              message: e instanceof Error ? e.message : "Unknown error",
+            });
+          }
+        }
+      },
+    );
+  });
 
   return {
     body:
@@ -259,9 +399,9 @@ export function post(req: XP.Request): XP.Response {
       '" into "' +
       targetKey +
       '" on ' +
-      contentItems.length +
+      targetIds.length +
       " items:</p><br /><ol><li>" +
-      contentItems.join(",</li><li>") +
+      targetIds.join(",</li><li>") +
       "</li></ol></turbo-frame>",
   };
 }

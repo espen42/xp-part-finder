@@ -31,6 +31,8 @@ dependencies {
   include "com.enonic.xp:lib-repo:${xpVersion}"
   include "com.enonic.xp:lib-schema:${xpVersion}"
   include "com.enonic.xp:lib-websocket:${xpVersion}"
+  include "com.enonic.xp:lib-auth:${xpVersion}"
+  include "com.enonic.xp:lib-node:${xpVersion}"
   include "no.item:lib-xp-turbo:1.1.1"
   include "com.github.tineikt:xp-lib-freemarker:2.0.3"
   webjar "org.webjars.npm:hotwired__turbo:8.0.4"
