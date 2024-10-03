@@ -247,7 +247,7 @@ function parseComponentType(str: string = ""): ComponentDescriptorType | undefin
   return undefined;
 }
 
-//-----------
+//-------------------------------
 
 export function post(req: XP.Request): XP.Response {
   if (!hasAuthRole("system.admin")) {
@@ -259,7 +259,7 @@ export function post(req: XP.Request): XP.Response {
 
   const sourceKey = (req.params.key || "").trim();
   const targetKey = (req.params.new_part_ref || "").trim();
-  const componentType /*: CompType */ = ((req.params.type || "") + "").trim().toLowerCase(); /*as CompType;*/
+  const componentType = ((req.params.type || "") + "").trim().toLowerCase();
 
   const targetBranch = "draft";
 
@@ -308,7 +308,6 @@ export function post(req: XP.Request): XP.Response {
         return config;
       });
 
-      /* oldItem.components = */
       contentItem.components = contentItem.components.map((component) => {
         if (
           component.type !== componentType ||
@@ -408,6 +407,49 @@ export function post(req: XP.Request): XP.Response {
       },
     );
   });
+
+  const taskSummary = `${oldAppKey}:${oldComponentKey} → ${newAppKey}:${newComponentKey}`;
+  const componentKey = `${newAppKey}:${newComponentKey}`;
+  const appKey = getAppKey(newComponentKey);
+  const type = componentType.toUpperCase();
+
+  const model = {
+    title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
+    displayName: PAGE_TITLE,
+    filters: [],
+    currentItemKey: componentKey,
+    currentAppKey: appKey,
+    currentItem: {
+      url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
+      total: targetIds.length,
+      key: componentKey,
+      type,
+      displayName: '',
+      contents: targetIds.map(id => getContent
+    }
+  }
+
+  /*
+  const model = {
+    currentAppKey,
+    currentItem,
+    displayReplacer: true,
+    itemLists: [
+      {
+        title: "Parts",
+        items: parts.filter((part) => startsWith(part.key, currentAppKey)),
+      },
+      {
+        title: "Layouts",
+        items: layouts.filter((layout) => startsWith(layout.key, currentAppKey)),
+      },
+      {
+        title: "Pages",
+        items: pages.filter((page) => startsWith(page.key, currentAppKey)),
+      },
+    ].filter((list) => list.items.length > 0),
+  };
+  */
 
   return {
     body:
