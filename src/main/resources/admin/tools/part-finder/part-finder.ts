@@ -4,7 +4,7 @@ import { getToolUrl } from "/lib/xp/admin";
 import { Content, get as getContent } from "/lib/xp/content";
 import { run as runInContext } from "/lib/xp/context";
 import { connect as nodeConnect } from "/lib/xp/node";
-import { hasRole as hasAuthRole } from "/lib/xp/auth";
+import { hasRole as hasAuthRole, getUser as getAuthUser } from "/lib/xp/auth";
 
 import { query } from "/lib/xp/content";
 import { list as listApps, type Application } from "/lib/xp/app";
@@ -65,11 +65,13 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     if (component) {
       const currentItem = getComponentUsagesInRepo(component, cmsRepoIds);
 
+      log.info("componentView");
       return {
         body: wrapInHtml({
           markup: render<ComponentViewParams>(componentView, {
             currentItem,
             displayReplacer: shouldDisplayReplacer(currentItem?.type),
+            displaySummaryAndUndo: false,
           }),
           title: `${PAGE_TITLE} - ${component.displayName}`,
         }),
@@ -124,6 +126,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     currentAppKey,
     currentItem,
     displayReplacer: shouldDisplayReplacer(currentItem?.type),
+    displaySummaryAndUndo: false,
     itemLists: [
       {
         title: "Parts",
@@ -140,6 +143,12 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     ].filter((list) => list.items.length > 0),
   };
 
+  const logModel = { ...model };
+  // @ts-expect-error nope
+  delete logModel.itemLists;
+  log.info("logModel:" + JSON.stringify(logModel, null, 2));
+
+  log.info("view");
   return {
     body: render<ComponentList & ComponentViewParams & Header>(view, model),
   };
@@ -266,7 +275,7 @@ export function post(req: XP.Request): XP.Response {
   // const undo: boolean = !!req.params.undo;
 
   const targetIds: string[] = Object.keys(req.params)
-    .filter((k) => k.startsWith("select-change--"))
+    .filter((k) => k.startsWith("select-item--"))
     .map((k) => req.params[k] || "");
 
   const args: { [key: string]: string } = {
@@ -297,6 +306,11 @@ export function post(req: XP.Request): XP.Response {
     const configSearchPattern = new RegExp("^" + pathPatternString + "($|\\.(?!\\.|$))");
     const configReplacePattern = new RegExp("^(" + pathPatternString + "\\b)");
     const configReplaceTarget = "components." + componentType + ".config." + newAppKeyDashed + "." + newComponentKey;
+
+    const user = getAuthUser();
+    if (!user?.key) {
+      throw Error("Couldn't resolve user.key: " + JSON.stringify(user));
+    }
 
     const editor = (contentItem) => {
       contentItem._indexConfig.configs = contentItem._indexConfig.configs.map((config) => {
@@ -338,6 +352,15 @@ export function post(req: XP.Request): XP.Response {
           delete newComponent[componentType].config[newAppKeyDashed][oldComponentKey];
         }
 
+        /* Not needed - and doesn't seem to change the node either?
+         newComponent.workflow = {
+          ...newComponent.workflow,
+          state: "IN_PROGRESS",
+        };
+        newComponent.modifier = user.key;
+        newComponent.modifiedTime = new Date().toISOString();
+        */
+
         return newComponent;
       });
 
@@ -352,7 +375,7 @@ export function post(req: XP.Request): XP.Response {
   const editor = createEditorFunc(oldAppKey, oldComponentKey, newAppKey, newComponentKey);
 
   const okays: { id: string; url: string; displayName: string; path: string }[] = [];
-  const errors: { id: string; url: string; displayName: string; path: string; message: string }[] = [];
+  const errors: { id: string; url: string; displayName: string; path: string; error: true; message: string }[] = [];
 
   const repoIds = getCMSRepoIds();
   repoIds.forEach((targetRepo) => {
@@ -380,12 +403,16 @@ export function post(req: XP.Request): XP.Response {
             item = getContent({
               key: id,
             });
+
             if (item) {
               repo.modify({
                 key: id,
                 editor: editor,
               });
 
+              log.info(
+                `OK: Replaced ${componentType} on content item '${item?.displayName || ""}' (id ${id}), from '${sourceKey}' to '${targetKey}'`,
+              );
               okays.push({
                 id,
                 url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
@@ -394,13 +421,17 @@ export function post(req: XP.Request): XP.Response {
               });
             }
           } catch (e) {
+            log.warning(
+              `Error trying to replace ${componentType} on content item '${item?.displayName || ""}' (id ${id}), from '${sourceKey}' to '${targetKey}'`,
+            );
             log.error(e);
             errors.push({
               id,
               url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
               displayName: item?.displayName || "",
               path: item?._path || "",
-              message: e instanceof Error ? e.message : "Unknown error",
+              error: true,
+              message: e instanceof Error ? e.message : "Unknown error, see log",
             });
           }
         }
@@ -417,46 +448,25 @@ export function post(req: XP.Request): XP.Response {
     title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
     displayName: PAGE_TITLE,
     filters: [],
+    itemLists: [],
     currentItemKey: componentKey,
     currentAppKey: appKey,
+    displayReplacer: false,
+    displaySummaryAndUndo: true,
+    oldItemKey: `${oldAppKey}:${oldComponentKey}`,
     currentItem: {
       url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
       total: targetIds.length,
       key: componentKey,
       type,
-      displayName: '',
-      contents: targetIds.map(id => getContent
-    }
-  }
-
-  /*
-  const model = {
-    currentAppKey,
-    currentItem,
-    displayReplacer: true,
-    itemLists: [
-      {
-        title: "Parts",
-        items: parts.filter((part) => startsWith(part.key, currentAppKey)),
-      },
-      {
-        title: "Layouts",
-        items: layouts.filter((layout) => startsWith(layout.key, currentAppKey)),
-      },
-      {
-        title: "Pages",
-        items: pages.filter((page) => startsWith(page.key, currentAppKey)),
-      },
-    ].filter((list) => list.items.length > 0),
+      displayName: "",
+      contents: [...okays.map((item) => ({ ...item, okay: true })), ...errors],
+    },
   };
-  */
+
+  log.info("finish: " + JSON.stringify({ model }, null, 2));
 
   return {
-    body:
-      '<turbo-frame id="content-view">' +
-      `<pre>${JSON.stringify({ okays, errors }, null, 2)}</pre>` +
-      "<br /><ol><li>" +
-      targetIds.join("</li><li>") +
-      "</li></ol></turbo-frame>",
+    body: render(componentView, model),
   };
 }
