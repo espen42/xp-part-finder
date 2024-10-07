@@ -7,7 +7,11 @@
   [/#if]
 
   <table class="table">
-    <caption class="label-big">${currentItem.type}: ${currentItem.key}</caption>
+    [#if displaySummaryAndUndo]
+      <caption class="label-big">Summary - replacing the ${currentItem.type} key with:<br/>${currentItem.key}</caption>
+    [#else]
+      <caption class="label-big">${currentItem.type}: ${currentItem.key}</caption>
+    [/#if]
 
     <tr>
       <th scope="col">Display name</th>
@@ -15,7 +19,7 @@
 
       [#if displayReplacer || displaySummaryAndUndo]
         <th class="part-selectall-col" scope="col">
-          [#if displayReplacer]Replace part[#else]Undo[/#if]
+          [#if displayReplacer]Replace ${currentItem.type}[#else]Undo[/#if]
           <br/>
             <input type="checkbox"
                    id="_select_change_all_"
@@ -32,7 +36,19 @@
 
     [#list currentItem.contents as content]
       <tr>
-        <td>${content.displayName}</td>
+
+        [#if displaySummaryAndUndo && content.okay]
+          <td title="Successful">
+              <span class="okay-check">✓</span> ${content.displayName}
+          </td>
+        [#elseif displaySummaryAndUndo && content.error]
+          <td title="Error">
+              ❌ ${content.displayName}<br>${content.message}
+          </td>
+        [#else]
+          <td>${content.displayName}</td>
+        [/#if]
+
         <td><a href="${content.url}" target="[#if displaySummaryAndUndo]_blank[#else]_top[/#if]">${content.path}</a></td>
 
         [#if displayReplacer || displaySummaryAndUndo]
@@ -45,8 +61,6 @@
                        class="part-select-check"
                 />
                 <label for="select-item--${content.id}" class="part-select-label" />
-              [#elseif content.error]
-                <div class="item-error" title="${content.error}">❌</div>
               [/#if]
           </td>
         [/#if]
@@ -56,7 +70,7 @@
   </table>
 
   [#if displayReplacer]
-    <label for="new_part_ref" class="new-part-label">Replace part '${currentItem.key}' with:</label>
+    <label for="new_part_ref" class="new-part-label inline-pre">Replace ${currentItem.type} <pre>${currentItem.key}</pre> with:</label>
     <input type="text"
            placeholder="Format: full.app.key:part-name" id="new_part_ref"
            name="new_part_ref"
@@ -66,27 +80,26 @@
 
     <input type="submit"
            id="btn_change_part"
-           value="⚠ Replace part"
+           value="Replace ${currentItem.type} ⚠"
            class="new-part-button"
-           title="CAREFUL! This will change content data, may break page display and cause deep errors."
            disabled
     />
+    <p id="btn-info">Caution - this will change content data, and may break page displays.</p>
   [#elseif displaySummaryAndUndo]
     <div class="new-part-label">
-      <p><strong>If you navigate away, you lose this list and the oportunity to undo.</strong></p>
-      <p>So before moving on, check the links above to verify that the change didn't break anything.</p>
-      <p>To undo: select parts above to revert the new '${currentItem.key}' back to the old '${oldItemKey}'</p>
+      <p><strong>Check the links above to verify the content.</strong></p>
+      <p>Navigating away will wipe this list and the opportunity to undo!</p>
     </div>
 
     <input type="hidden" name="new_part_ref" id="new_part_ref" value="${oldItemKey}"/>
 
     <input type="submit"
            id="btn_change_part"
-           value="🔙 Undo"
+           value="Undo ↺"
            class="new-part-button"
-           title="Revert the selected items"
            disabled
     />
+    <div id="btn-info" class="inline-pre">Revert the new <pre>${currentItem.key}</pre> back to the old <pre>${oldItemKey}</pre> on selected ${currentItem.type}s.</div>
   [/#if]
 
 
@@ -125,6 +138,9 @@
           } else {
             btn.disabled = true;
           }
+
+          const info = document.getElementById("btn-info")
+          info.style.display = btn.disabled ? "none" : "block"
         }, 100)
       }
 

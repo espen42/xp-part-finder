@@ -47,7 +47,7 @@ const view = resolve("part-finder.ftl");
 const componentView = resolve("../../views/component-view/component-view.ftl");
 
 const shouldDisplayReplacer = (currentItemType?: string) =>
-  PART_KEY === currentItemType || LAYOUT_KEY === currentItemType;
+  PART_KEY.toLowerCase() === currentItemType || LAYOUT_KEY.toLowerCase() === currentItemType;
 
 export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const currentItemType = parseComponentType(req.params.type);
@@ -65,7 +65,6 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     if (component) {
       const currentItem = getComponentUsagesInRepo(component, cmsRepoIds);
 
-      log.info("componentView");
       return {
         body: wrapInHtml({
           markup: render<ComponentViewParams>(componentView, {
@@ -146,9 +145,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const logModel = { ...model };
   // @ts-expect-error nope
   delete logModel.itemLists;
-  log.info("logModel:" + JSON.stringify(logModel, null, 2));
 
-  log.info("view");
   return {
     body: render<ComponentList & ComponentViewParams & Header>(view, model),
   };
@@ -198,7 +195,7 @@ function getComponentUsagesInRepo(component: Component, repositories: string[]):
           url: componentUsage.url,
           total: usages.total + componentUsage.total,
           key: usages.key,
-          type: usages.type,
+          type: usages.type.toLowerCase(),
           displayName: usages.displayName,
           contents: usages.contents.concat(componentUsage.contents),
         };
@@ -207,7 +204,7 @@ function getComponentUsagesInRepo(component: Component, repositories: string[]):
         url: "",
         total: 0,
         key: component.key,
-        type: component.type,
+        type: component.type.toLowerCase(),
         displayName: component.displayName,
         contents: [],
       },
@@ -231,7 +228,7 @@ function getComponentUsages(component: Component, repository: string): Component
   return {
     total: res.total,
     key: component.key,
-    type: component.type,
+    type: component.type.toLowerCase(),
     displayName: component.displayName,
     url: getPartFinderUrl({
       key: component.key,
@@ -458,13 +455,12 @@ export function post(req: XP.Request): XP.Response {
       url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
       total: targetIds.length,
       key: componentKey,
-      type,
+      type: componentType,
       displayName: "",
       contents: [...okays.map((item) => ({ ...item, okay: true })), ...errors],
     },
   };
 
-  log.info("finish: " + JSON.stringify({ model }, null, 2));
 
   return {
     body: render(componentView, model),
