@@ -36,6 +36,7 @@ type Component = PartDescriptor | LayoutDescriptor | PageDescriptor;
 type PartFinderQueryParams = {
   key: string;
   type: string;
+  replace?: string;
 };
 
 const PART_KEY = "PART";
@@ -45,9 +46,6 @@ const PAGE_KEY = "PAGE";
 const PAGE_TITLE = "Part finder";
 const view = resolve("part-finder.ftl");
 const componentView = resolve("../../views/component-view/component-view.ftl");
-
-const shouldDisplayReplacer = (currentItemType?: string) =>
-  PART_KEY.toLowerCase() === currentItemType || LAYOUT_KEY.toLowerCase() === currentItemType;
 
 export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const currentItemType = parseComponentType(req.params.type);
@@ -69,7 +67,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
         body: wrapInHtml({
           markup: render<ComponentViewParams>(componentView, {
             currentItem,
-            displayReplacer: shouldDisplayReplacer(currentItem?.type),
+            displayReplacer: !!req.params.replace,
             displaySummaryAndUndo: false,
           }),
           title: `${PAGE_TITLE} - ${component.displayName}`,
@@ -124,7 +122,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     currentItemKey: componentKey,
     currentAppKey,
     currentItem,
-    displayReplacer: shouldDisplayReplacer(currentItem?.type),
+    displayReplacer: !!req.params.replace,
     displaySummaryAndUndo: false,
     itemLists: [
       {
@@ -157,7 +155,8 @@ function getAppKey(key: string): string {
 
 function getPartFinderUrl(params: PartFinderQueryParams): string {
   const queryParams = objectKeys(params)
-    .map((key) => `${key}=${encodeURIComponent(params[key])}`)
+    .filter((key) => !!key)
+    .map((key: string) => `${key}=${encodeURIComponent(params[key])}`)
     .join("&");
 
   return `${getToolUrl("no.item.partfinder", "part-finder")}?${queryParams}`;
