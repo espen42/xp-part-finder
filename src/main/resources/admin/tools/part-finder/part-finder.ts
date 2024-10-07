@@ -461,7 +461,6 @@ export function post(req: XP.Request): XP.Response {
     },
   };
 
-
   return {
     body: render(componentView, model),
   };
