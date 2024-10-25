@@ -210,6 +210,63 @@ function getComponentUsagesInRepo(component: Component, repositories: string[]):
     );
 }
 
+
+function getUsagePaths(hit, type: string, key: string, doLog): string[] | null {
+  const usagePaths = [];
+  const targetType = type.toLowerCase();
+  const regionType = LAYOUT_KEY.toLowerCase();
+
+  switch (type) {
+    case LAYOUT_KEY:
+      Object.keys(hit?.page?.regions || {}).forEach((rkey) => {
+        const region = (hit?.page?.regions || {})[rkey] || { components: [] };
+        region.components.forEach((component) => {
+          if (component.descriptor === key && component.type === targetType) {
+            // @ts-expect-error @typescript-eslint/ban-ts-comment
+            usagePaths.push(component.path);
+          }
+        });
+      });
+      return usagePaths;
+
+    case PAGE_KEY:
+      return null;
+
+    case PART_KEY:
+      Object.keys(hit?.page?.regions || {}).forEach((regionName) => {
+
+        const region = (hit?.page?.regions || {})[regionName] || { components: [] };
+        region.components.forEach((component) => {
+
+          if (component.descriptor === key && component.type === targetType) {
+
+            // @ts-expect-error @typescript-eslint/ban-ts-comment
+            usagePaths.push(component.path);
+          } else if (component.type === regionType && component.regions) {
+
+            Object.keys(component.regions).forEach((subRegionName) => {
+
+              const subRegion = component.regions[subRegionName] || { components: [] };
+              subRegion.components.forEach((subComponent) => {
+
+                if (subComponent.descriptor === key && subComponent.type === targetType) {
+
+                  // @ts-expect-error @typescript-eslint/ban-ts-comment
+                  usagePaths.push(subComponent.path);
+                }
+              });
+            });
+          }
+        });
+      });
+      return usagePaths;
+  }
+
+  return [];
+}
+
+let doLog = false;
+
 function getComponentUsages(component: Component, repository: string): ComponentItem {
   const res = runAsAdmin(
     () =>
@@ -238,6 +295,9 @@ function getComponentUsages(component: Component, repository: string): Component
       displayName: hit.displayName,
       path: hit._path,
       id: hit._id,
+      usagePaths: {
+        [component.key]: getUsagePaths(hit, component.type, component.key, doLog),
+      },
     })),
   };
 }

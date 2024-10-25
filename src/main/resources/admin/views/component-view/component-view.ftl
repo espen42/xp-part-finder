@@ -8,7 +8,7 @@
 
   <table class="table">
     [#if displaySummaryAndUndo]
-      <caption class="label-big">Summary - replacing the ${currentItem.type} key with:<br/>${currentItem.key}</caption>
+      <caption class="label-big">Summary after replacing the ${currentItem.type} key with:<br/>${currentItem.key}</caption>
     [#else]
       <caption class="label-big">${currentItem.type}: ${currentItem.key}</caption>
     [/#if]

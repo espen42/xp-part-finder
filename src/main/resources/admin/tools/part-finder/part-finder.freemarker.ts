@@ -23,4 +23,7 @@ export type Usage = {
   displayName: string;
   path: string;
   id: string;
+  usagePaths?: UsagePaths;
 };
+
+type UsagePaths = Record<string, string[] | null>;
