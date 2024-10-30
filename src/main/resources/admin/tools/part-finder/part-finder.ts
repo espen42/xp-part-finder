@@ -258,23 +258,16 @@ function getUsagePaths(hit, type: string, key: string): string[] | null {
 
     case PART_KEY:
       Object.keys(hit?.page?.regions || {}).forEach((regionName) => {
-
         const region = (hit?.page?.regions || {})[regionName] || { components: [] };
         region.components.forEach((component) => {
-
           if (component.descriptor === key && component.type === targetType) {
-
             // @ts-expect-error @typescript-eslint/ban-ts-comment
             usagePaths.push(component.path);
           } else if (component.type === regionType && component.regions) {
-
             Object.keys(component.regions).forEach((subRegionName) => {
-
               const subRegion = component.regions[subRegionName] || { components: [] };
               subRegion.components.forEach((subComponent) => {
-
                 if (subComponent.descriptor === key && subComponent.type === targetType) {
-
                   // @ts-expect-error @typescript-eslint/ban-ts-comment
                   usagePaths.push(subComponent.path);
                 }
@@ -289,7 +282,6 @@ function getUsagePaths(hit, type: string, key: string): string[] | null {
   return [];
 }
 
-let doLog = false;
 function getComponentUsages(
   component: Component,
   repository: string,
@@ -344,6 +336,25 @@ function parseComponentType(str: string = ""): ComponentDescriptorType | undefin
 
 //-------------------------------
 
+type OkayResult = {
+  id: string;
+  url: string;
+  displayName: string;
+  path: string;
+  hasMultiUsage: boolean;
+  componentPath: string | null;
+};
+type ErrorResult = {
+  id: string;
+  url: string;
+  displayName: string;
+  path: string;
+  error: true;
+  message: string;
+  hasMultiUsage: boolean;
+  componentPath: string | null;
+};
+
 export function post(req: XP.Request): XP.Response {
   if (!hasAuthRole("system.admin")) {
     return {
@@ -380,88 +391,13 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
-  const createEditorFunc = (oldAppKey: string, oldComponentKey: string, newAppKey: string, newComponentKey: string) => {
-    const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
-    const newAppKeyDashed = newAppKey.replace(/\./g, "-");
-
-    const pathPatternString =
-      "components\\." + componentType + "\\.config\\." + oldAppKeyDashed + "\\." + oldComponentKey;
-
-    // Looks for "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.<something more whatever>"
-    // but not "components.<componentType>.config.<oldAppKeyDashed>.<key that starts with oldComponentKey but continues before the dot or end>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.." etc:
-    const configSearchPattern = new RegExp("^" + pathPatternString + "($|\\.(?!\\.|$))");
-    const configReplacePattern = new RegExp("^(" + pathPatternString + "\\b)");
-    const configReplaceTarget = "components." + componentType + ".config." + newAppKeyDashed + "." + newComponentKey;
-
-    const user = getAuthUser();
-    if (!user?.key) {
-      throw Error("Couldn't resolve user.key: " + JSON.stringify(user));
-    }
-
-    const editor = (contentItem) => {
-      contentItem._indexConfig.configs = contentItem._indexConfig.configs.map((config) => {
-        if ((config.path || "").match(configSearchPattern)) {
-          const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
-
-          config.path = newPath;
-        }
-        return config;
-      });
-
-      contentItem.components = contentItem.components.map((component) => {
-        if (
-          component.type !== componentType ||
-          component[componentType].descriptor !== `${oldAppKey}:${oldComponentKey}`
-        ) {
-          return component;
-        }
-
-        const newComponent = {
-          ...component,
-          [componentType]: {
-            ...component[componentType],
-            descriptor: `${newAppKey}:${newComponentKey}`,
-            config: {
-              ...component[componentType].config,
-              [newAppKeyDashed]: {
-                ...component[componentType].config[oldAppKeyDashed],
-                [newComponentKey]: component[componentType].config[oldAppKeyDashed][oldComponentKey],
-              },
-            },
-          },
-        };
-
-        if (oldAppKeyDashed !== newAppKeyDashed) {
-          delete newComponent[componentType].config[oldAppKeyDashed];
-        }
-        if (oldComponentKey !== newComponentKey) {
-          delete newComponent[componentType].config[newAppKeyDashed][oldComponentKey];
-        }
-
-        /* Not needed - and doesn't seem to change the node either?
-         newComponent.workflow = {
-          ...newComponent.workflow,
-          state: "IN_PROGRESS",
-        };
-        newComponent.modifier = user.key;
-        newComponent.modifiedTime = new Date().toISOString();
-        */
-
-        return newComponent;
-      });
-
-      return contentItem;
-    };
-
-    return editor;
-  };
-
   const [oldAppKey, oldComponentKey] = sourceKey.split(":");
   const [newAppKey, newComponentKey] = targetKey.split(":");
-  const editor = createEditorFunc(oldAppKey, oldComponentKey, newAppKey, newComponentKey);
 
-  const okays: { id: string; url: string; displayName: string; path: string }[] = [];
-  const errors: { id: string; url: string; displayName: string; path: string; error: true; message: string }[] = [];
+  const componentPathsPerId: Record<string, string[] | null> = {};
+
+  const okays: OkayResult[] = [];
+  const errors: ErrorResult[] = [];
 
   const repoIds = getCMSRepoIds();
   repoIds.forEach((targetRepo) => {
@@ -479,10 +415,60 @@ export function post(req: XP.Request): XP.Response {
         principals: ["role:system.admin"],
       },
       () => {
-        let i: number, id: string, item: Content | null;
+        let i: number, id: string, item: Content | null, path: string | null;
 
         for (i = 0; i < targetIds.length; i++) {
           id = targetIds[i];
+          path = null;
+
+          // If one of the targetIds have "__" in it, it signifies that this target is a multi-component-in-one-page one
+          // (which has id before "__" and path after), aka multi-path-usage (ie. an id should only replace this and that
+          // component path, and keep the same component on other paths).
+          // And in that case, all the targets by that id should be multi's. And vice versa. Check that, throw error if mix-up.
+          // If no mix-up, register the path or lack of path for that ID, for the editor func to handle.
+          if (id.indexOf("__") !== -1) {
+            id = targetIds[i].split("__")[0];
+            path = targetIds[i].replace(/^.*?__/, "");
+
+            if (componentPathsPerId[id] === null) {
+              log.error(
+                `Parameter error: componentPathsPerId[${JSON.stringify(id)}] is already null instead of an array, can't add ${JSON.stringify(path)}`,
+              );
+              return {
+                body: "Parameter error",
+                status: 400,
+              };
+            }
+
+            componentPathsPerId[id] = componentPathsPerId[id] || [];
+            // @ts-expect-error TS2531
+            componentPathsPerId[id].push(path);
+          } else {
+            if (Array.isArray(componentPathsPerId[id])) {
+              log.error(
+                `Parameter error: componentPathsPerId[${JSON.stringify(id)}'] is already an array, can't set it to null`,
+              );
+              return {
+                body: "Parameter error",
+                status: 400,
+              };
+            }
+            componentPathsPerId[id] = null;
+          }
+        }
+        const editor = createEditorFunc(
+          repoName,
+          oldAppKey,
+          oldComponentKey,
+          newAppKey,
+          newComponentKey,
+          componentType,
+          okays,
+          errors,
+          componentPathsPerId,
+        );
+
+        Object.keys(componentPathsPerId).forEach((id) => {
           item = null;
 
           try {
@@ -495,20 +481,15 @@ export function post(req: XP.Request): XP.Response {
                 key: id,
                 editor: editor,
               });
-
-              log.info(
-                `OK: Replaced ${componentType} on content item '${item?.displayName || ""}' (id ${id}), from '${sourceKey}' to '${targetKey}'`,
-              );
-              okays.push({
-                id,
-                url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-                displayName: item?.displayName || "",
-                path: item?._path || "",
-              });
+            } else {
             }
           } catch (e) {
             log.warning(
-              `Error trying to replace ${componentType} on content item '${item?.displayName || ""}' (id ${id}), from '${sourceKey}' to '${targetKey}'`,
+              `Error trying to replace ${componentType} on content item '${item?.displayName || ""}' (id ${id}${
+                componentPathsPerId[id] !== null
+                  ? ", " + componentPathsPerId[id].length + "paths: " + JSON.stringify(componentPathsPerId[id])
+                  : ""
+              }), from '${sourceKey}' to '${targetKey}'`,
             );
             log.error(e);
             errors.push({
@@ -518,9 +499,11 @@ export function post(req: XP.Request): XP.Response {
               path: item?._path || "",
               error: true,
               message: e instanceof Error ? e.message : "Unknown error, see log",
+              hasMultiUsage: componentPathsPerId[id] !== null,
+              componentPath: null,
             });
           }
-        }
+        });
       },
     );
   });
@@ -546,7 +529,13 @@ export function post(req: XP.Request): XP.Response {
       key: componentKey,
       type: componentType,
       displayName: "",
-      contents: [...okays.map((item) => ({ ...item, okay: true })), ...errors],
+      contents: [
+        ...okays.map((item) => ({
+          ...item,
+          okay: true,
+        })),
+        ...errors,
+      ],
     },
   };
 
@@ -554,3 +543,156 @@ export function post(req: XP.Request): XP.Response {
     body: render(componentView, model),
   };
 }
+
+const createEditorFunc = (
+  repoName: string,
+  oldAppKey: string,
+  oldComponentKey: string,
+  newAppKey: string,
+  newComponentKey: string,
+  componentType: string,
+  okays: OkayResult[],
+  errors: ErrorResult[],
+  componentPathsPerId: Record<string, string[] | null>,
+) => {
+  const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
+  const newAppKeyDashed = newAppKey.replace(/\./g, "-");
+
+  const pathPatternString =
+    "components\\." + componentType + "\\.config\\." + oldAppKeyDashed + "\\." + oldComponentKey;
+
+  // Looks for "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.<something more whatever>"
+  // but not "components.<componentType>.config.<oldAppKeyDashed>.<key that starts with oldComponentKey but continues before the dot or end>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.." etc:
+  const configSearchPattern = new RegExp("^" + pathPatternString + "($|\\.(?!\\.|$))");
+  const configReplacePattern = new RegExp("^(" + pathPatternString + "\\b)");
+  const configReplaceTarget = "components." + componentType + ".config." + newAppKeyDashed + "." + newComponentKey;
+
+  const user = getAuthUser();
+  if (!user?.key) {
+    throw Error("Couldn't resolve user.key: " + JSON.stringify(user));
+  }
+
+  const editor = (contentItem) => {
+    const id = contentItem?._id;
+    const componentPaths = componentPathsPerId[id] === null ? [null] : componentPathsPerId[id];
+
+    for (let p = 0; p < componentPaths.length; p++) {
+      const targetComponentPath = componentPaths[p];
+      try {
+        contentItem._indexConfig.configs = contentItem._indexConfig.configs.map((config) => {
+          if ((config.path || "").match(configSearchPattern)) {
+            const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
+
+            config.path = newPath;
+          }
+          return config;
+        });
+
+        contentItem.components = contentItem.components.map((component) => {
+          /*
+          Example component: {
+            "type": "layout",
+            "path": "/main/0",
+            "layout": {
+              "descriptor": "no.posten.website:layoutDefault",
+              "config": {
+                "no-posten-website": {
+                  "layoutDefault": {
+                    "layout": {
+                      "two": {
+                        "distribution": "2-1",
+                        "isFlex": false
+                      },
+                      "_selected": "two"
+                    },
+                    "marginTop": true,
+                    "marginBottom": false
+                  }
+
+           */
+
+          // Abort the edit if the component:
+          // - doesn't match the target component type
+          // - doesn't match the target component descriptor
+          // - doesn't match the target component path, if there is a target component path
+          if (
+            component.type !== componentType ||
+            component[componentType].descriptor !== `${oldAppKey}:${oldComponentKey}` ||
+            (targetComponentPath !== null && targetComponentPath !== component.path)
+          ) {
+            return component;
+          }
+
+          const newComponent = {
+            ...component,
+            [componentType]: {
+              ...component[componentType],
+              descriptor: `${newAppKey}:${newComponentKey}`,
+              config: {
+                ...component[componentType].config,
+                [newAppKeyDashed]: {
+                  ...component[componentType].config[oldAppKeyDashed],
+                  [newComponentKey]: component[componentType].config[oldAppKeyDashed][oldComponentKey],
+                },
+              },
+            },
+          };
+
+          if (oldAppKeyDashed !== newAppKeyDashed) {
+            delete newComponent[componentType].config[oldAppKeyDashed];
+          }
+          if (oldComponentKey !== newComponentKey) {
+            delete newComponent[componentType].config[newAppKeyDashed][oldComponentKey];
+          }
+
+          /* Not needed - and doesn't seem to change the node either?
+           newComponent.workflow = {
+            ...newComponent.workflow,
+            state: "IN_PROGRESS",
+          };
+          newComponent.modifier = user.key;
+          newComponent.modifiedTime = new Date().toISOString();
+          */
+
+          log.info(
+            `OK: Replaced ${componentType} on content item '${contentItem?.displayName || ""}' (id ${id}${
+              targetComponentPath !== null ? ", path: " + JSON.stringify(targetComponentPath) : ""
+            }), from '${oldAppKey}:${oldComponentKey}' to '${newAppKey}:${newComponentKey}'`,
+          );
+
+          return newComponent;
+        });
+
+        okays.push({
+          id,
+          url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
+          displayName: contentItem?.displayName || "",
+          path: contentItem?._path || "",
+          hasMultiUsage: targetComponentPath !== null,
+          componentPath: targetComponentPath !== null ? targetComponentPath : null,
+        });
+
+        return contentItem;
+      } catch (e) {
+        log.warning(
+          `Error trying to replace ${componentType} on content item '${contentItem?.displayName || ""}' (id ${id}${
+            targetComponentPath !== null ? ", path: " + JSON.stringify(targetComponentPath) : ""
+          }), from '${oldAppKey}:${oldComponentKey}' to '${newAppKey}:${newComponentKey}'`,
+        );
+        log.error(e);
+        errors.push({
+          id,
+          url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
+          displayName: contentItem?.displayName || "",
+          path: contentItem?._path || "",
+          error: true,
+          message: e instanceof Error ? e.message : "Unknown error, see log",
+          hasMultiUsage: targetComponentPath !== null,
+          componentPath: targetComponentPath !== null ? targetComponentPath : null,
+        });
+      }
+    }
+  };
+
+  return editor;
+};
