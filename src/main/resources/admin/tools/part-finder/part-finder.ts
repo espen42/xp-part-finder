@@ -62,17 +62,6 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
     if (component) {
       const currentItem = getComponentUsagesInRepo(component, cmsRepoIds, req.params);
-      if (currentItem?.contents && currentItem.contents.length) {
-        currentItem.contents.forEach((content) => {
-          if (content?.usagePaths) {
-            const relevantUsages = content?.usagePaths[currentItem.key] || [];
-            if (relevantUsages.length > 1) {
-              content.hasMultiUsage = true;
-              content.multiUsage = relevantUsages;
-            }
-          }
-        });
-      }
 
       return {
         body: wrapInHtml({
@@ -207,10 +196,11 @@ function getComponentUsagesInRepo(
   repositories: string[],
   params: Partial<PartFinderQueryParams>,
 ): ComponentItem {
-  return repositories
+  const currentItem = repositories
     .map((repository) => getComponentUsages(component, repository, params))
     .reduce<ComponentItem>(
       (usages, componentUsage) => {
+        //if (DO_LOG) log.info(componentUsage, usages);
         return {
           url: componentUsage.url,
           total: usages.total + componentUsage.total,
@@ -229,8 +219,21 @@ function getComponentUsagesInRepo(
         contents: [],
       },
     );
-}
 
+  if (currentItem?.contents && currentItem.contents.length) {
+    currentItem.contents.forEach((content) => {
+      if (content?.usagePaths) {
+        const relevantUsages = content?.usagePaths[currentItem.key] || [];
+        if (relevantUsages.length > 1) {
+          content.hasMultiUsage = true;
+          content.multiUsage = relevantUsages;
+        }
+      }
+    });
+  }
+
+  return currentItem;
+}
 
 function getUsagePaths(hit, type: string, key: string): string[] | null {
   const usagePaths = [];
