@@ -61,7 +61,18 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     }) as Component;
 
     if (component) {
-      const currentItem = getComponentUsagesInRepo(component, cmsRepoIds);
+      const currentItem = getComponentUsagesInRepo(component, cmsRepoIds, req.params);
+      if (currentItem?.contents && currentItem.contents.length) {
+        currentItem.contents.forEach((content) => {
+          if (content?.usagePaths) {
+            const relevantUsages = content?.usagePaths[currentItem.key] || [];
+            if (relevantUsages.length > 1) {
+              content.hasMultiUsage = true;
+              content.multiUsage = relevantUsages;
+            }
+          }
+        });
+      }
 
       return {
         body: wrapInHtml({
@@ -82,9 +93,15 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const allLayouts = listComponentsInApplication(installedApps, LAYOUT_KEY);
   const allPages = listComponentsInApplication(installedApps, PAGE_KEY);
 
-  const parts = allParts.map((component) => getComponentUsagesInRepo(component, cmsRepoIds));
-  const layouts = allLayouts.map((component) => getComponentUsagesInRepo(component, cmsRepoIds));
-  const pages = allPages.map((component) => getComponentUsagesInRepo(component, cmsRepoIds));
+  const parts = allParts.map((component, i) => {
+    return getComponentUsagesInRepo(component, cmsRepoIds, req.params);
+  });
+  const layouts = allLayouts.map((component, i) => {
+    return getComponentUsagesInRepo(component, cmsRepoIds, req.params);
+  });
+  const pages = allPages.map((component, i) => {
+    return getComponentUsagesInRepo(component, cmsRepoIds, req.params);
+  });
 
   const allItems = parts.concat(layouts).concat(pages);
 
@@ -185,9 +202,13 @@ function listComponentsInApplication(installedApps: Application[], type: Compone
   );
 }
 
-function getComponentUsagesInRepo(component: Component, repositories: string[]): ComponentItem {
+function getComponentUsagesInRepo(
+  component: Component,
+  repositories: string[],
+  params: Partial<PartFinderQueryParams>,
+): ComponentItem {
   return repositories
-    .map((repository) => getComponentUsages(component, repository))
+    .map((repository) => getComponentUsages(component, repository, params))
     .reduce<ComponentItem>(
       (usages, componentUsage) => {
         return {
@@ -211,7 +232,7 @@ function getComponentUsagesInRepo(component: Component, repositories: string[]):
 }
 
 
-function getUsagePaths(hit, type: string, key: string, doLog): string[] | null {
+function getUsagePaths(hit, type: string, key: string): string[] | null {
   const usagePaths = [];
   const targetType = type.toLowerCase();
   const regionType = LAYOUT_KEY.toLowerCase();
@@ -266,8 +287,11 @@ function getUsagePaths(hit, type: string, key: string, doLog): string[] | null {
 }
 
 let doLog = false;
-
-function getComponentUsages(component: Component, repository: string): ComponentItem {
+function getComponentUsages(
+  component: Component,
+  repository: string,
+  params: Partial<PartFinderQueryParams>,
+): ComponentItem {
   const res = runAsAdmin(
     () =>
       query({
@@ -289,6 +313,7 @@ function getComponentUsages(component: Component, repository: string): Component
     url: getPartFinderUrl({
       key: component.key,
       type: component.type,
+      replace: params.replace,
     }),
     contents: res.hits.map((hit) => ({
       url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${hit._id}`,
@@ -296,8 +321,10 @@ function getComponentUsages(component: Component, repository: string): Component
       path: hit._path,
       id: hit._id,
       usagePaths: {
-        [component.key]: getUsagePaths(hit, component.type, component.key, doLog),
+        [component.key]: getUsagePaths(hit, component.type, component.key),
       },
+      multiUsage: [],
+      hasMultiUsage: false,
     })),
   };
 }

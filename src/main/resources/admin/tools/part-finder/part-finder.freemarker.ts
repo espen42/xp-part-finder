@@ -24,6 +24,8 @@ export type Usage = {
   path: string;
   id: string;
   usagePaths?: UsagePaths;
+  hasMultiUsage: boolean;
+  multiUsage: string[];
 };
 
 type UsagePaths = Record<string, string[] | null>;

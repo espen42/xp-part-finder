@@ -46,10 +46,28 @@
               ❌ ${content.displayName}<br>${content.message}
           </td>
         [#else]
-          <td>${content.displayName}</td>
+          <td>
+          [#if content.hasMultiUsage]
+            <div>${content.displayName}</div>
+            <ul class="multi-usage"><li>Several usages:<li></ul>
+          [#else]
+            ${content.displayName}
+          [/#if]
+          </td>
         [/#if]
 
-        <td><a href="${content.url}" target="[#if displaySummaryAndUndo]_blank[#else]_top[/#if]">${content.path}</a></td>
+        <td>
+          [#if content.hasMultiUsage]
+            <div><a href="${content.url}" target="[#if displaySummaryAndUndo]_blank[#else]_top[/#if]">${content.path}</a></div>
+            <ul>
+              [#list content.multiUsage as usage]
+                <li>${usage}</li>
+              [/#list]
+            </ul>
+          [#else]
+            <a href="${content.url}" target="[#if displaySummaryAndUndo]_blank[#else]_top[/#if]">${content.path}</a>
+          [/#if]
+        </td>
 
         [#if displayReplacer || displaySummaryAndUndo]
           <td>

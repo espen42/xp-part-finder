@@ -12,6 +12,7 @@ table.table {
     text-align: left;
     border: 1px solid var(--color-black-contrast-2);
     padding: var(--spacing-8) var(--spacing-16);
+    vertical-align: top;
 
     &:first-child {
       min-width: 160px;
@@ -90,4 +91,12 @@ table.table {
 .okay-check {
   color: green;
   font-weight: bold;
+}
+
+.multi-usage {
+  list-style: none;
+}
+
+.multi-usage li:first-child {
+  list-style: disc;
 }
