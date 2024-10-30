@@ -49,7 +49,7 @@
           <td>
           [#if content.hasMultiUsage]
             <div>${content.displayName}</div>
-            <ul class="multi-usage"><li>Several usages:<li></ul>
+            <div class="multi-usage-label">Multiple: select ${currentItem.type}(s) individually by path</div>
           [#else]
             ${content.displayName}
           [/#if]
@@ -57,28 +57,36 @@
         [/#if]
 
         <td>
-          [#if content.hasMultiUsage]
-            <div><a href="${content.url}" target="[#if displaySummaryAndUndo]_blank[#else]_top[/#if]">${content.path}</a></div>
-            <ul>
-              [#list content.multiUsage as usage]
-                <li>${usage}</li>
-              [/#list]
-            </ul>
-          [#else]
-            <a href="${content.url}" target="[#if displaySummaryAndUndo]_blank[#else]_top[/#if]">${content.path}</a>
-          [/#if]
+            <a href="${content.url}" target="_blank">${content.path}</a>
         </td>
 
         [#if displayReplacer || displaySummaryAndUndo]
           <td>
               [#if displayReplacer || (displaySummaryAndUndo && content.okay)]
-                <input type="checkbox"
-                       id="select-item--${content.id}"
-                       name="select-item--${content.id}"
-                       value="${content.id}"
-                       class="part-select-check"
-                />
-                <label for="select-item--${content.id}" class="part-select-label" />
+                [#if content.hasMultiUsage]
+                  <div>Paths:</div>
+                  <ul class="multi-usage-selectors">
+                  [#list content.multiUsage as usage]
+                    <li>
+                      <input type="checkbox"
+                             id="select-item--${content.id}__${usage}"
+                             name="select-item--${content.id}__${usage}"
+                             value="${content.id}__${usage}"
+                             class="part-select-check"
+                      />
+                      <label for="select-item--${content.id}__${usage}" class="part-select-label">${usage}</label>
+                    </li>
+                  [/#list]
+                  </ul>
+                [#else]
+                  <input type="checkbox"
+                         id="select-item--${content.id}"
+                         name="select-item--${content.id}"
+                         value="${content.id}"
+                         class="part-select-check"
+                  />
+                  <label for="select-item--${content.id}" class="part-select-label" />
+                [/#if]
               [/#if]
           </td>
         [/#if]
@@ -127,7 +135,19 @@
     <script>
       window._pf_ = {}
       var pf=window._pf_;
-      pf.allIdsList="[#list currentItem.contents as content]${content.id},[/#list]";
+
+      // A bit ugly, but works for removing whitespace from output:
+      pf.allIdsList="[#list
+        currentItem.contents as content
+          ][#if content.hasMultiUsage
+            ][#list content.multiUsage as usage
+              ]${content.id}__${usage},[/#list
+          ][#else
+            ]${content.id},[/#if
+          ][/#list
+        ]";
+
+
 
       pf.selectAllElem = document.getElementById("_select_change_all_");
       pf.targetPartNameElem = document.getElementById("new_part_ref");

@@ -93,10 +93,27 @@ table.table {
   font-weight: bold;
 }
 
-.multi-usage {
+.multi-usage-label {
+  padding-left: 42px;
+}
+.multi-usage-label,
+.multi-usage-selectors .part-select-label {
+  font-size: 13px;
+  font-style: italic;
+}
+.multi-usage-selectors {
+  padding-left: 0;
   list-style: none;
 }
-
-.multi-usage li:first-child {
-  list-style: disc;
+.multi-usage-selectors .part-select-label {
+  text-wrap: auto;
+  white-space: normal;
+  margin-left: 26px;
+}
+.multi-usage-selectors .part-select-check {
+  position: absolute;
+  top: 6px;
+}
+.multi-usage-selectors li {
+  position: relative;
 }
