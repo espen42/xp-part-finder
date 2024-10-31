@@ -4,48 +4,53 @@ import { getToolUrl } from "/lib/xp/admin";
 import { Content, get as getContent } from "/lib/xp/content";
 import { run as runInContext } from "/lib/xp/context";
 import { connect as nodeConnect } from "/lib/xp/node";
-import { hasRole as hasAuthRole, getUser as getAuthUser } from "/lib/xp/auth";
-
-import { query } from "/lib/xp/content";
-import { list as listApps, type Application } from "/lib/xp/app";
-import { list as listRepos } from "/lib/xp/repo";
-import {
-  listComponents,
-  getComponent,
-  type LayoutDescriptor,
-  type PageDescriptor,
-  type PartDescriptor,
-  type ComponentDescriptorType,
-} from "/lib/xp/schema";
-import {
-  find,
-  flatMap,
-  notNullOrUndefined,
-  objectKeys,
-  runAsAdmin,
-  startsWith,
-  stringAfterLast,
-  unique,
-} from "/lib/part-finder/utils";
-import type { ComponentItem, ComponentList } from "./part-finder.freemarker";
+import { hasRole as hasAuthRole } from "/lib/xp/auth";
+import { list as listApps } from "/lib/xp/app";
+import { getComponent, type ComponentDescriptorType } from "/lib/xp/schema";
+import { find, notNullOrUndefined, runAsAdmin, startsWith, stringAfterLast, unique } from "/lib/part-finder/utils";
+import type { ComponentList } from "./part-finder.freemarker";
 import type { ComponentViewParams } from "/admin/views/component-view/component-view.freemarker";
 import type { Header, Link } from "/admin/views/header/header.freemarker";
+import { createEditorFunc, ErrorResult, OkayResult } from "/admin/tools/part-finder/editor";
+import {
+  Component,
+  getCMSRepoIds,
+  getComponentUsagesInRepo,
+  listComponentsInApplication,
+} from "/admin/tools/part-finder/listing";
 
-type Component = PartDescriptor | LayoutDescriptor | PageDescriptor;
-
-type PartFinderQueryParams = {
+export type PartFinderQueryParams = {
   key: string;
   type: string;
   replace?: string;
 };
 
-const PART_KEY = "PART";
-const LAYOUT_KEY = "LAYOUT";
-const PAGE_KEY = "PAGE";
+export const PART_KEY = "PART";
+export const LAYOUT_KEY = "LAYOUT";
+export const PAGE_KEY = "PAGE";
 
 const PAGE_TITLE = "Part finder";
-const view = resolve("part-finder.ftl");
-const componentView = resolve("../../views/component-view/component-view.ftl");
+
+const VIEW = resolve("part-finder.ftl");
+const COMPONENT_VIEW = resolve("../../views/component-view/component-view.ftl");
+
+export function getAppKey(key: string): string {
+  return key.split(":")[0];
+}
+
+export function wrapInHtml({ markup, title }: { markup: string; title: string }): string {
+  return `<!DOCTYPE html><html lang="en"><head><title>${title}</title></head><body>${markup}</body></html>`;
+}
+
+function parseComponentType(str: string = ""): ComponentDescriptorType | undefined {
+  const uppercasedStr = str.toUpperCase();
+
+  if (uppercasedStr === PAGE_KEY || uppercasedStr === LAYOUT_KEY || uppercasedStr === PART_KEY) {
+    return uppercasedStr;
+  }
+
+  return undefined;
+}
 
 export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const currentItemType = parseComponentType(req.params.type);
@@ -65,7 +70,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
       return {
         body: wrapInHtml({
-          markup: render<ComponentViewParams>(componentView, {
+          markup: render<ComponentViewParams>(COMPONENT_VIEW, {
             currentItem,
             displayReplacer: !!req.params.replace && currentItemType === PART_KEY,
             displaySummaryAndUndo: false,
@@ -151,209 +156,11 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   delete logModel.itemLists;
 
   return {
-    body: render<ComponentList & ComponentViewParams & Header>(view, model),
+    body: render<ComponentList & ComponentViewParams & Header>(VIEW, model),
   };
-}
-
-function getAppKey(key: string): string {
-  return key.split(":")[0];
-}
-
-function getPartFinderUrl(params: PartFinderQueryParams): string {
-  const queryParams = objectKeys(params)
-    .filter((key) => !!key)
-    .map((key: string) => `${key}=${encodeURIComponent(params[key])}`)
-    .join("&");
-
-  return `${getToolUrl("no.item.partfinder", "part-finder")}?${queryParams}`;
-}
-
-function wrapInHtml({ markup, title }: { markup: string; title: string }): string {
-  return `<!DOCTYPE html><html lang="en"><head><title>${title}</title></head><body>${markup}</body></html>`;
-}
-
-function getCMSRepoIds(): string[] {
-  return runAsAdmin(() =>
-    listRepos()
-      .map((repo) => repo.id)
-      .filter((repoId) => startsWith(repoId, "com.enonic.cms")),
-  );
-}
-
-function listComponentsInApplication(installedApps: Application[], type: ComponentDescriptorType): PartDescriptor[] {
-  return runAsAdmin(() =>
-    flatMap(installedApps, (app) =>
-      listComponents({
-        application: app.key,
-        type,
-      }),
-    ),
-  );
-}
-
-function getComponentUsagesInRepo(
-  component: Component,
-  repositories: string[],
-  params: Partial<PartFinderQueryParams>,
-): ComponentItem {
-  const currentItem = repositories
-    .map((repository) => getComponentUsages(component, repository, params))
-    .reduce<ComponentItem>(
-      (usages, componentUsage) => {
-        //if (DO_LOG) log.info(componentUsage, usages);
-        return {
-          url: componentUsage.url,
-          total: usages.total + componentUsage.total,
-          key: usages.key,
-          type: usages.type.toLowerCase(),
-          displayName: usages.displayName,
-          contents: usages.contents.concat(componentUsage.contents),
-        };
-      },
-      {
-        url: "",
-        total: 0,
-        key: component.key,
-        type: component.type.toLowerCase(),
-        displayName: component.displayName,
-        contents: [],
-      },
-    );
-
-  if (currentItem?.contents && currentItem.contents.length) {
-    currentItem.contents.forEach((content) => {
-      if (content?.usagePaths) {
-        const relevantUsages = content?.usagePaths[currentItem.key] || [];
-        if (relevantUsages.length > 1) {
-          content.hasMultiUsage = true;
-          content.multiUsage = relevantUsages;
-        }
-      }
-    });
-  }
-
-  return currentItem;
-}
-
-function getUsagePaths(hit, type: string, key: string): string[] | null {
-  const usagePaths = [];
-  const targetType = type.toLowerCase();
-  const regionType = LAYOUT_KEY.toLowerCase();
-
-  switch (type) {
-    case LAYOUT_KEY:
-      Object.keys(hit?.page?.regions || {}).forEach((rkey) => {
-        const region = (hit?.page?.regions || {})[rkey] || { components: [] };
-        region.components.forEach((component) => {
-          if (component.descriptor === key && component.type === targetType) {
-            // @ts-expect-error @typescript-eslint/ban-ts-comment
-            usagePaths.push(component.path);
-          }
-        });
-      });
-      return usagePaths;
-
-    case PAGE_KEY:
-      return null;
-
-    case PART_KEY:
-      Object.keys(hit?.page?.regions || {}).forEach((regionName) => {
-        const region = (hit?.page?.regions || {})[regionName] || { components: [] };
-        region.components.forEach((component) => {
-          if (component.descriptor === key && component.type === targetType) {
-            // @ts-expect-error @typescript-eslint/ban-ts-comment
-            usagePaths.push(component.path);
-          } else if (component.type === regionType && component.regions) {
-            Object.keys(component.regions).forEach((subRegionName) => {
-              const subRegion = component.regions[subRegionName] || { components: [] };
-              subRegion.components.forEach((subComponent) => {
-                if (subComponent.descriptor === key && subComponent.type === targetType) {
-                  // @ts-expect-error @typescript-eslint/ban-ts-comment
-                  usagePaths.push(subComponent.path);
-                }
-              });
-            });
-          }
-        });
-      });
-      return usagePaths;
-  }
-
-  return [];
-}
-
-function getComponentUsages(
-  component: Component,
-  repository: string,
-  params: Partial<PartFinderQueryParams>,
-): ComponentItem {
-  const res = runAsAdmin(
-    () =>
-      query({
-        query: `components.${component.type}.descriptor = '${component.key}'`,
-        count: 1000,
-      }),
-    {
-      repository,
-    },
-  );
-
-  const repo = stringAfterLast(repository, ".");
-
-  return {
-    total: res.total,
-    key: component.key,
-    type: component.type.toLowerCase(),
-    displayName: component.displayName,
-    url: getPartFinderUrl({
-      key: component.key,
-      type: component.type,
-      replace: params.replace,
-    }),
-    contents: res.hits.map((hit) => ({
-      url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${hit._id}`,
-      displayName: hit.displayName,
-      path: hit._path,
-      id: hit._id,
-      usagePaths: {
-        [component.key]: getUsagePaths(hit, component.type, component.key),
-      },
-      multiUsage: [],
-      hasMultiUsage: false,
-    })),
-  };
-}
-
-function parseComponentType(str: string = ""): ComponentDescriptorType | undefined {
-  const uppercasedStr = str.toUpperCase();
-
-  if (uppercasedStr === PAGE_KEY || uppercasedStr === LAYOUT_KEY || uppercasedStr === PART_KEY) {
-    return uppercasedStr;
-  }
-
-  return undefined;
 }
 
 //-------------------------------
-
-type OkayResult = {
-  id: string;
-  url: string;
-  displayName: string;
-  path: string;
-  hasMultiUsage: boolean;
-  componentPath: string | null;
-};
-type ErrorResult = {
-  id: string;
-  url: string;
-  displayName: string;
-  path: string;
-  error: true;
-  message: string;
-  hasMultiUsage: boolean;
-  componentPath: string | null;
-};
 
 export function post(req: XP.Request): XP.Response {
   if (!hasAuthRole("system.admin")) {
@@ -540,159 +347,6 @@ export function post(req: XP.Request): XP.Response {
   };
 
   return {
-    body: render(componentView, model),
+    body: render(COMPONENT_VIEW, model),
   };
 }
-
-const createEditorFunc = (
-  repoName: string,
-  oldAppKey: string,
-  oldComponentKey: string,
-  newAppKey: string,
-  newComponentKey: string,
-  componentType: string,
-  okays: OkayResult[],
-  errors: ErrorResult[],
-  componentPathsPerId: Record<string, string[] | null>,
-) => {
-  const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
-  const newAppKeyDashed = newAppKey.replace(/\./g, "-");
-
-  const pathPatternString =
-    "components\\." + componentType + "\\.config\\." + oldAppKeyDashed + "\\." + oldComponentKey;
-
-  // Looks for "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.<something more whatever>"
-  // but not "components.<componentType>.config.<oldAppKeyDashed>.<key that starts with oldComponentKey but continues before the dot or end>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.." etc:
-  const configSearchPattern = new RegExp("^" + pathPatternString + "($|\\.(?!\\.|$))");
-  const configReplacePattern = new RegExp("^(" + pathPatternString + "\\b)");
-  const configReplaceTarget = "components." + componentType + ".config." + newAppKeyDashed + "." + newComponentKey;
-
-  const user = getAuthUser();
-  if (!user?.key) {
-    throw Error("Couldn't resolve user.key: " + JSON.stringify(user));
-  }
-
-  const editor = (contentItem) => {
-    const id = contentItem?._id;
-    const componentPaths = componentPathsPerId[id] === null ? [null] : componentPathsPerId[id];
-
-    for (let p = 0; p < componentPaths.length; p++) {
-      const targetComponentPath = componentPaths[p];
-      try {
-        contentItem._indexConfig.configs = contentItem._indexConfig.configs.map((config) => {
-          if ((config.path || "").match(configSearchPattern)) {
-            const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
-
-            config.path = newPath;
-          }
-          return config;
-        });
-
-        contentItem.components = contentItem.components.map((component) => {
-          /*
-          Example component: {
-            "type": "layout",
-            "path": "/main/0",
-            "layout": {
-              "descriptor": "no.posten.website:layoutDefault",
-              "config": {
-                "no-posten-website": {
-                  "layoutDefault": {
-                    "layout": {
-                      "two": {
-                        "distribution": "2-1",
-                        "isFlex": false
-                      },
-                      "_selected": "two"
-                    },
-                    "marginTop": true,
-                    "marginBottom": false
-                  }
-
-           */
-
-          // Abort the edit if the component:
-          // - doesn't match the target component type
-          // - doesn't match the target component descriptor
-          // - doesn't match the target component path, if there is a target component path
-          if (
-            component.type !== componentType ||
-            component[componentType].descriptor !== `${oldAppKey}:${oldComponentKey}` ||
-            (targetComponentPath !== null && targetComponentPath !== component.path)
-          ) {
-            return component;
-          }
-
-          const newComponent = {
-            ...component,
-            [componentType]: {
-              ...component[componentType],
-              descriptor: `${newAppKey}:${newComponentKey}`,
-              config: {
-                ...component[componentType].config,
-                [newAppKeyDashed]: {
-                  ...component[componentType].config[oldAppKeyDashed],
-                  [newComponentKey]: component[componentType].config[oldAppKeyDashed][oldComponentKey],
-                },
-              },
-            },
-          };
-
-          if (oldAppKeyDashed !== newAppKeyDashed) {
-            delete newComponent[componentType].config[oldAppKeyDashed];
-          }
-          if (oldComponentKey !== newComponentKey) {
-            delete newComponent[componentType].config[newAppKeyDashed][oldComponentKey];
-          }
-
-          /* Not needed - and doesn't seem to change the node either?
-           newComponent.workflow = {
-            ...newComponent.workflow,
-            state: "IN_PROGRESS",
-          };
-          newComponent.modifier = user.key;
-          newComponent.modifiedTime = new Date().toISOString();
-          */
-
-          log.info(
-            `OK: Replaced ${componentType} on content item '${contentItem?.displayName || ""}' (id ${id}${
-              targetComponentPath !== null ? ", path: " + JSON.stringify(targetComponentPath) : ""
-            }), from '${oldAppKey}:${oldComponentKey}' to '${newAppKey}:${newComponentKey}'`,
-          );
-
-          return newComponent;
-        });
-
-        okays.push({
-          id,
-          url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-          displayName: contentItem?.displayName || "",
-          path: contentItem?._path || "",
-          hasMultiUsage: targetComponentPath !== null,
-          componentPath: targetComponentPath !== null ? targetComponentPath : null,
-        });
-
-        return contentItem;
-      } catch (e) {
-        log.warning(
-          `Error trying to replace ${componentType} on content item '${contentItem?.displayName || ""}' (id ${id}${
-            targetComponentPath !== null ? ", path: " + JSON.stringify(targetComponentPath) : ""
-          }), from '${oldAppKey}:${oldComponentKey}' to '${newAppKey}:${newComponentKey}'`,
-        );
-        log.error(e);
-        errors.push({
-          id,
-          url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-          displayName: contentItem?.displayName || "",
-          path: contentItem?._path || "",
-          error: true,
-          message: e instanceof Error ? e.message : "Unknown error, see log",
-          hasMultiUsage: targetComponentPath !== null,
-          componentPath: targetComponentPath !== null ? targetComponentPath : null,
-        });
-      }
-    }
-  };
-
-  return editor;
-};
