@@ -6,18 +6,15 @@ export type OkayResult = {
   url: string;
   displayName: string;
   path: string;
-  hasMultiUsage: boolean;
-  componentPath: string | null;
+  componentPath: string[] | string | null;
 };
 export type ErrorResult = {
   id: string;
   url: string;
   displayName: string;
   path: string;
-  error: true;
   message: string;
-  hasMultiUsage: boolean;
-  componentPath: string | null;
+  componentPath: string[] | string | null;
 };
 
 export const createEditorFunc = (
@@ -137,11 +134,8 @@ export const createEditorFunc = (
           url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
           displayName: contentItem?.displayName || "",
           path: contentItem?._path || "",
-          hasMultiUsage: targetComponentPath !== null,
-          componentPath: targetComponentPath !== null ? targetComponentPath : null,
+          componentPath: targetComponentPath,
         });
-
-        return contentItem;
       } catch (e) {
         log.warning(
           `Error trying to replace ${componentType} on content item '${contentItem?.displayName || ""}' (id ${id}${
@@ -154,13 +148,13 @@ export const createEditorFunc = (
           url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
           displayName: contentItem?.displayName || "",
           path: contentItem?._path || "",
-          error: true,
           message: e instanceof Error ? e.message : "Unknown error, see log",
-          hasMultiUsage: targetComponentPath !== null,
-          componentPath: targetComponentPath !== null ? targetComponentPath : null,
+          componentPath: targetComponentPath,
         });
       }
     }
+
+    return contentItem;
   };
 
   return editor;

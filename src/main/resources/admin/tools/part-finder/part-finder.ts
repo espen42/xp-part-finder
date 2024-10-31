@@ -72,7 +72,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
         body: wrapInHtml({
           markup: render<ComponentViewParams>(COMPONENT_VIEW, {
             currentItem,
-            displayReplacer: !!req.params.replace && currentItemType === PART_KEY,
+            displayReplacer: !!req.params.replace && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
             displaySummaryAndUndo: false,
           }),
           title: `${PAGE_TITLE} - ${component.displayName}`,
@@ -162,6 +162,45 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
 //-------------------------------
 
+const parseComponentPathsPerId = (targetIds) => {
+  let i: number, id: string, path: string | null;
+  const componentPathsPerId: Record<string, string[] | null> = {};
+
+  for (i = 0; i < targetIds.length; i++) {
+    id = targetIds[i];
+    path = null;
+
+    // If one of the targetIds have "__" in it, it signifies that this target is a multi-component-in-one-page one
+    // (which has id before "__" and path after), aka multi-path-usage (ie. an id should only replace this and that
+    // component path, and keep the same component on other paths).
+    // And in that case, all the targets by that id should be multi's. And vice versa. Check that, throw error if mix-up.
+    // If no mix-up, register the path or lack of path for that ID, for the editor func to handle.
+    if (id.indexOf("__") !== -1) {
+      id = targetIds[i].split("__")[0];
+      path = targetIds[i].replace(/^.*?__/, "");
+
+      if (componentPathsPerId[id] === null) {
+        throw Error(
+          `Parameter error: componentPathsPerId[${JSON.stringify(id)}] is already null instead of an array, can't add ${JSON.stringify(path)}`,
+        );
+      }
+
+      componentPathsPerId[id] = componentPathsPerId[id] || [];
+      // @ts-expect-error TS2531
+      componentPathsPerId[id].push(path);
+    } else {
+      if (Array.isArray(componentPathsPerId[id])) {
+        throw Error(
+          `Parameter error: componentPathsPerId[${JSON.stringify(id)}'] is already an array, can't set it to null`,
+        );
+      }
+      componentPathsPerId[id] = null;
+    }
+  }
+
+  return componentPathsPerId;
+};
+
 export function post(req: XP.Request): XP.Response {
   if (!hasAuthRole("system.admin")) {
     return {
@@ -198,10 +237,20 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
+  let componentPathsPerId;
+  try {
+    componentPathsPerId = parseComponentPathsPerId(targetIds);
+
+  } catch (e) {
+    log.error(e)
+    return {
+      status: 400,
+      body: "BAD REQUEST. Parameter error",
+    };
+  }
+
   const [oldAppKey, oldComponentKey] = sourceKey.split(":");
   const [newAppKey, newComponentKey] = targetKey.split(":");
-
-  const componentPathsPerId: Record<string, string[] | null> = {};
 
   const okays: OkayResult[] = [];
   const errors: ErrorResult[] = [];
@@ -222,47 +271,8 @@ export function post(req: XP.Request): XP.Response {
         principals: ["role:system.admin"],
       },
       () => {
-        let i: number, id: string, item: Content | null, path: string | null;
+        let item: Content | null;
 
-        for (i = 0; i < targetIds.length; i++) {
-          id = targetIds[i];
-          path = null;
-
-          // If one of the targetIds have "__" in it, it signifies that this target is a multi-component-in-one-page one
-          // (which has id before "__" and path after), aka multi-path-usage (ie. an id should only replace this and that
-          // component path, and keep the same component on other paths).
-          // And in that case, all the targets by that id should be multi's. And vice versa. Check that, throw error if mix-up.
-          // If no mix-up, register the path or lack of path for that ID, for the editor func to handle.
-          if (id.indexOf("__") !== -1) {
-            id = targetIds[i].split("__")[0];
-            path = targetIds[i].replace(/^.*?__/, "");
-
-            if (componentPathsPerId[id] === null) {
-              log.error(
-                `Parameter error: componentPathsPerId[${JSON.stringify(id)}] is already null instead of an array, can't add ${JSON.stringify(path)}`,
-              );
-              return {
-                body: "Parameter error",
-                status: 400,
-              };
-            }
-
-            componentPathsPerId[id] = componentPathsPerId[id] || [];
-            // @ts-expect-error TS2531
-            componentPathsPerId[id].push(path);
-          } else {
-            if (Array.isArray(componentPathsPerId[id])) {
-              log.error(
-                `Parameter error: componentPathsPerId[${JSON.stringify(id)}'] is already an array, can't set it to null`,
-              );
-              return {
-                body: "Parameter error",
-                status: 400,
-              };
-            }
-            componentPathsPerId[id] = null;
-          }
-        }
         const editor = createEditorFunc(
           repoName,
           oldAppKey,
@@ -304,10 +314,8 @@ export function post(req: XP.Request): XP.Response {
               url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
               displayName: item?.displayName || "",
               path: item?._path || "",
-              error: true,
               message: e instanceof Error ? e.message : "Unknown error, see log",
-              hasMultiUsage: componentPathsPerId[id] !== null,
-              componentPath: null,
+              componentPath: componentPathsPerId[id],
             });
           }
         });
