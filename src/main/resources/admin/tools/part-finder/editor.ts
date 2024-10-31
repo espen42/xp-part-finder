@@ -120,15 +120,6 @@ export const createEditorFunc = (
             delete newComponent[componentType].config[newAppKeyDashed][oldComponentKey];
           }
 
-          /* Not needed - and doesn't seem to change the node either?
-           newComponent.workflow = {
-            ...newComponent.workflow,
-            state: "IN_PROGRESS",
-          };
-          newComponent.modifier = user.key;
-          newComponent.modifiedTime = new Date().toISOString();
-          */
-
           log.info(
             `OK: Replaced ${componentType} on content item '${contentItem?.displayName || ""}' (id ${id}${
               targetComponentPath !== null ? ", path: " + JSON.stringify(targetComponentPath) : ""
