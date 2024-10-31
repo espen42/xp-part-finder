@@ -85,7 +85,7 @@ export function getComponentUsagesInRepo(
         const relevantUsages = content?.usagePaths[currentItem.key] || [];
         if (relevantUsages.length > 1) {
           content.hasMultiUsage = true;
-          content.multiUsage = relevantUsages;
+          content.multiUsage = relevantUsages.map((usage) => ({ path: usage }));
         }
       }
     });

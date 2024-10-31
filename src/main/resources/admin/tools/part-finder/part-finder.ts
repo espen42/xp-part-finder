@@ -8,10 +8,10 @@ import { hasRole as hasAuthRole } from "/lib/xp/auth";
 import { list as listApps } from "/lib/xp/app";
 import { getComponent, type ComponentDescriptorType } from "/lib/xp/schema";
 import { find, notNullOrUndefined, runAsAdmin, startsWith, stringAfterLast, unique } from "/lib/part-finder/utils";
-import type { ComponentList } from "./part-finder.freemarker";
+import type { ComponentList, MultiUsageInstance, ContentUsage } from "./part-finder.freemarker";
 import type { ComponentViewParams } from "/admin/views/component-view/component-view.freemarker";
 import type { Header, Link } from "/admin/views/header/header.freemarker";
-import { createEditorFunc, ErrorResult, OkayResult } from "/admin/tools/part-finder/editor";
+import { createEditorFunc, EditorResult } from "/admin/tools/part-finder/editor";
 import {
   Component,
   getCMSRepoIds,
@@ -201,6 +201,52 @@ const parseComponentPathsPerId = (targetIds) => {
   return componentPathsPerId;
 };
 
+const insertAndGetSummaryContent = (contents: ContentUsage[], result: EditorResult): ContentUsage => {
+  let currentContent: ContentUsage = contents.filter((content) => content.id === result.id)[0];
+
+  if (!currentContent) {
+    currentContent = {
+      id: result.id,
+      url: result.url,
+      displayName: result.displayName,
+      path: result.path,
+      multiUsage: [],
+    };
+    contents.push(currentContent);
+  }
+
+  return currentContent;
+};
+
+const setMultiUsage = (currentContent: ContentUsage, result: EditorResult) => {
+  if ("string" === typeof result.componentPath) {
+    const usage: MultiUsageInstance = { path: result.componentPath };
+    if (result.error) {
+      usage.error = result.error;
+    }
+
+    currentContent.multiUsage.push(usage);
+    setHasMultiUsage(currentContent, true);
+
+  } else if (Array.isArray(result.componentPath)) {
+    const usages: MultiUsageInstance[] = result.componentPath.map((usage) => {
+      const res: MultiUsageInstance = { path: usage };
+      if (result.error) {
+        res.error = result.error;
+      }
+      return res;
+    });
+
+    currentContent.multiUsage.push(...usages);
+    setHasMultiUsage(currentContent, true);
+  } else if (result.componentPath === null) {
+    if (result.error) {
+      currentContent.error = result.error;
+    }
+    setHasMultiUsage(currentContent, false);
+  }
+};
+
 export function post(req: XP.Request): XP.Response {
   if (!hasAuthRole("system.admin")) {
     return {
@@ -240,9 +286,8 @@ export function post(req: XP.Request): XP.Response {
   let componentPathsPerId;
   try {
     componentPathsPerId = parseComponentPathsPerId(targetIds);
-
   } catch (e) {
-    log.error(e)
+    log.error(e);
     return {
       status: 400,
       body: "BAD REQUEST. Parameter error",
@@ -252,8 +297,7 @@ export function post(req: XP.Request): XP.Response {
   const [oldAppKey, oldComponentKey] = sourceKey.split(":");
   const [newAppKey, newComponentKey] = targetKey.split(":");
 
-  const okays: OkayResult[] = [];
-  const errors: ErrorResult[] = [];
+  const editorResults: EditorResult[] = [];
 
   const repoIds = getCMSRepoIds();
   repoIds.forEach((targetRepo) => {
@@ -280,8 +324,7 @@ export function post(req: XP.Request): XP.Response {
           newAppKey,
           newComponentKey,
           componentType,
-          okays,
-          errors,
+          editorResults,
           componentPathsPerId,
         );
 
@@ -309,12 +352,12 @@ export function post(req: XP.Request): XP.Response {
               }), from '${sourceKey}' to '${targetKey}'`,
             );
             log.error(e);
-            errors.push({
+            editorResults.push({
               id,
               url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
               displayName: item?.displayName || "",
               path: item?._path || "",
-              message: e instanceof Error ? e.message : "Unknown error, see log",
+              error: e instanceof Error ? e.message : "Unknown error, see log",
               componentPath: componentPathsPerId[id],
             });
           }
@@ -327,6 +370,22 @@ export function post(req: XP.Request): XP.Response {
   const componentKey = `${newAppKey}:${newComponentKey}`;
   const appKey = getAppKey(newComponentKey);
   const type = componentType.toUpperCase();
+
+  const contents: ContentUsage[] = [];
+
+
+  editorResults.forEach((result) => {
+    const currentContent = insertAndGetSummaryContent(contents, result);
+    setMultiUsage(currentContent, result);
+
+    if (currentContent.multiUsage && currentContent.multiUsage.length === 1) {
+      currentContent.hasMultiUsage = false;
+      if (!currentContent.error && currentContent.multiUsage[0].error) {
+        currentContent.error = currentContent.multiUsage[0].error;
+      }
+      currentContent.multiUsage = [];
+    }
+  });
 
   const model = {
     title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
@@ -344,13 +403,7 @@ export function post(req: XP.Request): XP.Response {
       key: componentKey,
       type: componentType,
       displayName: "",
-      contents: [
-        ...okays.map((item) => ({
-          ...item,
-          okay: true,
-        })),
-        ...errors,
-      ],
+      contents: contents,
     },
   };
 
@@ -358,3 +411,18 @@ export function post(req: XP.Request): XP.Response {
     body: render(COMPONENT_VIEW, model),
   };
 }
+
+const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
+  if (currentContent.hasMultiUsage === !wantedValue) {
+    log.warning(
+      "Mix-up on a content result, tried setting .hasMultiUsage to " +
+        JSON.stringify(wantedValue) +
+        " but it has already been set to " +
+        JSON.stringify(currentContent.hasMultiUsage) +
+        ". currentContent=" +
+        JSON.stringify(currentContent),
+    );
+    throw Error("Parameter error");
+  }
+  currentContent.hasMultiUsage = wantedValue;
+};

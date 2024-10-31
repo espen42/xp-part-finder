@@ -1,19 +1,14 @@
 import { getUser as getAuthUser } from "/lib/xp/auth";
 import { getToolUrl } from "/lib/xp/admin";
 
-export type OkayResult = {
+
+export type EditorResult = {
   id: string;
   url: string;
   displayName: string;
   path: string;
-  componentPath: string[] | string | null;
-};
-export type ErrorResult = {
-  id: string;
-  url: string;
-  displayName: string;
-  path: string;
-  message: string;
+  // Absence of error value signifies a successful operation.
+  error?: string;
   componentPath: string[] | string | null;
 };
 
@@ -24,8 +19,7 @@ export const createEditorFunc = (
   newAppKey: string,
   newComponentKey: string,
   componentType: string,
-  okays: OkayResult[],
-  errors: ErrorResult[],
+  results: EditorResult[],
   componentPathsPerId: Record<string, string[] | null>,
 ) => {
   const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
@@ -57,7 +51,6 @@ export const createEditorFunc = (
           if ((config.path || "").match(configSearchPattern)) {
 
             const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
-
             config.path = newPath;
           }
           return config;
@@ -129,7 +122,7 @@ export const createEditorFunc = (
           return newComponent;
         });
 
-        okays.push({
+        results.push({
           id,
           url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
           displayName: contentItem?.displayName || "",
@@ -143,12 +136,12 @@ export const createEditorFunc = (
           }), from '${oldAppKey}:${oldComponentKey}' to '${newAppKey}:${newComponentKey}'`,
         );
         log.error(e);
-        errors.push({
+        results.push({
           id,
           url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
           displayName: contentItem?.displayName || "",
           path: contentItem?._path || "",
-          message: e instanceof Error ? e.message : "Unknown error, see log",
+          error: e instanceof Error ? e.message : "Unknown error, see log",
           componentPath: targetComponentPath,
         });
       }

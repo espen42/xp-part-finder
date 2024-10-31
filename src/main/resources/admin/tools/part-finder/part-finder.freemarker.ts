@@ -15,17 +15,23 @@ export type ComponentItem = {
   displayName: string;
   total: number;
   url: string;
-  contents: Usage[];
+  contents: ContentUsage[];
 };
 
-export type Usage = {
+export type ContentUsage = {
   url: string;
   displayName: string;
   path: string;
   id: string;
+  error?: string;
   usagePaths?: UsagePaths;
-  hasMultiUsage: boolean;
-  multiUsage: string[];
+  hasMultiUsage?: boolean;
+  multiUsage: MultiUsageInstance[];
+};
+
+export type MultiUsageInstance = {
+  path: string;
+  error?: string;
 };
 
 type UsagePaths = Record<string, string[] | null>;

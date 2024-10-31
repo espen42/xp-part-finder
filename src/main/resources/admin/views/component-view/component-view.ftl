@@ -69,12 +69,12 @@
                   [#list content.multiUsage as usage]
                     <li>
                       <input type="checkbox"
-                             id="select-item--${content.id}__${usage}"
-                             name="select-item--${content.id}__${usage}"
-                             value="${content.id}__${usage}"
+                             id="select-item--${content.id}__${usage.path}"
+                             name="select-item--${content.id}__${usage.path}"
+                             value="${content.id}__${usage.path}"
                              class="part-select-check"
                       />
-                      <label for="select-item--${content.id}__${usage}" class="part-select-label">${usage}</label>
+                      <label for="select-item--${content.id}__${usage.path}" class="part-select-label">${usage.path}</label>
                     </li>
                   [/#list]
                   </ul>
@@ -141,7 +141,7 @@
         currentItem.contents as content
           ][#if content.hasMultiUsage
             ][#list content.multiUsage as usage
-              ]${content.id}__${usage},[/#list
+              ]${content.id}__${usage.path},[/#list
           ][#else
             ]${content.id},[/#if
           ][/#list
