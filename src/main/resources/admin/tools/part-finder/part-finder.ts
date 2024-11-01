@@ -338,6 +338,7 @@ export function post(req: XP.Request): XP.Response {
     displayReplacer: false,
     displaySummaryAndUndo: true,
     oldItemKey: `${oldAppKey}:${oldComponentKey}`,
+    newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true`,
     currentItem: {
       url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
       total: targetIds.length,

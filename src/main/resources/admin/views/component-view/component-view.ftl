@@ -8,7 +8,11 @@
 
   <table class="table">
     [#if displaySummaryAndUndo]
-      <caption class="label-big">Summary after replacing the ${currentItem.type} key with:<br/>${currentItem.key}</caption>
+      <caption class="label-big">
+        Summary - ${currentItem.type} key replacement<br/>
+        <div class="inline-pre">From: <pre>${oldItemKey}</pre></div>
+        <div class="inline-pre">To: <a href="${newItemToolUrl}" target="_blank"><pre>${currentItem.key}</pre></a></div>
+      </caption>
     [#else]
       <caption class="label-big">${currentItem.type}: ${currentItem.key}</caption>
     [/#if]
@@ -40,14 +44,14 @@
           <td>
             [#if displaySummaryAndUndo]
               <div>${content.displayName}</div>
-              <ul>
+              <ul class="multi-usage-selectors">
                 [#list content.multiUsage as usage]
                   [#if !usage.error]
                     <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
-                      <span class="okay-check">✓</span> ${usage.path}
+                      <span class="okay-check">✓</span> <span class="multi-usage-label">${usage.path}</span>
                   [#else]
                     <li title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
-                      ❌ ${usage.path}
+                      ❌ <span class="multi-usage-label">${usage.path}</span>
                   [/#if]
                   </li>
                 [/#list]
@@ -55,7 +59,6 @@
 
             [#else]
               <div>${content.displayName}</div>
-              <div class="multi-usage-label">Multiple: select ${currentItem.type}(s) individually by path</div>
             [/#if]
           </td>
 
@@ -82,13 +85,21 @@
         [#if displayReplacer || displaySummaryAndUndo]
           [#if content.hasMultiUsage]
             <td>
-              <div>Paths:</div>
+              <div>
+                [#if displayReplacer]
+                  Multiple usages:
+                [#else]
+                  Individual undo:
+                [/#if]
+              </div>
               <ul class="multi-usage-selectors">
                 [#list content.multiUsage as usage]
                   [#if displaySummaryAndUndo && !usage.error]
                     <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
                   [#elseif displaySummaryAndUndo && usage.error]
                     <li title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
+                  [#else]
+                    <li>
                   [/#if]
                       <input type="checkbox"
                              id="select-item--${content.id}__${usage.path}"
@@ -144,6 +155,7 @@
     <div class="new-part-label">
       <p><strong>Check the links above to verify the content.</strong></p>
       <p>Navigating away will wipe this list and the opportunity to undo!</p>
+      <p>The links open in a new tab, though.</p>
     </div>
 
     <input type="hidden" name="new_part_ref" id="new_part_ref" value="${oldItemKey}"/>

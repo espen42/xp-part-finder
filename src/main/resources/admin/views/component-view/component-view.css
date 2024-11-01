@@ -78,6 +78,10 @@ table.table {
   background-color: transparent;
   cursor: initial;
 }
+.inline-pre {
+  font-size: 14px;
+  font-weight: normal;
+}
 .inline-pre pre {
   display: inline-block;
   background-color: #e8e8e8;
@@ -89,8 +93,11 @@ table.table {
   display: none;
 }
 .okay-check {
-  color: green;
-  font-weight: bold;
+  color: white;
+  font-weight: 700;
+  background-color: green;
+  padding: 0px 3px 1px;
+  border-radius: 15px;
 }
 
 .multi-usage-label {
