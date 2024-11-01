@@ -28,7 +28,7 @@
                    class="part-selectall-check part-select-check"
             />
             <label for="_select_change_all_" class="part-selectall-label">
-              (select all)
+              Select all
             </label>
         </th>
       [/#if]
@@ -36,61 +36,90 @@
 
     [#list currentItem.contents as content]
       <tr>
-
-        [#if displaySummaryAndUndo && content.okay]
-          <td title="Successful">
-              <span class="okay-check">✓</span> ${content.displayName}
-          </td>
-        [#elseif displaySummaryAndUndo && content.error]
-          <td title="Error">
-              ❌ ${content.displayName}<br>${content.message}
-          </td>
-        [#else]
+        [#if content.hasMultiUsage]
           <td>
-          [#if content.hasMultiUsage]
-            <div>${content.displayName}</div>
-            <div class="multi-usage-label">Multiple: select ${currentItem.type}(s) individually by path</div>
+            [#if displaySummaryAndUndo]
+              <div>${content.displayName}</div>
+              <ul>
+                [#list content.multiUsage as usage]
+                  [#if !usage.error]
+                    <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
+                      <span class="okay-check">✓</span> ${usage.path}
+                  [#else]
+                    <li title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
+                      ❌ ${usage.path}
+                  [/#if]
+                  </li>
+                [/#list]
+              </ul>
+
+            [#else]
+              <div>${content.displayName}</div>
+              <div class="multi-usage-label">Multiple: select ${currentItem.type}(s) individually by path</div>
+            [/#if]
+          </td>
+
+        [#else]
+          [#if displaySummaryAndUndo && !content.error]
+            <td title="Ok: changed content ${content.displayName}">
+              <span class="okay-check">✓</span> ${content.displayName}
+
+          [#elseif displaySummaryAndUndo && content.error]
+            <td title="Failed: content ${content.displayName}. Error message: (${content.error})">
+              ❌ ${content.displayName}
+
           [#else]
-            ${content.displayName}
+            <td>
+              ${content.displayName}
           [/#if]
           </td>
         [/#if]
 
         <td>
-            <a href="${content.url}" target="_blank">${content.path}</a>
+          <a href="${content.url}" target="_blank">${content.path}</a>
         </td>
 
         [#if displayReplacer || displaySummaryAndUndo]
-          <td>
-              [#if displayReplacer || (displaySummaryAndUndo && content.okay)]
-                [#if content.hasMultiUsage]
-                  <div>Paths:</div>
-                  <ul class="multi-usage-selectors">
-                  [#list content.multiUsage as usage]
-                    <li>
+          [#if content.hasMultiUsage]
+            <td>
+              <div>Paths:</div>
+              <ul class="multi-usage-selectors">
+                [#list content.multiUsage as usage]
+                  [#if displaySummaryAndUndo && !usage.error]
+                    <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
+                  [#elseif displaySummaryAndUndo && usage.error]
+                    <li title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
+                  [/#if]
                       <input type="checkbox"
                              id="select-item--${content.id}__${usage.path}"
                              name="select-item--${content.id}__${usage.path}"
                              value="${content.id}__${usage.path}"
                              class="part-select-check"
                       />
-                      <label for="select-item--${content.id}__${usage.path}" class="part-select-label">${usage.path}</label>
-                    </li>
-                  [/#list]
-                  </ul>
-                [#else]
-                  <input type="checkbox"
-                         id="select-item--${content.id}"
-                         name="select-item--${content.id}"
-                         value="${content.id}"
-                         class="part-select-check"
-                  />
-                  <label for="select-item--${content.id}" class="part-select-label" />
-                [/#if]
-              [/#if]
-          </td>
-        [/#if]
+                      <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error] part-error[/#if]">${usage.path}</label>
+                  </li>
+                [/#list]
+              </ul>
+            </td>
 
+          [#else]
+            [#if displaySummaryAndUndo && !content.error]
+              <td title="Ok: changed content ${content.displayName}">
+            [#elseif displaySummaryAndUndo && content.error]
+              <td title="Failed: content ${content.displayName}. Error message: ${content.error}">
+            [#else]
+              <td>
+            [/#if]
+                <input type="checkbox"
+                       id="select-item--${content.id}"
+                       name="select-item--${content.id}"
+                       value="${content.id}"
+                       class="part-select-check"
+                />
+                <label for="select-item--${content.id}" class="part-select-label" />
+              </td>
+          [/#if]
+        [/#if]
       </tr>
     [/#list]
   </table>
@@ -110,7 +139,7 @@
            class="new-part-button"
            disabled
     />
-    <p id="btn-info">Caution - this will change content data, and may break page displays.</p>
+    <p id="btn-info">Caution - this will change content data, and may break page displays.</br>Recommended: use data toolbox take a backup of all the targeted content, before changing.</p>
   [#elseif displaySummaryAndUndo]
     <div class="new-part-label">
       <p><strong>Check the links above to verify the content.</strong></p>
