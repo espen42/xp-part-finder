@@ -326,8 +326,6 @@ export function post(req: XP.Request): XP.Response {
   const appKey = getAppKey(newComponentKey);
   const type = componentType.toUpperCase();
 
-  const contents = buildContentResult(editorResults);
-
   const model = {
     title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
     displayName: PAGE_TITLE,
@@ -345,7 +343,7 @@ export function post(req: XP.Request): XP.Response {
       key: componentKey,
       type: componentType,
       displayName: "",
-      contents: contents,
+      contents: buildContentResult(editorResults),
     },
   };
 

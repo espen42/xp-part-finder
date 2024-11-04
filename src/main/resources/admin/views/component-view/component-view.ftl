@@ -46,12 +46,12 @@
               <div>${content.displayName}</div>
               <ul class="multi-usage-selectors">
                 [#list content.multiUsage as usage]
-                  [#if !usage.error]
-                    <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
-                      <span class="okay-check">✓</span> <span class="multi-usage-label">${usage.path}</span>
-                  [#else]
+                  [#if usage.error??]
                     <li title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
-                      ❌ <span class="multi-usage-label">${usage.path}</span>
+                    ❌ <span class="multi-usage-label">${usage.path}</span>
+                  [#else]
+                    <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
+                    <span class="okay-check">✓</span> <span class="multi-usage-label">${usage.path}</span>
                   [/#if]
                   </li>
                 [/#list]
@@ -63,13 +63,14 @@
           </td>
 
         [#else]
-          [#if displaySummaryAndUndo && !content.error]
-            <td title="Ok: changed content ${content.displayName}">
-              <span class="okay-check">✓</span> ${content.displayName}
-
-          [#elseif displaySummaryAndUndo && content.error]
-            <td title="Failed: content ${content.displayName}. Error message: (${content.error})">
+          [#if displaySummaryAndUndo]
+            [#if content.error??]
+              <td title="Failed: content ${content.displayName}. Error message: ${content.error}">
               ❌ ${content.displayName}
+            [#else]
+              <td title="Ok: changed content ${content.displayName}">
+              <span class="okay-check">✓</span> ${content.displayName}
+            [/#if]
 
           [#else]
             <td>
@@ -94,10 +95,13 @@
               </div>
               <ul class="multi-usage-selectors">
                 [#list content.multiUsage as usage]
-                  [#if displaySummaryAndUndo && !usage.error]
-                    <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
-                  [#elseif displaySummaryAndUndo && usage.error]
-                    <li title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
+                  [#if displaySummaryAndUndo]
+                    [#if usage.error??]
+                      <li title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
+                    [#else]
+                      <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
+                    [/#if]
+
                   [#else]
                     <li>
                   [/#if]
@@ -107,17 +111,20 @@
                              value="${content.id}__${usage.path}"
                              class="part-select-check"
                       />
-                      <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error] part-error[/#if]">${usage.path}</label>
+                      <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]">${usage.path}</label>
                   </li>
                 [/#list]
               </ul>
             </td>
 
           [#else]
-            [#if displaySummaryAndUndo && !content.error]
-              <td title="Ok: changed content ${content.displayName}">
-            [#elseif displaySummaryAndUndo && content.error]
-              <td title="Failed: content ${content.displayName}. Error message: ${content.error}">
+            [#if displaySummaryAndUndo]
+              [#if content.error??]
+                <td title="Failed: content ${content.displayName}. Error message: ${content.error}">
+              [#else]
+                <td title="Ok: changed content ${content.displayName}">
+              [/#if]
+
             [#else]
               <td>
             [/#if]

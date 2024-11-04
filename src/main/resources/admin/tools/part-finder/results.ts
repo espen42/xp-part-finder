@@ -37,24 +37,33 @@ const insertAndGetSummaryContent = (contents: ContentUsage[], result: EditorResu
 const setMultiUsage = (currentContent: ContentUsage, result: EditorResult) => {
 
   if ("string" === typeof result.componentPath) {
-    const usage = {
+    const usage: { path: string; error?: string } = {
       path: result.componentPath,
-      error: result.error || false,
     };
+    if (result.error) {
+      usage.error = result.error;
+    }
 
     currentContent.multiUsage.push(usage);
 
     setHasMultiUsage(currentContent, true);
   } else if (Array.isArray(result.componentPath)) {
-    const usages: MultiUsageInstance[] = result.componentPath.map((usage) => ({
-      path: usage,
-      error: result.error || false,
-    }));
+    const usages: MultiUsageInstance[] = result.componentPath.map((usagePath) => {
+      const usage: { path: string; error?: string } = {
+        path: usagePath,
+      };
+      if (result.error) {
+        usage.error = result.error;
+      }
+      return usage;
+    });
 
     currentContent.multiUsage.push(...usages);
     setHasMultiUsage(currentContent, true);
   } else if (result.componentPath === null) {
-    currentContent.error = result.error || false;
+    if (result.error) {
+      currentContent.error = result.error;
+    }
 
     setHasMultiUsage(currentContent, false);
   }

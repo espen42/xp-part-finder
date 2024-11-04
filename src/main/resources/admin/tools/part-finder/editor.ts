@@ -100,6 +100,23 @@ export const createEditorFunc = (
       const targetComponentPath = targetComponentPaths[p];
 
       try {
+        for (let i = 0; i < (contentItem?._indexConfig?.configs || []).length; i++) {
+          const config = contentItem?._indexConfig?.configs[i];
+
+          if ((config.path || "").match(configSearchPattern)) {
+            const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
+
+            if (preserveSomeComponentPaths) {
+              const newConfig = {
+                ...config,
+                path: newPath,
+              };
+              contentItem?._indexConfig?.configs.push(newConfig);
+            } else {
+              config.path = newPath;
+            }
+          }
+        }
         contentItem._indexConfig.configs = contentItem._indexConfig.configs.map((config) => {
           if ((config.path || "").match(configSearchPattern)) {
 

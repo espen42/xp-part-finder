@@ -93,11 +93,15 @@ table.table {
   display: none;
 }
 .okay-check {
-  color: white;
-  font-weight: 700;
   background-color: green;
-  padding: 0px 3px 1px;
-  border-radius: 15px;
+  border-radius: 11px;
+  color: #fff;
+  font-weight: 700;
+  padding: 0 3px 4px;
+  position: absolute;
+  display: block;
+  height: 22px;
+  width: 22px;
 }
 
 .multi-usage-label {
