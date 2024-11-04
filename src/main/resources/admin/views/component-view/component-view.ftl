@@ -150,7 +150,7 @@
            class="new-part-button"
            disabled
     />
-    <p id="btn-info">Caution - this will change content data, and may break page displays.</br>Recommended: use data toolbox take a backup of all the targeted content, before changing.</p>
+    <p id="btn-info">Caution - this will change content data, and may break page displays.</br><strong>Backup</strong> of all the targeted content before changing, eg. with Data Toolbox</p>
   [#elseif displaySummaryAndUndo]
     <div class="new-part-label">
       <p><strong>Check the links above to verify the content.</strong></p>

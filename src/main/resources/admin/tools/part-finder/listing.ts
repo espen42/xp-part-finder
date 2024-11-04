@@ -11,12 +11,7 @@ import {
 } from "/lib/xp/schema";
 import type { ComponentItem } from "/admin/tools/part-finder/part-finder.freemarker";
 import { query } from "/lib/xp/content";
-import {
-  LAYOUT_KEY,
-  PAGE_KEY,
-  PART_KEY,
-  PartFinderQueryParams
-} from "./part-finder";
+import { LAYOUT_KEY, PAGE_KEY, PART_KEY, PartFinderQueryParams } from "./part-finder";
 
 export type Component = PartDescriptor | LayoutDescriptor | PageDescriptor;
 
