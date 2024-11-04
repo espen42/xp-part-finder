@@ -73,7 +73,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
         body: wrapInHtml({
           markup: render<ComponentViewParams>(COMPONENT_VIEW, {
             currentItem,
-            displayReplacer: !!req.params.replace && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
+            displayReplacer: !!req.params.replace && currentItemType === PART_KEY,
             displaySummaryAndUndo: false,
           }),
           title: `${PAGE_TITLE} - ${component.displayName}`,
