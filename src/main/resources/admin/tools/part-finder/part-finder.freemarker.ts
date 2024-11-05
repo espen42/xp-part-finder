@@ -23,7 +23,7 @@ export type ContentUsage = {
   displayName: string;
   path: string;
   id: string;
-  error?: string | boolean;
+  error?: string;
   usagePaths?: UsagePaths;
   hasMultiUsage?: boolean;
   multiUsage: MultiUsageInstance[];
@@ -31,7 +31,15 @@ export type ContentUsage = {
 
 export type MultiUsageInstance = {
   path: string;
-  error?: string | boolean;
+  error?: string;
+  targetSubValue?: SubValue;
 };
 
-type UsagePaths = Record<string, string[] | null>;
+type UsagePaths = Record<string, UsagePathSubvalue[] | null>;
+
+export type UsagePathSubvalue = {
+  path: string;
+  targetSubValue?: SubValue;
+};
+
+type SubValue = string | number | boolean | null;

@@ -37,7 +37,7 @@ const insertAndGetSummaryContent = (contents: ContentUsage[], result: EditorResu
 const setMultiUsage = (currentContent: ContentUsage, result: EditorResult) => {
 
   if ("string" === typeof result.componentPath) {
-    const usage: { path: string; error?: string } = {
+    const usage: MultiUsageInstance = {
       path: result.componentPath,
     };
     if (result.error) {
@@ -80,8 +80,8 @@ export const buildContentResult = (editorResults: EditorResult[]): ContentUsage[
   contents.forEach((currentContent) => {
     if (currentContent.multiUsage.length === 1) {
       currentContent.hasMultiUsage = false;
-      if (!currentContent.error) {
-        currentContent.error = currentContent.multiUsage[0].error || false;
+      if (!currentContent.error && currentContent.multiUsage[0].error) {
+        currentContent.error = currentContent.multiUsage[0].error;
       }
       currentContent.multiUsage = [];
     }

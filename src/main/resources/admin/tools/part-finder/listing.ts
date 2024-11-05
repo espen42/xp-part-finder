@@ -9,7 +9,7 @@ import {
   type PageDescriptor,
   PartDescriptor,
 } from "/lib/xp/schema";
-import type { ComponentItem } from "/admin/tools/part-finder/part-finder.freemarker";
+import { ComponentItem, UsagePathSubvalue } from "/admin/tools/part-finder/part-finder.freemarker";
 import { query } from "/lib/xp/content";
 import { LAYOUT_KEY, PAGE_KEY, PART_KEY, PartFinderQueryParams } from "./part-finder";
 
@@ -78,9 +78,12 @@ export function getComponentUsagesInRepo(
     currentItem.contents.forEach((content) => {
       if (content?.usagePaths) {
         const relevantUsages = content?.usagePaths[currentItem.key] || [];
+        content.multiUsage = relevantUsages.map((item) => ({
+          ...item,
+          getvalue: JSON.stringify(item.targetSubValue),
+        }));
         if (relevantUsages.length > 1) {
           content.hasMultiUsage = true;
-          content.multiUsage = relevantUsages.map((usage) => ({ path: usage }));
         }
       }
     });
@@ -89,8 +92,47 @@ export function getComponentUsagesInRepo(
   return currentItem;
 }
 
-function getUsagePaths(hit, type: string, key: string): string[] | null {
-  const usagePaths = [];
+const makeFlatSearchable = (object, key = "", result = {}) => {
+  if (object === null || typeof object === "string" || typeof object === "number" || typeof object === "boolean") {
+    if (key === "") {
+      return object;
+    }
+    result[key] = object;
+  } else if (Array.isArray(object)) {
+    const prefix = key === "" ? key : key + ".";
+    object.forEach((item, i) => {
+      makeFlatSearchable(item, `${prefix}${i}`, result);
+    });
+  } else if (typeof object === "object") {
+    const prefix = key === "" ? key : key + ".";
+    Object.keys(object).forEach((key) => {
+      makeFlatSearchable(object[key], `${prefix}${key}`, result);
+    });
+  } else if (object === undefined) {
+    // ignore undefiend
+  } else {
+    throw Error("Can't handle " + typeof object + " value below key '" + key + "': " + JSON.stringify(object));
+  }
+
+  return result;
+};
+
+const pushUsagePath = (component, usagePaths, subPath) => {
+  if (subPath) {
+    const flatComponent = makeFlatSearchable(component);
+    usagePaths.push({
+      path: component.path,
+      targetSubValue: flatComponent[subPath],
+    });
+  } else {
+    usagePaths.push({
+      path: component.path,
+    });
+  }
+};
+
+function getUsagePaths(hit, type: string, key: string, subPath: string | undefined): UsagePathSubvalue[] | null {
+  const usagePaths: UsagePathSubvalue[] = [];
   const targetType = type.toLowerCase();
   const regionType = LAYOUT_KEY.toLowerCase();
 
@@ -100,8 +142,7 @@ function getUsagePaths(hit, type: string, key: string): string[] | null {
         const region = (hit?.page?.regions || {})[rkey] || { components: [] };
         region.components.forEach((component) => {
           if (component.descriptor === key && component.type === targetType) {
-            // @ts-expect-error @typescript-eslint/ban-ts-comment
-            usagePaths.push(component.path);
+            pushUsagePath(component, usagePaths, subPath);
           }
         });
       });
@@ -116,8 +157,7 @@ function getUsagePaths(hit, type: string, key: string): string[] | null {
         const region = (hit?.page?.regions || {})[regionName] || { components: [] };
         region.components.forEach((component) => {
           if (component.descriptor === key && component.type === targetType) {
-            // @ts-expect-error @typescript-eslint/ban-ts-comment
-            usagePaths.push(component.path);
+            pushUsagePath(component, usagePaths, subPath);
 
             // Find parts directly in layout-level regions:
           } else if (component.type === regionType && component.regions) {
@@ -125,8 +165,7 @@ function getUsagePaths(hit, type: string, key: string): string[] | null {
               const subRegion = component.regions[subRegionName] || { components: [] };
               subRegion.components.forEach((subComponent) => {
                 if (subComponent.descriptor === key && subComponent.type === targetType) {
-                  // @ts-expect-error @typescript-eslint/ban-ts-comment
-                  usagePaths.push(subComponent.path);
+                  pushUsagePath(component, usagePaths, subPath);
                 }
               });
             });
@@ -166,6 +205,7 @@ function getComponentUsages(
       key: component.key,
       type: component.type,
       replace: params.replace,
+      getvalue: params.getvalue,
     }),
     contents: res.hits.map((hit) => ({
       url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${hit._id}`,
@@ -173,7 +213,7 @@ function getComponentUsages(
       path: hit._path,
       id: hit._id,
       usagePaths: {
-        [component.key]: getUsagePaths(hit, component.type, component.key),
+        [component.key]: getUsagePaths(hit, component.type, component.key, params.getvalue),
       },
       multiUsage: [],
       hasMultiUsage: false,

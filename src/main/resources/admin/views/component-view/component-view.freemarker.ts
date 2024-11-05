@@ -2,6 +2,7 @@ import type { ComponentItem } from "/admin/tools/part-finder/part-finder.freemar
 
 export type ComponentViewParams = {
   currentItem?: ComponentItem;
+  getvalue?: string;
   displayReplacer: boolean;
   displaySummaryAndUndo: boolean;
 };

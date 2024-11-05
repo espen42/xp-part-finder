@@ -17,6 +17,7 @@
       <caption class="label-big">${currentItem.type}: ${currentItem.key}</caption>
     [/#if]
 
+    [#-- header --]
     <tr>
       <th scope="col">Display name</th>
       <th scope="col">Path</th>
@@ -36,10 +37,18 @@
             </label>
         </th>
       [/#if]
+
+      [#if getvalue??]
+        <th scope="col">
+          ${getvalue}
+        </th>
+      [/#if]
     </tr>
 
     [#list currentItem.contents as content]
       <tr>
+
+        [#-- column 1, multi-path option --]
         [#if content.hasMultiUsage]
           <td>
             [#if displaySummaryAndUndo]
@@ -62,6 +71,7 @@
             [/#if]
           </td>
 
+        [#-- column 1, single-path option --]
         [#else]
           [#if displaySummaryAndUndo]
             [#if content.error??]
@@ -69,7 +79,7 @@
               ❌ ${content.displayName}
             [#else]
               <td title="Ok: changed content ${content.displayName}">
-              <span class="okay-check">✓</span> ${content.displayName}
+              <span class="okay-check">✓</span> <span class="summary-name">${content.displayName}</span>
             [/#if]
 
           [#else]
@@ -79,11 +89,14 @@
           </td>
         [/#if]
 
+        [#-- column 2 --]
         <td>
           <a href="${content.url}" target="_blank">${content.path}</a>
         </td>
 
         [#if displayReplacer || displaySummaryAndUndo]
+
+          [#-- column 3, multi-path option --]
           [#if content.hasMultiUsage]
             <td>
               <div>
@@ -117,6 +130,7 @@
               </ul>
             </td>
 
+          [#-- column 3, single-path option --]
           [#else]
             [#if displaySummaryAndUndo]
               [#if content.error??]
@@ -137,6 +151,26 @@
                 <label for="select-item--${content.id}" class="part-select-label" />
               </td>
           [/#if]
+        [/#if]
+
+        [#if getvalue??]
+          <td>
+            [#-- column 4, multi-path option --]
+            [#if content.hasMultiUsage]
+            <div>Value:</div>
+            <ul class="multi-usage-selectors">
+              [#list content.multiUsage as usage]
+                <li>
+                  [#if usage.getvalue??]
+                    ${usage.getvalue}
+                  [/#if]
+                </li>
+              [/#list]
+            </ul>
+            [#else]
+            [/#if]
+
+          </td>
         [/#if]
       </tr>
     [/#list]

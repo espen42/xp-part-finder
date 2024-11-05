@@ -97,7 +97,7 @@ table.table {
   border-radius: 11px;
   color: #fff;
   font-weight: 700;
-  padding: 0 3px 4px;
+  padding: 0 4px 2px;
   position: absolute;
   display: block;
   height: 22px;
@@ -105,7 +105,7 @@ table.table {
 }
 
 .multi-usage-label {
-  padding-left: 42px;
+  padding-left: 33px;
 }
 .multi-usage-label,
 .multi-usage-selectors .part-select-label {
@@ -127,4 +127,8 @@ table.table {
 }
 .multi-usage-selectors li {
   position: relative;
+}
+.summary-name {
+  display: inline-block;
+  padding-left: 33px;
 }

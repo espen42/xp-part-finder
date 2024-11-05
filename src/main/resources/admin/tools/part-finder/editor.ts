@@ -12,10 +12,10 @@ export type EditorResult = {
   componentPath: string[] | string | null;
 };
 
+// If a content has multiple usages of a component, and not all of those components are targeted for change here, then
+// the indexConfig of that component should be copied instead of renamed, in order to retain the
+// information for the component instances that still use the old one.
 const detectCompPathsToPreserve = (contentItem, targetKey, targetComponentType, targetComponentPaths) => {
-  // If a content has multiple usages of a component, and not all of those components are targeted for change here, then
-  // the indexConfig of that component should be copied instead of renamed, in order to retain the
-  // information for the component instances that still use the old one.
   const untargetedPaths =
     !targetComponentPaths || !targetComponentPaths.length || !targetComponentPaths[0]
       ? []
@@ -33,25 +33,13 @@ const detectCompPathsToPreserve = (contentItem, targetKey, targetComponentType, 
           })
           .filter((componentPath) => componentPath);
 
-  const preserveSomeComponentPaths = untargetedPaths.length > 0;
+  log.info(
+    untargetedPaths.length > 0
+      ? `Changing ${targetComponentType}(s) ('${targetKey}') on content ${contentItem._path} but leaving it unchanged on path(s): ${JSON.stringify(untargetedPaths)}`
+      : `Changing all ${targetComponentType}(s) ('${targetKey}') on content ${contentItem._path}`,
+  );
 
-  if (preserveSomeComponentPaths) {
-    log.info(
-      "Changing " +
-        targetComponentType +
-        "(s) ('" +
-        targetKey +
-        "') " +
-        "on content " +
-        contentItem._path +
-        " but leaving it unchanged on path(s): " +
-        JSON.stringify(untargetedPaths),
-    );
-  } else {
-    log.info("Changing all " + targetComponentType + "(s) ('" + targetKey + "') " + "on content " + contentItem._path);
-  }
-
-  return preserveSomeComponentPaths;
+  return untargetedPaths.length > 0;
 };
 
 export const createEditorFunc = (

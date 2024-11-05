@@ -24,6 +24,7 @@ export type PartFinderQueryParams = {
   key: string;
   type: string;
   replace?: string;
+  getvalue?: string;
 };
 
 export const PART_KEY = "PART";
@@ -73,7 +74,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
         body: wrapInHtml({
           markup: render<ComponentViewParams>(COMPONENT_VIEW, {
             currentItem,
-            displayReplacer: !!req.params.replace && currentItemType === PART_KEY,
+            getvalue: req.params.getvalue || undefined,
+            displayReplacer: !!req.params.replace && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
             displaySummaryAndUndo: false,
           }),
           title: `${PAGE_TITLE} - ${component.displayName}`,
@@ -151,10 +153,6 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
       },
     ].filter((list) => list.items.length > 0),
   };
-
-  const logModel = { ...model };
-  // @ts-expect-error nope
-  delete logModel.itemLists;
 
   return {
     body: render<ComponentList & ComponentViewParams & Header>(VIEW, model),
