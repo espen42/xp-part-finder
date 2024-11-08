@@ -1,9 +1,8 @@
 import { render } from "/lib/tineikt/freemarker";
 import { getToolUrl } from "/lib/xp/admin";
 
-import { Content, get as getContent } from "/lib/xp/content";
+import { Content, get as getContent, modify as modifyContent } from "/lib/xp/content";
 import { run as runInContext } from "/lib/xp/context";
-import { connect as nodeConnect } from "/lib/xp/node";
 import { hasRole as hasAuthRole } from "/lib/xp/auth";
 import { list as listApps } from "/lib/xp/app";
 import { getComponent, type ComponentDescriptorType } from "/lib/xp/schema";
@@ -18,7 +17,7 @@ import {
   getComponentUsagesInRepo,
   listComponentsInApplication,
 } from "/admin/tools/part-finder/listing";
-import { buildContentResult } from "/admin/tools/part-finder/results";
+import { buildContentResult, createPushResultFunc } from "/admin/tools/part-finder/results";
 
 export type PartFinderQueryParams = {
   key: string;
@@ -90,13 +89,13 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const allLayouts = listComponentsInApplication(installedApps, LAYOUT_KEY);
   const allPages = listComponentsInApplication(installedApps, PAGE_KEY);
 
-  const parts = allParts.map((component, i) => {
+  const parts = allParts.map((component) => {
     return getComponentUsagesInRepo(component, cmsRepoIds, req.params);
   });
-  const layouts = allLayouts.map((component, i) => {
+  const layouts = allLayouts.map((component) => {
     return getComponentUsagesInRepo(component, cmsRepoIds, req.params);
   });
-  const pages = allPages.map((component, i) => {
+  const pages = allPages.map((component) => {
     return getComponentUsagesInRepo(component, cmsRepoIds, req.params);
   });
 
@@ -209,7 +208,7 @@ export function post(req: XP.Request): XP.Response {
   }
 
   const sourceKey = (req.params.key || "").trim();
-  const targetKey = (req.params.new_part_ref || "").trim();
+  const newKey = (req.params.new_part_ref || "").trim();
   const componentType = ((req.params.type || "") + "").trim().toLowerCase();
 
   const targetBranch = "draft";
@@ -222,7 +221,7 @@ export function post(req: XP.Request): XP.Response {
 
   const args: { [key: string]: string } = {
     key: sourceKey,
-    new_part_ref: targetKey,
+    new_part_ref: newKey,
     type: componentType,
   };
 
@@ -247,18 +246,12 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
-  const [oldAppKey, oldComponentKey] = sourceKey.split(":");
-  const [newAppKey, newComponentKey] = targetKey.split(":");
+  const [newAppKey, newComponentKey] = newKey.split(":");
 
   const editorResults: EditorResult[] = [];
 
   const repoIds = getCMSRepoIds();
   repoIds.forEach((targetRepo) => {
-    const repo = nodeConnect({
-      repoId: targetRepo,
-      branch: targetBranch,
-    });
-
     const repoName = stringAfterLast(targetRepo, ".");
 
     runInContext(
@@ -270,16 +263,8 @@ export function post(req: XP.Request): XP.Response {
       () => {
         let item: Content | null;
 
-        const editor = createEditorFunc(
-          repoName,
-          oldAppKey,
-          oldComponentKey,
-          newAppKey,
-          newComponentKey,
-          componentType,
-          editorResults,
-          componentPathsPerId,
-        );
+        const pushResult = createPushResultFunc(editorResults, repoName, sourceKey, newKey, componentType);
+        const editor = createEditorFunc(sourceKey, newKey, pushResult, componentType, componentPathsPerId);
 
         Object.keys(componentPathsPerId).forEach((id) => {
           item = null;
@@ -290,37 +275,20 @@ export function post(req: XP.Request): XP.Response {
             });
 
             if (item) {
-              repo.modify({
+              modifyContent({
                 key: id,
                 editor: editor,
               });
-            } else {
             }
           } catch (e) {
-            log.warning(
-              `Error trying to replace ${componentType} on content item '${item?.displayName || ""}' (id ${id}${
-                componentPathsPerId[id] !== null
-                  ? ", " + componentPathsPerId[id].length + "paths: " + JSON.stringify(componentPathsPerId[id])
-                  : ""
-              }), from '${sourceKey}' to '${targetKey}'`,
-            );
-            log.error(e);
-            editorResults.push({
-              id,
-              url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-              displayName: item?.displayName || "",
-              path: item?._path || "",
-              error: e instanceof Error ? e.message : "Unknown error, see log",
-              componentPath: componentPathsPerId[id],
-            });
+            pushResult(item, componentPathsPerId[id], e, id);
           }
         });
       },
     );
   });
 
-  const taskSummary = `${oldAppKey}:${oldComponentKey} → ${newAppKey}:${newComponentKey}`;
-  const componentKey = `${newAppKey}:${newComponentKey}`;
+  const taskSummary = `${sourceKey} → ${newKey}`;
   const appKey = getAppKey(newComponentKey);
   const type = componentType.toUpperCase();
 
@@ -329,16 +297,16 @@ export function post(req: XP.Request): XP.Response {
     displayName: PAGE_TITLE,
     filters: [],
     itemLists: [],
-    currentItemKey: componentKey,
+    currentItemKey: newKey,
     currentAppKey: appKey,
     displayReplacer: false,
     displaySummaryAndUndo: true,
-    oldItemKey: `${oldAppKey}:${oldComponentKey}`,
+    oldItemKey: `${sourceKey}`,
     newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true`,
     currentItem: {
       url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
       total: targetIds.length,
-      key: componentKey,
+      key: newKey,
       type: componentType,
       displayName: "",
       contents: buildContentResult(editorResults),

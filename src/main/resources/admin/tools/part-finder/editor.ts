@@ -1,6 +1,8 @@
 import { getUser as getAuthUser } from "/lib/xp/auth";
-import { getToolUrl } from "/lib/xp/admin";
-
+import {
+  LAYOUT_KEY
+} from "/admin/tools/part-finder/part-finder";
+import { PushResultFunc } from "/admin/tools/part-finder/results";
 
 export type EditorResult = {
   id: string;
@@ -12,60 +14,84 @@ export type EditorResult = {
   componentPath: string[] | string | null;
 };
 
-// If a content has multiple usages of a component, and not all of those components are targeted for change here, then
-// the indexConfig of that component should be copied instead of renamed, in order to retain the
-// information for the component instances that still use the old one.
-const detectCompPathsToPreserve = (contentItem, targetKey, targetComponentType, targetComponentPaths) => {
-  const untargetedPaths =
-    !targetComponentPaths || !targetComponentPaths.length || !targetComponentPaths[0]
-      ? []
-      : contentItem.components
-          .map((component) => {
-            if (
-              component != null &&
-              component.type === targetComponentType &&
-              (component[targetComponentType] || {}).descriptor === targetKey &&
-              targetComponentPaths.indexOf(component.path) === -1
-            ) {
-              return component.path;
-            }
-            return null;
-          })
-          .filter((componentPath) => componentPath);
+const editComponentTree = (
+  component,
+  newDescriptor,
+  targetDescriptor,
+  targetComponentType,
+  targetComponentPath,
+  contentItem,
+  replacement,
+) => {
+  const newComponent = {
+    ...component,
+  };
 
-  log.info(
-    untargetedPaths.length > 0
-      ? `Changing ${targetComponentType}(s) ('${targetKey}') on content ${contentItem._path} but leaving it unchanged on path(s): ${JSON.stringify(untargetedPaths)}`
-      : `Changing all ${targetComponentType}(s) ('${targetKey}') on content ${contentItem._path}`,
-  );
+  if (
+    component?.descriptor === targetDescriptor &&
+    component.type === targetComponentType &&
+    (targetComponentPath === null || component.path === targetComponentPath)
+  ) {
+    log.info(
+      `Replacing ${targetComponentType} on content item '${contentItem._path || ""}' (id ${contentItem._id}${
+        targetComponentPath !== null ? ", path: " + JSON.stringify(targetComponentPath) : ""
+      }), from '${targetDescriptor}' to '${newDescriptor}'`,
+    );
+    newComponent.descriptor = newDescriptor;
+    replacement.count++;
 
-  return untargetedPaths.length > 0;
+    // TODO: REMOVE WHEN layoutDefault MIGRATION IS DONE - FROM HERE...
+    if (
+      /*migrateSelectedLayout && */
+      component.type === LAYOUT_KEY.toLowerCase() &&
+      component.regions &&
+      component.config?.layout?._selected &&
+      component.config.layout[component.config.layout._selected]
+    ) {
+      log.info(
+        `    Also migrating ${targetComponentType}'s config.layout[${component.config.layout._selected}] down to .config`,
+      );
+      newComponent.config = {
+        ...component.config,
+        ...component.config.layout[component.config.layout._selected],
+      };
+      replacement.count++;
+    }
+    // TODO: ...TO HERE.
+  }
+
+  if (component?.regions) {
+    const newRegions = {};
+    Object.keys(component.regions).forEach((regionName) => {
+      const region = component.regions[regionName];
+      newRegions[regionName] = {
+        ...region,
+        components: (region.components || []).map((componentInRegion) => {
+
+          return editComponentTree(
+            componentInRegion,
+            newDescriptor,
+            targetDescriptor,
+            targetComponentType,
+            targetComponentPath,
+            contentItem,
+            replacement,
+          );
+        }),
+      };
+    });
+    newComponent.regions = newRegions;
+  }
+  return newComponent;
 };
 
 export const createEditorFunc = (
-  repoName: string,
-  oldAppKey: string,
-  oldComponentKey: string,
-  newAppKey: string,
-  newComponentKey: string,
+  targetDescriptor: string,
+  newDescriptor: string,
+  pushResult: PushResultFunc,
   targetComponentType: string,
-  results: EditorResult[],
   componentPathsPerId: Record<string, string[] | null>,
 ) => {
-  const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
-  const newAppKeyDashed = newAppKey.replace(/\./g, "-");
-
-  const targetKey = `${oldAppKey}:${oldComponentKey}`;
-  const pathPatternString =
-    "components\\." + targetComponentType + "\\.config\\." + oldAppKeyDashed + "\\." + oldComponentKey;
-
-  // Looks for "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.<something more whatever>"
-  // but not "components.<componentType>.config.<oldAppKeyDashed>.<key that starts with oldComponentKey but continues before the dot or end>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.." etc:
-  const configSearchPattern = new RegExp("^" + pathPatternString + "($|\\.(?!\\.|$))");
-  const configReplacePattern = new RegExp("^(" + pathPatternString + "\\b)");
-  const configReplaceTarget =
-    "components." + targetComponentType + ".config." + newAppKeyDashed + "." + newComponentKey;
-
   const user = getAuthUser();
   if (!user?.key) {
     throw Error("Couldn't resolve user.key: " + JSON.stringify(user));
@@ -75,133 +101,31 @@ export const createEditorFunc = (
     const id = contentItem?._id;
     const targetComponentPaths = componentPathsPerId[id] === null ? [null] : componentPathsPerId[id];
 
-
-    const preserveSomeComponentPaths = detectCompPathsToPreserve(
-      contentItem,
-      targetKey,
-      targetComponentType,
-      targetComponentPaths,
-    );
-
-
     for (let p = 0; p < targetComponentPaths.length; p++) {
       const targetComponentPath = targetComponentPaths[p];
 
       try {
-        for (let i = 0; i < (contentItem?._indexConfig?.configs || []).length; i++) {
-          const config = contentItem?._indexConfig?.configs[i];
 
-          if ((config.path || "").match(configSearchPattern)) {
-            const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
+        const replacement = {
+          count: 0,
+        };
 
-            if (preserveSomeComponentPaths) {
-              const newConfig = {
-                ...config,
-                path: newPath,
-              };
-              contentItem?._indexConfig?.configs.push(newConfig);
-            } else {
-              config.path = newPath;
-            }
-          }
-        }
-        contentItem._indexConfig.configs = contentItem._indexConfig.configs.map((config) => {
-          if ((config.path || "").match(configSearchPattern)) {
-
-            const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
-            config.path = newPath;
-          }
-          return config;
-        });
-
-        contentItem.components = contentItem.components.map((component) => {
-          /*
-          Example component: {
-            "type": "layout",
-            "path": "/main/0",
-            "layout": {
-              "descriptor": "no.posten.website:layoutDefault",
-              "config": {
-                "no-posten-website": {
-                  "layoutDefault": {
-                    "layout": {
-                      "two": {
-                        "distribution": "2-1",
-                        "isFlex": false
-                      },
-                      "_selected": "two"
-                    },
-                    "marginTop": true,
-                    "marginBottom": false
-                  }
-
-           */
-
-          // Skip the edit if the component:
-          // - doesn't match the target component type
-          // - doesn't match the target component descriptor
-          // - doesn't match the target component path, if there is a target component path
-          if (
-            component.type !== targetComponentType ||
-            component[targetComponentType].descriptor !== targetKey ||
-            (targetComponentPath !== null && component.path !== targetComponentPath)
-          ) {
-            return component;
-          }
-
-          const newComponent = {
-            ...component,
-            [targetComponentType]: {
-              ...component[targetComponentType],
-              descriptor: `${newAppKey}:${newComponentKey}`,
-              config: {
-                ...component[targetComponentType].config,
-                [newAppKeyDashed]: {
-                  ...component[targetComponentType].config[oldAppKeyDashed],
-                  [newComponentKey]: component[targetComponentType].config[oldAppKeyDashed][oldComponentKey],
-                },
-              },
-            },
-          };
-
-          if (oldAppKeyDashed !== newAppKeyDashed) {
-            delete newComponent[targetComponentType].config[oldAppKeyDashed];
-          }
-          if (oldComponentKey !== newComponentKey) {
-            delete newComponent[targetComponentType].config[newAppKeyDashed][oldComponentKey];
-          }
-
-          log.info(
-            `OK: Replaced ${targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${id}${
-              targetComponentPath !== null ? ", path: " + JSON.stringify(targetComponentPath) : ""
-            }), from '${oldAppKey}:${oldComponentKey}' to '${newAppKey}:${newComponentKey}'`,
-          );
-
-          return newComponent;
-        });
-
-        results.push({
-          id,
-          url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-          displayName: contentItem?.displayName || "",
-          path: contentItem?._path || "",
-          componentPath: targetComponentPath,
-        });
-      } catch (e) {
-        log.warning(
-          `Error trying to replace ${targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${id}${
-            targetComponentPath !== null ? ", path: " + JSON.stringify(targetComponentPath) : ""
-          }), from '${oldAppKey}:${oldComponentKey}' to '${newAppKey}:${newComponentKey}'`,
+        const newPage = editComponentTree(
+          contentItem.page,
+          newDescriptor,
+          targetDescriptor,
+          targetComponentType,
+          targetComponentPath,
+          contentItem,
+          replacement,
         );
-        log.error(e);
-        results.push({
-          id,
-          url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-          displayName: contentItem?.displayName || "",
-          path: contentItem?._path || "",
-          error: e instanceof Error ? e.message : "Unknown error, see log",
-          componentPath: targetComponentPath,
-        });
+
+        if (replacement.count > 0) {
+          contentItem.page = newPage;
+          pushResult(contentItem, targetComponentPath);
+        }
+      } catch (e) {
+        pushResult(contentItem, targetComponentPath, e);
       }
     }
 

@@ -1,8 +1,9 @@
 import { EditorResult } from "/admin/tools/part-finder/editor";
 import type { ContentUsage, MultiUsageInstance } from "/admin/tools/part-finder/part-finder.freemarker";
+import { getToolUrl } from "/lib/xp/admin";
+import { Content } from "/lib/xp/content";
 
 const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
-
   if (currentContent.hasMultiUsage === !wantedValue) {
     log.warning(
       "Mix-up on a content result, tried setting .hasMultiUsage to " +
@@ -35,7 +36,6 @@ const insertAndGetSummaryContent = (contents: ContentUsage[], result: EditorResu
 };
 
 const setMultiUsage = (currentContent: ContentUsage, result: EditorResult) => {
-
   if ("string" === typeof result.componentPath) {
     const usage: MultiUsageInstance = {
       path: result.componentPath,
@@ -89,3 +89,47 @@ export const buildContentResult = (editorResults: EditorResult[]): ContentUsage[
 
   return contents;
 };
+
+export interface PushResultFunc {
+  (contentItem: Content | null | undefined, componentPath?: string | null, error?: unknown, knownId?: string): void;
+}
+export const createPushResultFunc =
+  (
+    results: EditorResult[],
+    repoName: string,
+    sourceKey: string,
+    newKey: string,
+    targetComponentType: string,
+  ): PushResultFunc =>
+  (contentItem, componentPath?, error?, knownId?) => {
+    const result: EditorResult = {
+      id: contentItem?._id || knownId || "",
+      url: contentItem
+        ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${contentItem?._id}`
+        : "",
+      displayName: contentItem?.displayName || "",
+      path: contentItem?._path || "",
+      componentPath: componentPath || null,
+    };
+
+    // Absence of error signifies a successful operation.
+    if (error) {
+      log.warning(
+        `Error trying to replace ${targetComponentType} key on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+          componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
+        }), from '${sourceKey}}' to '${newKey}':`,
+      );
+      log.error(error);
+
+      result.error =
+        error instanceof Error ? error.message : "string" === typeof error ? error : "Unknown error, see log";
+    } else {
+      log.info(
+        `OK: Replaced ${targetComponentType} key on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+          componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
+        }), from '${sourceKey}' to '${newKey}'`,
+      );
+    }
+
+    results.push(result);
+  };
