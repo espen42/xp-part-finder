@@ -98,6 +98,8 @@ export const createEditorFunc = (
   }
 
   const editor = (contentItem) => {
+    contentItem.displayName = "Modified";
+
     const id = contentItem?._id;
     const targetComponentPaths = componentPathsPerId[id] === null ? [null] : componentPathsPerId[id];
 
