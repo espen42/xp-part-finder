@@ -10,7 +10,6 @@ import { find, notNullOrUndefined, runAsAdmin, startsWith, stringAfterLast, uniq
 import type { ComponentList } from "./part-finder.freemarker";
 import type { ComponentViewParams } from "/admin/views/component-view/component-view.freemarker";
 import type { Header, Link } from "/admin/views/header/header.freemarker";
-import { createEditorFunc } from "/admin/tools/part-finder/editor";
 import {
   Component,
   getCMSRepoIds,
@@ -264,7 +263,6 @@ export function post(req: XP.Request): XP.Response {
         let item: Content | null;
 
         const pushResult = createPushResultFunc(editorResults, repoName, sourceKey, newKey, componentType);
-        const editor = createEditorFunc(sourceKey, newKey, componentType, componentPathsPerId);
 
         Object.keys(componentPathsPerId).forEach((id) => {
           item = null;
@@ -277,7 +275,16 @@ export function post(req: XP.Request): XP.Response {
             if (item) {
               modifyContent({
                 key: id,
-                editor: editor,
+                editor: (contentItem) => {
+                  log.info("inn3: " + JSON.stringify(contentItem, null, 2));
+                  contentItem.displayName = `Heyooo`;
+
+                  // @ts-expect-error oh no
+                  (contentItem.page?.regions.main.components[0] || {}).descriptor = "no.posten.reactcommon:accordion";
+
+                  log.info("out3: " + JSON.stringify(contentItem, null, 2));
+                  return contentItem;
+                },
               });
             }
           } catch (e) {
