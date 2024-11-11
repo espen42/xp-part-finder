@@ -10,14 +10,14 @@ import { find, notNullOrUndefined, runAsAdmin, startsWith, stringAfterLast, uniq
 import type { ComponentList } from "./part-finder.freemarker";
 import type { ComponentViewParams } from "/admin/views/component-view/component-view.freemarker";
 import type { Header, Link } from "/admin/views/header/header.freemarker";
-import { createEditorFunc, EditorResult } from "/admin/tools/part-finder/editor";
+import { createEditorFunc } from "/admin/tools/part-finder/editor";
 import {
   Component,
   getCMSRepoIds,
   getComponentUsagesInRepo,
   listComponentsInApplication,
 } from "/admin/tools/part-finder/listing";
-import { buildContentResult, createPushResultFunc } from "/admin/tools/part-finder/results";
+import { buildContentResult, createPushResultFunc, EditorResult } from "/admin/tools/part-finder/results";
 
 export type PartFinderQueryParams = {
   key: string;
@@ -264,7 +264,7 @@ export function post(req: XP.Request): XP.Response {
         let item: Content | null;
 
         const pushResult = createPushResultFunc(editorResults, repoName, sourceKey, newKey, componentType);
-        const editor = createEditorFunc(sourceKey, newKey, pushResult, componentType, componentPathsPerId);
+        const editor = createEditorFunc(sourceKey, newKey, componentType, componentPathsPerId);
 
         Object.keys(componentPathsPerId).forEach((id) => {
           item = null;

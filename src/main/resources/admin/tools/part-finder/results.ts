@@ -1,7 +1,16 @@
-import { EditorResult } from "/admin/tools/part-finder/editor";
 import type { ContentUsage, MultiUsageInstance } from "/admin/tools/part-finder/part-finder.freemarker";
 import { getToolUrl } from "/lib/xp/admin";
 import { Content } from "/lib/xp/content";
+
+export type EditorResult = {
+  id: string;
+  url: string;
+  displayName: string;
+  path: string;
+  // Absence of error value signifies a successful operation.
+  error?: string;
+  componentPath: string[] | string | null;
+};
 
 const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
   if (currentContent.hasMultiUsage === !wantedValue) {

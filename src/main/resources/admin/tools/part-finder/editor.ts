@@ -1,19 +1,4 @@
-import { getUser as getAuthUser } from "/lib/xp/auth";
-import {
-  LAYOUT_KEY
-} from "/admin/tools/part-finder/part-finder";
-import { PushResultFunc } from "/admin/tools/part-finder/results";
-
-export type EditorResult = {
-  id: string;
-  url: string;
-  displayName: string;
-  path: string;
-  // Absence of error value signifies a successful operation.
-  error?: string;
-  componentPath: string[] | string | null;
-};
-
+/* Recursive */
 const editComponentTree = (
   component,
   newDescriptor,
@@ -21,7 +6,6 @@ const editComponentTree = (
   targetComponentType,
   targetComponentPath,
   contentItem,
-  replacement,
 ) => {
   const newComponent = {
     ...component,
@@ -37,27 +21,8 @@ const editComponentTree = (
         targetComponentPath !== null ? ", path: " + JSON.stringify(targetComponentPath) : ""
       }), from '${targetDescriptor}' to '${newDescriptor}'`,
     );
-    newComponent.descriptor = newDescriptor;
-    replacement.count++;
 
-    // TODO: REMOVE WHEN layoutDefault MIGRATION IS DONE - FROM HERE...
-    if (
-      /*migrateSelectedLayout && */
-      component.type === LAYOUT_KEY.toLowerCase() &&
-      component.regions &&
-      component.config?.layout?._selected &&
-      component.config.layout[component.config.layout._selected]
-    ) {
-      log.info(
-        `    Also migrating ${targetComponentType}'s config.layout[${component.config.layout._selected}] down to .config`,
-      );
-      newComponent.config = {
-        ...component.config,
-        ...component.config.layout[component.config.layout._selected],
-      };
-      replacement.count++;
-    }
-    // TODO: ...TO HERE.
+    newComponent.descriptor = newDescriptor;
   }
 
   if (component?.regions) {
@@ -75,7 +40,6 @@ const editComponentTree = (
             targetComponentType,
             targetComponentPath,
             contentItem,
-            replacement,
           );
         }),
       };
@@ -88,49 +52,36 @@ const editComponentTree = (
 export const createEditorFunc = (
   targetDescriptor: string,
   newDescriptor: string,
-  pushResult: PushResultFunc,
   targetComponentType: string,
   componentPathsPerId: Record<string, string[] | null>,
 ) => {
-  const user = getAuthUser();
-  if (!user?.key) {
-    throw Error("Couldn't resolve user.key: " + JSON.stringify(user));
-  }
 
   const editor = (contentItem) => {
     contentItem.displayName = "Modified";
 
     const id = contentItem?._id;
-    const targetComponentPaths = componentPathsPerId[id] === null ? [null] : componentPathsPerId[id];
+    const targetComponentPaths = componentPathsPerId[id] === null
+      ? [null]
+      : componentPathsPerId[id];
 
-    for (let p = 0; p < targetComponentPaths.length; p++) {
-      const targetComponentPath = targetComponentPaths[p];
+    for (const targetComponentPath of targetComponentPaths) {
 
       try {
-
-        const replacement = {
-          count: 0,
-        };
-
-        const newPage = editComponentTree(
+        contentItem.page = editComponentTree(
           contentItem.page,
           newDescriptor,
           targetDescriptor,
           targetComponentType,
           targetComponentPath,
           contentItem,
-          replacement,
         );
 
-        if (replacement.count > 0) {
-          contentItem.page = newPage;
-          pushResult(contentItem, targetComponentPath);
-        }
       } catch (e) {
-        pushResult(contentItem, targetComponentPath, e);
+        log.error(e);
       }
     }
 
+    log.info(JSON.stringify(contentItem, null, 2));
     return contentItem;
   };
 
