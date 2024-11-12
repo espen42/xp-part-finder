@@ -1,7 +1,8 @@
 import { render } from "/lib/tineikt/freemarker";
 import { getToolUrl } from "/lib/xp/admin";
 
-import { Content, get as getContent, modify as modifyContent } from "/lib/xp/content";
+import { Content, get as getContent } from "/lib/xp/content";
+import { connect as nodeConnect } from "/lib/xp/node";
 import { run as runInContext } from "/lib/xp/context";
 import { hasRole as hasAuthRole } from "/lib/xp/auth";
 import { list as listApps } from "/lib/xp/app";
@@ -10,14 +11,14 @@ import { find, notNullOrUndefined, runAsAdmin, startsWith, stringAfterLast, uniq
 import type { ComponentList } from "./part-finder.freemarker";
 import type { ComponentViewParams } from "/admin/views/component-view/component-view.freemarker";
 import type { Header, Link } from "/admin/views/header/header.freemarker";
-import { createEditorFunc, EditorResult } from "/admin/tools/part-finder/editor";
+import { createEditorFunc } from "/admin/tools/part-finder/editor";
 import {
   Component,
   getCMSRepoIds,
   getComponentUsagesInRepo,
   listComponentsInApplication,
 } from "/admin/tools/part-finder/listing";
-import { buildContentResult, createPushResultFunc } from "/admin/tools/part-finder/results";
+import { Results } from "/admin/tools/part-finder/results";
 
 export type PartFinderQueryParams = {
   key: string;
@@ -246,13 +247,20 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
+  const [oldAppKey, oldComponentKey] = sourceKey.split(":");
   const [newAppKey, newComponentKey] = newKey.split(":");
 
-  const editorResults: EditorResult[] = [];
+  const results = new Results(sourceKey, newKey, componentType);
 
   const repoIds = getCMSRepoIds();
   repoIds.forEach((targetRepo) => {
     const repoName = stringAfterLast(targetRepo, ".");
+    results.setRepoContext(repoName);
+
+    const repo = nodeConnect({
+      repoId: targetRepo,
+      branch: targetBranch,
+    });
 
     runInContext(
       {
@@ -263,8 +271,15 @@ export function post(req: XP.Request): XP.Response {
       () => {
         let item: Content | null;
 
-        const pushResult = createPushResultFunc(editorResults, repoName, sourceKey, newKey, componentType);
-        const editor = createEditorFunc(sourceKey, newKey, pushResult, componentType, componentPathsPerId);
+        const editor = createEditorFunc(
+          oldAppKey,
+          oldComponentKey,
+          newAppKey,
+          newComponentKey,
+          componentType,
+          results,
+          componentPathsPerId,
+        );
 
         Object.keys(componentPathsPerId).forEach((id) => {
           item = null;
@@ -275,13 +290,13 @@ export function post(req: XP.Request): XP.Response {
             });
 
             if (item) {
-              modifyContent({
+              repo.modify({
                 key: id,
                 editor: editor,
               });
             }
           } catch (e) {
-            pushResult(item, componentPathsPerId[id], e, id);
+            results.markError(item, null, e, id);
           }
         });
       },
@@ -309,7 +324,7 @@ export function post(req: XP.Request): XP.Response {
       key: newKey,
       type: componentType,
       displayName: "",
-      contents: buildContentResult(editorResults),
+      contents: results.buildContentResult(),
     },
   };
 

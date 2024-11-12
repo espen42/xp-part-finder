@@ -1,7 +1,15 @@
-import { EditorResult } from "/admin/tools/part-finder/editor";
 import type { ContentUsage, MultiUsageInstance } from "/admin/tools/part-finder/part-finder.freemarker";
 import { getToolUrl } from "/lib/xp/admin";
-import { Content } from "/lib/xp/content";
+
+type EditorResult = {
+  id: string;
+  url: string;
+  displayName: string;
+  path: string;
+  // Absence of error value signifies a successful operation:
+  error?: string;
+  componentPath: string[] | string | null;
+};
 
 const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
   if (currentContent.hasMultiUsage === !wantedValue) {
@@ -69,67 +77,86 @@ const setMultiUsage = (currentContent: ContentUsage, result: EditorResult) => {
   }
 };
 
-export const buildContentResult = (editorResults: EditorResult[]): ContentUsage[] => {
-  const contents: ContentUsage[] = [];
+export class Results {
+  results: EditorResult[];
+  sourceKey: string;
+  newKey: string;
+  repoName: string;
+  targetComponentType: string;
 
-  editorResults.forEach((result) => {
-    const currentContent = insertAndGetSummaryContent(contents, result);
-    setMultiUsage(currentContent, result);
-  });
+  constructor(sourceKey: string, newKey: string, targetComponentType: string) {
+    this.results = [];
+    this.repoName = ".setRepoContext hasn't run yet";
+    this.sourceKey = sourceKey;
+    this.newKey = newKey;
+    this.targetComponentType = targetComponentType;
+  }
 
-  contents.forEach((currentContent) => {
-    if (currentContent.multiUsage.length === 1) {
-      currentContent.hasMultiUsage = false;
-      if (!currentContent.error && currentContent.multiUsage[0].error) {
-        currentContent.error = currentContent.multiUsage[0].error;
-      }
-      currentContent.multiUsage = [];
-    }
-  });
+  setRepoContext(repoName: string) {
+    this.repoName = repoName;
+  }
 
-  return contents;
-};
-
-export interface PushResultFunc {
-  (contentItem: Content | null | undefined, componentPath?: string | null, error?: unknown, knownId?: string): void;
-}
-export const createPushResultFunc =
-  (
-    results: EditorResult[],
-    repoName: string,
-    sourceKey: string,
-    newKey: string,
-    targetComponentType: string,
-  ): PushResultFunc =>
-  (contentItem, componentPath?, error?, knownId?) => {
-    const result: EditorResult = {
-      id: contentItem?._id || knownId || "",
+  reportSuccess(contentItem, componentPath) {
+    this.results.push({
+      id: contentItem?._id,
       url: contentItem
-        ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${contentItem?._id}`
+        ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${this.repoName}/edit/${contentItem?._id}`
         : "",
       displayName: contentItem?.displayName || "",
       path: contentItem?._path || "",
       componentPath: componentPath || null,
-    };
+    });
 
-    // Absence of error signifies a successful operation.
-    if (error) {
-      log.warning(
-        `Error trying to replace ${targetComponentType} key on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
-          componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
-        }), from '${sourceKey}}' to '${newKey}':`,
-      );
-      log.error(error);
+    log.info(
+      `OK: Replacing ${this.targetComponentType} key on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+        componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
+      }), from '${this.sourceKey}' to '${this.newKey}'`,
+    );
+  }
 
-      result.error =
-        error instanceof Error ? error.message : "string" === typeof error ? error : "Unknown error, see log";
-    } else {
-      log.info(
-        `OK: Replaced ${targetComponentType} key on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
-          componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
-        }), from '${sourceKey}' to '${newKey}'`,
-      );
-    }
+  // On errors, log them, and since nothing should be changed in the data (atomic change: the original contentitem should
+  // be returned), overwrite previous success results.
+  markError(contentItem, componentPath: string | null, error: unknown, knownId?: string) {
+    this.results = [
+      {
+        id: contentItem?._id || knownId || "",
+        url: contentItem
+          ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${this.repoName}/edit/${contentItem?._id}`
+          : "",
+        displayName: contentItem?.displayName || "",
+        path: contentItem?._path || "",
+        componentPath: componentPath,
+        error: error instanceof Error ? error.message : "string" === typeof error ? error : "Unknown error, see log",
+      },
+    ];
 
-    results.push(result);
-  };
+    log.warning(
+      `Error trying to replace ${this.targetComponentType} key on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+        componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
+      }), from '${this.sourceKey}}' to '${this.newKey}':`,
+    );
+
+    log.error(error);
+  }
+
+  buildContentResult(): ContentUsage[] {
+    const contents: ContentUsage[] = [];
+
+    this.results.forEach((result) => {
+      const currentContent = insertAndGetSummaryContent(contents, result);
+      setMultiUsage(currentContent, result);
+    });
+
+    contents.forEach((currentContent) => {
+      if (currentContent.multiUsage.length === 1) {
+        currentContent.hasMultiUsage = false;
+        if (!currentContent.error && currentContent.multiUsage[0].error) {
+          currentContent.error = currentContent.multiUsage[0].error;
+        }
+        currentContent.multiUsage = [];
+      }
+    });
+
+    return contents;
+  }
+}
