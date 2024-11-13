@@ -73,7 +73,7 @@ const setMultiUsage = (currentContent: ContentUsage, result: EditorResult) => {
       currentContent.error = result.error;
     }
 
-    setHasMultiUsage(currentContent, false);
+    setHasMultiUsage(currentContent, true);
   }
 };
 
@@ -148,7 +148,7 @@ export class Results {
     });
 
     contents.forEach((currentContent) => {
-      if (currentContent.multiUsage.length === 1) {
+      if (currentContent.multiUsage.length === 0) {
         currentContent.hasMultiUsage = false;
         if (!currentContent.error && currentContent.multiUsage[0].error) {
           currentContent.error = currentContent.multiUsage[0].error;

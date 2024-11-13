@@ -82,7 +82,7 @@ export function getComponentUsagesInRepo(
           ...item,
           getvalue: JSON.stringify(item.targetSubValue),
         }));
-        if (relevantUsages.length > 1) {
+        if (relevantUsages.length > 0) {
           content.hasMultiUsage = true;
         }
       }

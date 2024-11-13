@@ -101,9 +101,9 @@
             <td>
               <div>
                 [#if displayReplacer]
-                  Multiple usages:
+                  Usages:
                 [#else]
-                  Individual undo:
+                  Undo:
                 [/#if]
               </div>
               <ul class="multi-usage-selectors">
