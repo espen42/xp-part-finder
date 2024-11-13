@@ -26,21 +26,22 @@
         <th class="part-selectall-col" scope="col">
           [#if displayReplacer]Replace ${currentItem.type}[#else]Undo[/#if]
           <br/>
-            <input type="checkbox"
-                   id="_select_change_all_"
-                   name="_select_change_all_"
-                   value="change-all"
-                   class="part-selectall-check part-select-check"
-            />
-            <label for="_select_change_all_" class="part-selectall-label">
-              Select all
-            </label>
-        </th>
-      [/#if]
-
-      [#if getvalue??]
-        <th scope="col">
-          ${getvalue}
+            <div class="select-all-container">
+              <input type="checkbox"
+                     id="_select_change_all_"
+                     name="_select_change_all_"
+                     value="change-all"
+                     class="part-selectall-check part-select-check"
+              />
+              <label for="_select_change_all_" class="part-selectall-label">
+                Select all
+              </label>
+            </div>
+          [#if getvalue??]
+            <span class="getvalue">
+                  (${getvalue})
+                </span>
+          [/#if]
         </th>
       [/#if]
     </tr>
@@ -124,7 +125,7 @@
                              value="${content.id}__${usage.path}"
                              class="part-select-check"
                       />
-                      <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]">${usage.path}</label>
+                  <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]">${usage.path}[#if getvalue?? && usage.getvalue??] <span class="getvalue">(${usage.getvalue})</span>[/#if]</label>
                   </li>
                 [/#list]
               </ul>
@@ -151,26 +152,6 @@
                 <label for="select-item--${content.id}" class="part-select-label" />
               </td>
           [/#if]
-        [/#if]
-
-        [#if getvalue??]
-          <td>
-            [#-- column 4, multi-path option --]
-            [#if content.hasMultiUsage]
-            <div>Value:</div>
-            <ul class="multi-usage-selectors">
-              [#list content.multiUsage as usage]
-                <li>
-                  [#if usage.getvalue??]
-                    ${usage.getvalue}
-                  [/#if]
-                </li>
-              [/#list]
-            </ul>
-            [#else]
-            [/#if]
-
-          </td>
         [/#if]
       </tr>
     [/#list]

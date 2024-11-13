@@ -70,14 +70,19 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     if (component) {
       const currentItem = getComponentUsagesInRepo(component, cmsRepoIds, req.params);
 
+      const model: ComponentViewParams = {
+        currentItem,
+        displayReplacer: !!req.params.replace && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
+        displaySummaryAndUndo: false,
+      };
+      const getValueParam = (req.params.getvalue || "").trim();
+      if (getValueParam !== "undefined" && getValueParam !== "false" && getValueParam !== "") {
+        model.getvalue = getValueParam;
+      }
+
       return {
         body: wrapInHtml({
-          markup: render<ComponentViewParams>(COMPONENT_VIEW, {
-            currentItem,
-            getvalue: req.params.getvalue || undefined,
-            displayReplacer: !!req.params.replace && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
-            displaySummaryAndUndo: false,
-          }),
+          markup: render<ComponentViewParams>(COMPONENT_VIEW, model),
           title: `${PAGE_TITLE} - ${component.displayName}`,
         }),
       };
@@ -129,7 +134,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
   const currentAppKey = getAppKey(componentKey);
 
-  const model = {
+  const model: ComponentList & ComponentViewParams & Header = {
     title: `${PAGE_TITLE} - ${currentItem?.displayName}`,
     displayName: PAGE_TITLE,
     filters,
@@ -153,6 +158,10 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
       },
     ].filter((list) => list.items.length > 0),
   };
+  const getValueParam = (req.params.getvalue || "").trim();
+  if (getValueParam !== "undefined" && getValueParam !== "false" && getValueParam !== "") {
+    model.getvalue = getValueParam;
+  }
 
   return {
     body: render<ComponentList & ComponentViewParams & Header>(VIEW, model),
