@@ -1,5 +1,6 @@
 import { getUser as getAuthUser } from "/lib/xp/auth";
 import { Results } from "/admin/tools/part-finder/results";
+import { findIndex } from "/lib/part-finder/utils";
 
 // If a content has multiple usages of a component, and not all of those components are targeted for change here, then
 // the indexConfig of that component should be copied instead of renamed, in order to retain the
@@ -67,6 +68,7 @@ const cloneAndMoveComp = (
 
 const verifyAllChangesWereMade = (changedComponents, requestedComponentPaths) => {
   const changesMade = Object.keys(changedComponents).length;
+
   if (
     !changesMade ||
     // If null, no specific paths were requested and all matched components should have been changed
@@ -105,6 +107,7 @@ const changeOrCopyIndexConfig = (
       newIndexConfigs.push(config);
     }
 
+    // TODO: Only add newConfig if a corresponding config is not already present!
     const newConfig = {
       // Spread avoids mutation
       ...config,
@@ -273,9 +276,13 @@ export const createEditorFunc = (
       }
       currentComponentPath = null;
 
-      // All good. Clone the current content item, deep-inject the updated data into it (overwriting existing keys),
-      // and return the clone:
-      const clonedContentItem = { ...contentItem };
+      // Deep-clone the current content item, inject the updated data into it
+      // (overwriting existing keys), and return the clone:
+      const clonedContentItem = {
+        ...contentItem,
+        components: [...contentItem.components],
+        _indexConfig: { ...contentItem._indexConfig },
+      };
 
       if (newIndexConfigs.length) {
         clonedContentItem._indexConfig.configs = newIndexConfigs;
@@ -284,12 +291,17 @@ export const createEditorFunc = (
       for (const componentPath in changedComponents) {
         currentComponentPath = componentPath;
         const newComponent = changedComponents[componentPath];
-        const index = clonedContentItem.components.findIndex((comp) => comp.path === componentPath);
-        if (index !== -1) {
+
+        const index = findIndex<{ path: string }>(
+          clonedContentItem.components || [],
+          (comp) => comp.path === componentPath,
+        );
+        if (index === -1) {
           throw Error(
             "Replacement component with path '" + componentPath + "', but no matching path was found in newContentItem",
           );
         }
+        // Replace component in the same place
         clonedContentItem.components[index] = newComponent;
 
         results.reportSuccess(contentItem, componentPath);

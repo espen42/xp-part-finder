@@ -12,6 +12,15 @@ export function find<A>(arr: A[], predicate: (value: A) => boolean): A | undefin
   }
 }
 
+export function findIndex<A>(arr: A[], predicate: (value: A) => boolean): number {
+  for (let i = 0; i < arr.length; i++) {
+    if (predicate(arr[i])) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 export function unique(arr: string[]): string[] {
   return arr.filter((value, index, all) => all.indexOf(value) === index);
 }
