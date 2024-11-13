@@ -1,6 +1,6 @@
 import { getUser as getAuthUser } from "/lib/xp/auth";
 import { Results } from "/admin/tools/part-finder/results";
-import { findIndex } from "/lib/part-finder/utils";
+import { find, findIndex } from "/lib/part-finder/utils";
 
 // If a content has multiple usages of a component, and not all of those components are targeted for change here, then
 // the indexConfig of that component should be copied instead of renamed, in order to retain the
@@ -32,40 +32,6 @@ const detectCompPathPreservation = (contentItem, targetKey, targetComponentType,
   return untargetedPaths.length > 0;
 };
 
-// Deep spread: new object, avoid mutation
-const cloneAndMoveComp = (
-  component,
-  oldComponentType,
-  oldAppKeyDashed,
-  oldComponentKey,
-  newAppKey,
-  newAppKeyDashed,
-  newComponentKey,
-) => {
-  const componentClone = {
-    ...component,
-    [oldComponentType]: {
-      ...component[oldComponentType],
-      descriptor: `${newAppKey}:${newComponentKey}`,
-      config: {
-        ...component[oldComponentType].config,
-        [newAppKeyDashed]: {
-          ...component[oldComponentType].config[oldAppKeyDashed],
-          [newComponentKey]: component[oldComponentType].config[oldAppKeyDashed][oldComponentKey],
-        },
-      },
-    },
-  };
-  if (oldAppKeyDashed !== newAppKeyDashed) {
-    delete componentClone[oldComponentType].config[oldAppKeyDashed];
-  }
-  if (oldComponentKey !== newComponentKey) {
-    delete componentClone[oldComponentType].config[newAppKeyDashed][oldComponentKey];
-  }
-
-  return componentClone;
-};
-
 const verifyAllChangesWereMade = (changedComponents, requestedComponentPaths) => {
   const changesMade = Object.keys(changedComponents).length;
 
@@ -91,31 +57,48 @@ const verifyAndGetCompPath = (component): string => {
   return component?.path;
 };
 
+const replaceChangedComponentsInClone = (componentPath, changedComponents, clonedContentItem) => {
+  const newComponent = changedComponents[componentPath];
+
+  const index = findIndex<{ path: string }>(clonedContentItem.components || [], (comp) => comp.path === componentPath);
+  if (index === -1) {
+    throw Error(
+      `Replacement component with path '${componentPath}', but no matching path was found in the cloned content item`,
+    );
+  }
+  // Replace component in the same place
+  clonedContentItem.components[index] = newComponent;
+};
+
 const changeOrCopyIndexConfig = (
-  config,
+  currentOrigConfig,
   newIndexConfigs,
+  origIndexConfigs,
   preserveSomeComponentPaths,
   configSearchPattern,
   configReplacePattern,
   configReplaceTarget,
 ) => {
-  if ((config?.path || "").match(configSearchPattern)) {
-    const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
+  if ((currentOrigConfig?.path || "").match(configSearchPattern)) {
+    const newPath = currentOrigConfig.path.replace(configReplacePattern, configReplaceTarget);
 
-    // To preserve, keep the original (copy, not overwrite)
-    if (preserveSomeComponentPaths) {
-      newIndexConfigs.push(config);
+    const alreadyPresent = find<{ path: string }>(origIndexConfigs, (config) => config.path === newPath);
+    if (!alreadyPresent) {
+      // Spread avoids mutation
+      const newConfig = {
+        ...currentOrigConfig,
+        path: newPath,
+      };
+      newIndexConfigs.push(newConfig);
     }
 
-    // TODO: Only add newConfig if a corresponding config is not already present!
-    const newConfig = {
-      // Spread avoids mutation
-      ...config,
-      path: newPath,
-    };
-    newIndexConfigs.push(newConfig);
+    if (preserveSomeComponentPaths) {
+      // To preserve (copy, not overwrite), keep the original
+      newIndexConfigs.push(currentOrigConfig);
+    }
   } else {
-    newIndexConfigs.push(config);
+    // If no match, keep the original:
+    newIndexConfigs.push(currentOrigConfig);
   }
 };
 
@@ -124,12 +107,12 @@ const componentMatchesTarget = (component, targetComponentType, oldDescriptor, t
   component[targetComponentType].descriptor === oldDescriptor &&
   component.path === targetComponentPath;
 
+// By now, established a match: component type, descriptor and path matches the target.
+// So deep-clone the component data to avoid mutation, and add the clone to the collection of data to store later,
+// with path as key
 const cloneAndMarkForStorage = (
-  // By now, established a match: component type, descriptor and path matches the target.
-  // So clone the component data (to avoid mutation) and add the clone to the collection of data to store later,
-  // with path as key:
   component,
-  targetComponentType,
+  oldComponentType,
   oldAppKeyDashed,
   oldComponentKey,
   newAppKey,
@@ -137,15 +120,27 @@ const cloneAndMarkForStorage = (
   newComponentKey,
   changedComponents,
 ) => {
-  const componentClone = cloneAndMoveComp(
-    component,
-    targetComponentType,
-    oldAppKeyDashed,
-    oldComponentKey,
-    newAppKey,
-    newAppKeyDashed,
-    newComponentKey,
-  );
+  const componentClone = {
+    ...component,
+    [oldComponentType]: {
+      ...component[oldComponentType],
+      descriptor: `${newAppKey}:${newComponentKey}`,
+      config: {
+        ...component[oldComponentType].config,
+        [newAppKeyDashed]: {
+          ...component[oldComponentType].config[oldAppKeyDashed],
+          [newComponentKey]: component[oldComponentType].config[oldAppKeyDashed][oldComponentKey],
+        },
+      },
+    },
+  };
+
+  if (oldAppKeyDashed !== newAppKeyDashed) {
+    delete componentClone[oldComponentType].config[oldAppKeyDashed];
+  }
+  if (oldComponentKey !== newComponentKey) {
+    delete componentClone[oldComponentType].config[newAppKeyDashed][oldComponentKey];
+  }
 
   changedComponents[component.path] = componentClone;
 };
@@ -214,7 +209,7 @@ export const createEditorFunc = (
 
     const changedComponents: { [path: string]: { path: string } } = {};
     const newIndexConfigs: object[] = [];
-    let currentComponentPath: string | null = null;
+    let lastTargetedComponentPath: string | null = null;
 
     const id = contentItem?._id;
 
@@ -241,7 +236,7 @@ export const createEditorFunc = (
 
       contentItem.components.forEach((component) => {
         for (const targetComponentPath of targetComponentPaths) {
-          currentComponentPath = verifyAndGetCompPath(component);
+          lastTargetedComponentPath = verifyAndGetCompPath(component);
 
           if (componentMatchesTarget(component, targetComponentType, oldDescriptor, targetComponentPath)) {
             cloneAndMarkForStorage(
@@ -256,26 +251,28 @@ export const createEditorFunc = (
             );
           }
 
-          currentComponentPath = null;
+          lastTargetedComponentPath = null;
         }
       });
 
       verifyAllChangesWereMade(changedComponents, componentPathsPerId[id]);
 
-      for (const config of contentItem?._indexConfig?.configs || []) {
-        currentComponentPath = config.path + " (config path)";
+      const origIndexConfigs = contentItem?._indexConfig?.configs || [];
+      for (const currentOrigConfig of origIndexConfigs) {
+        lastTargetedComponentPath = currentOrigConfig.path + " (config path)";
 
         changeOrCopyIndexConfig(
-          config,
+          currentOrigConfig,
           newIndexConfigs,
+          origIndexConfigs,
           preserveSomeComponentPaths,
           configSearchPattern,
           configReplacePattern,
           configReplaceTarget,
         );
       }
-      currentComponentPath = null;
 
+      lastTargetedComponentPath = null;
       // Deep-clone the current content item, inject the updated data into it
       // (overwriting existing keys), and return the clone:
       const clonedContentItem = {
@@ -289,27 +286,15 @@ export const createEditorFunc = (
       }
 
       for (const componentPath in changedComponents) {
-        currentComponentPath = componentPath;
-        const newComponent = changedComponents[componentPath];
+        lastTargetedComponentPath = componentPath;
 
-        const index = findIndex<{ path: string }>(
-          clonedContentItem.components || [],
-          (comp) => comp.path === componentPath,
-        );
-        if (index === -1) {
-          throw Error(
-            "Replacement component with path '" + componentPath + "', but no matching path was found in newContentItem",
-          );
-        }
-        // Replace component in the same place
-        clonedContentItem.components[index] = newComponent;
-
+        replaceChangedComponentsInClone(componentPath, changedComponents, clonedContentItem);
         results.reportSuccess(contentItem, componentPath);
       }
 
       return clonedContentItem;
     } catch (e) {
-      results.markError(contentItem, currentComponentPath, e);
+      results.markError(contentItem, lastTargetedComponentPath, e);
 
       return contentItem;
     }
