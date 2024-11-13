@@ -104,7 +104,7 @@ const changeOrCopyIndexConfig = (
 
 const componentMatchesTarget = (component, targetComponentType, oldDescriptor, targetComponentPath) =>
   component.type === targetComponentType &&
-  component[targetComponentType].descriptor === oldDescriptor &&
+  (component[targetComponentType] || {}).descriptor === oldDescriptor &&
   component.path === targetComponentPath;
 
 // By now, established a match: component type, descriptor and path matches the target.
@@ -222,7 +222,7 @@ export const createEditorFunc = (
               .map(
                 (component) =>
                   component.type === targetComponentType &&
-                  component[targetComponentType].descriptor === oldDescriptor &&
+                  (component[targetComponentType] || {}).descriptor === oldDescriptor &&
                   component?.path,
               )
               .filter((path) => !!path);
