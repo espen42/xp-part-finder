@@ -112,35 +112,59 @@ const componentMatchesTarget = (component, targetComponentType, oldDescriptor, t
 // with path as key
 const cloneAndMarkForStorage = (
   component,
-  oldComponentType,
+  targetComponentType,
   oldAppKeyDashed,
   oldComponentKey,
   newAppKey,
   newAppKeyDashed,
   newComponentKey,
   changedComponents,
+
+  // TODO: REMOVE THIS ARG WHEN layoutDefault MIGRATION IS DONE:
+  migrateSelectedLayoutConfig,
 ) => {
   const componentClone = {
     ...component,
-    [oldComponentType]: {
-      ...component[oldComponentType],
+    [targetComponentType]: {
+      ...component[targetComponentType],
       descriptor: `${newAppKey}:${newComponentKey}`,
       config: {
-        ...component[oldComponentType].config,
+        ...component[targetComponentType].config,
         [newAppKeyDashed]: {
-          ...component[oldComponentType].config[oldAppKeyDashed],
-          [newComponentKey]: component[oldComponentType].config[oldAppKeyDashed][oldComponentKey],
+          ...component[targetComponentType].config[oldAppKeyDashed],
+          [newComponentKey]: component[targetComponentType].config[oldAppKeyDashed][oldComponentKey],
         },
       },
     },
   };
 
   if (oldAppKeyDashed !== newAppKeyDashed) {
-    delete componentClone[oldComponentType].config[oldAppKeyDashed];
+    delete componentClone[targetComponentType].config[oldAppKeyDashed];
   }
   if (oldComponentKey !== newComponentKey) {
-    delete componentClone[oldComponentType].config[newAppKeyDashed][oldComponentKey];
+    delete componentClone[targetComponentType].config[newAppKeyDashed][oldComponentKey];
   }
+
+  // TODO: REMOVE WHEN layoutDefault MIGRATION IS DONE - FROM HERE...
+  const layoutConfig = {
+    ...(((componentClone[targetComponentType].config || {})[newAppKeyDashed] || {})[newComponentKey] || {}),
+  };
+  if (
+    migrateSelectedLayoutConfig &&
+    Object.keys(layoutConfig).length &&
+    layoutConfig.layout?._selected &&
+    layoutConfig.layout[layoutConfig.layout._selected]
+  ) {
+    log.info(
+      `    Also migrating ${targetComponentType}'s config.layout['${layoutConfig.layout._selected}'] down to .config`,
+    );
+    for (const key in layoutConfig.layout[layoutConfig.layout._selected]) {
+      layoutConfig[key] = layoutConfig.layout[layoutConfig.layout._selected][key];
+    }
+
+    componentClone[targetComponentType].config[newAppKeyDashed][newComponentKey] = layoutConfig;
+  }
+  // TODO: ...TO HERE.
 
   changedComponents[component.path] = componentClone;
 };
