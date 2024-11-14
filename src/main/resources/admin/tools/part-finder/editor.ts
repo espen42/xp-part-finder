@@ -274,6 +274,7 @@ export const createEditorFunc = (
               newAppKeyDashed,
               newComponentKey,
               changedComponents,
+              component.type === LAYOUT_KEY.toLowerCase(),
             );
           }
 
