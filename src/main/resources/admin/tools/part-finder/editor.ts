@@ -161,6 +161,8 @@ const cloneAndMarkForStorage = (
     for (const key in layoutConfig.layout[layoutConfig.layout._selected]) {
       layoutConfig[key] = layoutConfig.layout[layoutConfig.layout._selected][key];
     }
+    delete layoutConfig.layout[layoutConfig.layout._selected];
+    delete layoutConfig.layout._selected;
 
     componentClone[targetComponentType].config[newAppKeyDashed][newComponentKey] = layoutConfig;
   }
