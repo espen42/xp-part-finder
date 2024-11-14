@@ -33,6 +33,7 @@ export type MultiUsageInstance = {
   path: string;
   error?: string;
   targetSubValue?: SubValue;
+  hideSelector?: boolean;
 };
 
 type UsagePaths = Record<string, UsagePathSubvalue[] | null>;

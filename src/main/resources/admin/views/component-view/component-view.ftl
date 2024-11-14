@@ -119,12 +119,14 @@
                   [#else]
                     <li>
                   [/#if]
-                      <input type="checkbox"
+                      [#if !(usage.hideSelector?? && usage.hideSelector)]
+                        <input type="checkbox"
                              id="select-item--${content.id}__${usage.path}"
                              name="select-item--${content.id}__${usage.path}"
                              value="${content.id}__${usage.path}"
                              class="part-select-check"
-                      />
+                        />
+                      [/#if]
                   <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]">${usage.path}[#if getvalue?? && usage.getvalue??] <span class="getvalue">(${usage.getvalue})</span>[/#if]</label>
                   </li>
                 [/#list]
@@ -172,7 +174,7 @@
            class="new-part-button"
            disabled
     />
-    <p id="btn-info">Caution - this will change content data, and may break page displays.</br><strong>Backup</strong> of all the targeted content before changing, eg. with Data Toolbox</p>
+    <p id="btn-info"><strong>Caution!</strong> This will change content data, and may break page displays.<br />Some changes (especially when replacing layouts) can't be reversed by the undo function on the next page.</br><strong>Stay safe and backup</strong> all the targeted content before changing, eg. with Data Toolbox</p>
   [#elseif displaySummaryAndUndo]
     <div class="new-part-label">
       <p><strong>Check the links above to verify the content.</strong></p>
@@ -204,13 +206,12 @@
         currentItem.contents as content
           ][#if content.hasMultiUsage
             ][#list content.multiUsage as usage
-              ]${content.id}__${usage.path},[/#list
-          ][#else
+              ][#if !(usage.hideSelector?? && usage.hideSelector)]${content.id}__${usage.path},[/#if
+            ][/#list]
+          [#else
             ]${content.id},[/#if
           ][/#list
         ]";
-
-
 
       pf.selectAllElem = document.getElementById("_select_change_all_");
       pf.targetPartNameElem = document.getElementById("new_part_ref");

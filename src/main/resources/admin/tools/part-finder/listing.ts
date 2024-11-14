@@ -119,10 +119,13 @@ const makeFlatSearchable = (object, key = "", result = {}) => {
 
 const pushUsagePath = (component, usagePaths, subPath) => {
   if (subPath) {
+    const subPathToSearch =
+      typeof subPath === "string" && subPath.indexOf("=") !== -1 ? subPath.slice(0, subPath.indexOf("=")) : subPath;
+
     const flatComponent = makeFlatSearchable(component);
     usagePaths.push({
       path: component.path,
-      targetSubValue: flatComponent[subPath],
+      targetSubValue: flatComponent[subPathToSearch],
     });
   } else {
     usagePaths.push({

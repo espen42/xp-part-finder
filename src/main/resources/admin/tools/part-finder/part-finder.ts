@@ -8,7 +8,7 @@ import { hasRole as hasAuthRole } from "/lib/xp/auth";
 import { list as listApps } from "/lib/xp/app";
 import { getComponent, type ComponentDescriptorType } from "/lib/xp/schema";
 import { find, notNullOrUndefined, runAsAdmin, startsWith, stringAfterLast, unique } from "/lib/part-finder/utils";
-import type { ComponentList } from "./part-finder.freemarker";
+import type { ComponentItem, ComponentList } from "./part-finder.freemarker";
 import type { ComponentViewParams } from "/admin/views/component-view/component-view.freemarker";
 import type { Header, Link } from "/admin/views/header/header.freemarker";
 import { createEditorFunc } from "/admin/tools/part-finder/editor";
@@ -54,6 +54,35 @@ function parseComponentType(str: string = ""): ComponentDescriptorType | undefin
   return undefined;
 }
 
+const getValueRequest = (req): undefined | string => {
+  const getValueParam = (req.params.getvalue || "").trim();
+  return getValueParam === "undefined" || getValueParam === "false" || getValueParam === "" ? undefined : getValueParam;
+};
+// The request parameter "getvalue" can be just a path to a value on the component data (eg. "config.layout._selected"),
+// but it can also have a "=" and a target value after (eg. 'config.layout._selected="two"'). If it does, this is used
+// to remove the checkbox selector on usage items (component paths) where the value does NOT match whatever comes after the "="
+// (eg. the URI parameter '...&getvalue=config.layout._selected="two"' will display all usages, but only a checkbox next to the
+// items whose values is the string "two".
+const filterSelectorsByMatchingGetvalue = (currentItem: ComponentItem | undefined, getValueString) => {
+  try {
+    if (currentItem && getValueString && getValueString.indexOf("=") !== -1) {
+      const targetValue = JSON.parse(getValueString.substring(getValueString.indexOf("=") + 1));
+
+      currentItem.contents = currentItem.contents.map((contentItem) => ({
+        ...contentItem,
+        multiUsage: contentItem.multiUsage.map((usage) => {
+          if (usage.targetSubValue !== targetValue) {
+            usage.hideSelector = true;
+          }
+          return usage;
+        }),
+      }));
+    }
+  } catch (e) {
+    log.error(e);
+  }
+};
+
 export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const currentItemType = parseComponentType(req.params.type);
   const componentKey = req.params.key;
@@ -70,13 +99,15 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     if (component) {
       const currentItem = getComponentUsagesInRepo(component, cmsRepoIds, req.params);
 
+      const getValueParam = getValueRequest(req);
+      filterSelectorsByMatchingGetvalue(currentItem, getValueParam);
+
       const model: ComponentViewParams = {
         currentItem,
         displayReplacer: !!req.params.replace && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
         displaySummaryAndUndo: false,
       };
-      const getValueParam = (req.params.getvalue || "").trim();
-      if (getValueParam !== "undefined" && getValueParam !== "false" && getValueParam !== "") {
+      if (getValueParam) {
         model.getvalue = getValueParam;
       }
 
@@ -134,6 +165,9 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
   const currentAppKey = getAppKey(componentKey);
 
+  const getValueParam = getValueRequest(req);
+  filterSelectorsByMatchingGetvalue(currentItem, getValueParam);
+
   const model: ComponentList & ComponentViewParams & Header = {
     title: `${PAGE_TITLE} - ${currentItem?.displayName}`,
     displayName: PAGE_TITLE,
@@ -158,8 +192,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
       },
     ].filter((list) => list.items.length > 0),
   };
-  const getValueParam = (req.params.getvalue || "").trim();
-  if (getValueParam !== "undefined" && getValueParam !== "false" && getValueParam !== "") {
+
+  if (getValueParam) {
     model.getvalue = getValueParam;
   }
 
