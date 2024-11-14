@@ -1,6 +1,7 @@
 import { getUser as getAuthUser } from "/lib/xp/auth";
 import { Results } from "/admin/tools/part-finder/results";
 import { find, findIndex } from "/lib/part-finder/utils";
+import { LAYOUT_KEY } from "/admin/tools/part-finder/part-finder";
 
 // If a content has multiple usages of a component, and not all of those components are targeted for change here, then
 // the indexConfig of that component should be copied instead of renamed, in order to retain the
