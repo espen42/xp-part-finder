@@ -1,8 +1,17 @@
-import { EditorResult } from "/admin/tools/part-finder/editor";
 import type { ContentUsage, MultiUsageInstance } from "/admin/tools/part-finder/part-finder.freemarker";
+import { getToolUrl } from "/lib/xp/admin";
+
+type EditorResult = {
+  id: string;
+  url: string;
+  displayName: string;
+  path: string;
+  // Absence of error value signifies a successful operation:
+  error?: string;
+  componentPath: string[] | string | null;
+};
 
 const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
-
   if (currentContent.hasMultiUsage === !wantedValue) {
     log.warning(
       "Mix-up on a content result, tried setting .hasMultiUsage to " +
@@ -35,7 +44,6 @@ const insertAndGetSummaryContent = (contents: ContentUsage[], result: EditorResu
 };
 
 const setMultiUsage = (currentContent: ContentUsage, result: EditorResult) => {
-
   if ("string" === typeof result.componentPath) {
     const usage: MultiUsageInstance = {
       path: result.componentPath,
@@ -65,27 +73,90 @@ const setMultiUsage = (currentContent: ContentUsage, result: EditorResult) => {
       currentContent.error = result.error;
     }
 
-    setHasMultiUsage(currentContent, false);
+    setHasMultiUsage(currentContent, true);
   }
 };
 
-export const buildContentResult = (editorResults: EditorResult[]): ContentUsage[] => {
-  const contents: ContentUsage[] = [];
+export class Results {
+  results: EditorResult[];
+  sourceKey: string;
+  newKey: string;
+  repoName: string;
+  targetComponentType: string;
 
-  editorResults.forEach((result) => {
-    const currentContent = insertAndGetSummaryContent(contents, result);
-    setMultiUsage(currentContent, result);
-  });
+  constructor(sourceKey: string, newKey: string, targetComponentType: string) {
+    this.results = [];
+    this.repoName = ".setRepoContext hasn't run yet";
+    this.sourceKey = sourceKey;
+    this.newKey = newKey;
+    this.targetComponentType = targetComponentType;
+  }
 
-  contents.forEach((currentContent) => {
-    if (currentContent.multiUsage.length === 1) {
-      currentContent.hasMultiUsage = false;
-      if (!currentContent.error && currentContent.multiUsage[0].error) {
-        currentContent.error = currentContent.multiUsage[0].error;
+  setRepoContext(repoName: string) {
+    this.repoName = repoName;
+  }
+
+  reportSuccess(contentItem, componentPath) {
+    this.results.push({
+      id: contentItem?._id,
+      url: contentItem
+        ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${this.repoName}/edit/${contentItem?._id}`
+        : "",
+      displayName: contentItem?.displayName || "",
+      path: contentItem?._path || "",
+      componentPath: componentPath || null,
+    });
+
+    log.info(
+      `OK: Replacing ${this.targetComponentType} key on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+        componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
+      }), from '${this.sourceKey}' to '${this.newKey}'`,
+    );
+  }
+
+  // On errors, log them, and since nothing should be changed in the data (atomic change: the original contentitem should
+  // be returned), overwrite previous success results.
+  markError(contentItem, componentPath: string | null, error: unknown, knownId?: string) {
+    this.results = [
+      {
+        id: contentItem?._id || knownId || "",
+        url: contentItem
+          ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${this.repoName}/edit/${contentItem?._id}`
+          : "",
+        displayName: contentItem?.displayName || "",
+        path: contentItem?._path || "",
+        componentPath: componentPath,
+        error: error instanceof Error ? error.message : "string" === typeof error ? error : "Unknown error, see log",
+      },
+    ];
+
+    log.warning(
+      `Error trying to replace ${this.targetComponentType} key on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+        componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
+      }), from '${this.sourceKey}}' to '${this.newKey}':`,
+    );
+
+    log.error(error);
+  }
+
+  buildContentResult(): ContentUsage[] {
+    const contents: ContentUsage[] = [];
+
+    this.results.forEach((result) => {
+      const currentContent = insertAndGetSummaryContent(contents, result);
+      setMultiUsage(currentContent, result);
+    });
+
+    contents.forEach((currentContent) => {
+      if (currentContent.multiUsage.length === 0) {
+        currentContent.hasMultiUsage = false;
+        if (!currentContent.error && currentContent.multiUsage[0].error) {
+          currentContent.error = currentContent.multiUsage[0].error;
+        }
+        currentContent.multiUsage = [];
       }
-      currentContent.multiUsage = [];
-    }
-  });
+    });
 
-  return contents;
-};
+    return contents;
+  }
+}

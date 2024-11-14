@@ -82,7 +82,7 @@ export function getComponentUsagesInRepo(
           ...item,
           getvalue: JSON.stringify(item.targetSubValue),
         }));
-        if (relevantUsages.length > 1) {
+        if (relevantUsages.length > 0) {
           content.hasMultiUsage = true;
         }
       }
@@ -119,10 +119,13 @@ const makeFlatSearchable = (object, key = "", result = {}) => {
 
 const pushUsagePath = (component, usagePaths, subPath) => {
   if (subPath) {
+    const subPathToSearch =
+      typeof subPath === "string" && subPath.indexOf("=") !== -1 ? subPath.slice(0, subPath.indexOf("=")) : subPath;
+
     const flatComponent = makeFlatSearchable(component);
     usagePaths.push({
       path: component.path,
-      targetSubValue: flatComponent[subPath],
+      targetSubValue: flatComponent[subPathToSearch],
     });
   } else {
     usagePaths.push({
@@ -131,17 +134,21 @@ const pushUsagePath = (component, usagePaths, subPath) => {
   }
 };
 
-function getUsagePaths(hit, type: string, key: string, subPath: string | undefined): UsagePathSubvalue[] | null {
+function getUsagePaths(
+  hit: { page?; _path: string },
+  targetTypeUpperCase: string,
+  targetDescriptor: string,
+  subPath: string | undefined,
+): UsagePathSubvalue[] | null {
   const usagePaths: UsagePathSubvalue[] = [];
-  const targetType = type.toLowerCase();
-  const regionType = LAYOUT_KEY.toLowerCase();
+  const targetType = targetTypeUpperCase.toLowerCase();
 
-  switch (type) {
+  switch (targetTypeUpperCase) {
     case LAYOUT_KEY:
       Object.keys(hit?.page?.regions || {}).forEach((rkey) => {
         const region = (hit?.page?.regions || {})[rkey] || { components: [] };
         region.components.forEach((component) => {
-          if (component.descriptor === key && component.type === targetType) {
+          if (component.descriptor === targetDescriptor && component.type === targetType) {
             pushUsagePath(component, usagePaths, subPath);
           }
         });
@@ -156,16 +163,16 @@ function getUsagePaths(hit, type: string, key: string, subPath: string | undefin
       Object.keys(hit?.page?.regions || {}).forEach((regionName) => {
         const region = (hit?.page?.regions || {})[regionName] || { components: [] };
         region.components.forEach((component) => {
-          if (component.descriptor === key && component.type === targetType) {
+          if (component.descriptor === targetDescriptor && component.type === targetType) {
             pushUsagePath(component, usagePaths, subPath);
 
             // Find parts directly in layout-level regions:
-          } else if (component.type === regionType && component.regions) {
+          } else if (component.type === LAYOUT_KEY.toLowerCase() && component.regions) {
             Object.keys(component.regions).forEach((subRegionName) => {
               const subRegion = component.regions[subRegionName] || { components: [] };
               subRegion.components.forEach((subComponent) => {
-                if (subComponent.descriptor === key && subComponent.type === targetType) {
-                  pushUsagePath(component, usagePaths, subPath);
+                if (subComponent.descriptor === targetDescriptor && subComponent.type === targetType) {
+                  pushUsagePath(subComponent, usagePaths, subPath);
                 }
               });
             });

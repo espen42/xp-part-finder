@@ -26,21 +26,22 @@
         <th class="part-selectall-col" scope="col">
           [#if displayReplacer]Replace ${currentItem.type}[#else]Undo[/#if]
           <br/>
-            <input type="checkbox"
-                   id="_select_change_all_"
-                   name="_select_change_all_"
-                   value="change-all"
-                   class="part-selectall-check part-select-check"
-            />
-            <label for="_select_change_all_" class="part-selectall-label">
-              Select all
-            </label>
-        </th>
-      [/#if]
-
-      [#if getvalue??]
-        <th scope="col">
-          ${getvalue}
+            <div class="select-all-container">
+              <input type="checkbox"
+                     id="_select_change_all_"
+                     name="_select_change_all_"
+                     value="change-all"
+                     class="part-selectall-check part-select-check"
+              />
+              <label for="_select_change_all_" class="part-selectall-label">
+                Select all
+              </label>
+            </div>
+          [#if getvalue??]
+            <span class="getvalue">
+                  (${getvalue})
+                </span>
+          [/#if]
         </th>
       [/#if]
     </tr>
@@ -101,9 +102,9 @@
             <td>
               <div>
                 [#if displayReplacer]
-                  Multiple usages:
+                  Usages:
                 [#else]
-                  Individual undo:
+                  Undo:
                 [/#if]
               </div>
               <ul class="multi-usage-selectors">
@@ -118,13 +119,15 @@
                   [#else]
                     <li>
                   [/#if]
-                      <input type="checkbox"
+                      [#if !(usage.hideSelector?? && usage.hideSelector)]
+                        <input type="checkbox"
                              id="select-item--${content.id}__${usage.path}"
                              name="select-item--${content.id}__${usage.path}"
                              value="${content.id}__${usage.path}"
                              class="part-select-check"
-                      />
-                      <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]">${usage.path}</label>
+                        />
+                      [/#if]
+                  <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]">${usage.path}[#if getvalue?? && usage.getvalue??] <span class="getvalue">(${usage.getvalue})</span>[/#if]</label>
                   </li>
                 [/#list]
               </ul>
@@ -152,26 +155,6 @@
               </td>
           [/#if]
         [/#if]
-
-        [#if getvalue??]
-          <td>
-            [#-- column 4, multi-path option --]
-            [#if content.hasMultiUsage]
-            <div>Value:</div>
-            <ul class="multi-usage-selectors">
-              [#list content.multiUsage as usage]
-                <li>
-                  [#if usage.getvalue??]
-                    ${usage.getvalue}
-                  [/#if]
-                </li>
-              [/#list]
-            </ul>
-            [#else]
-            [/#if]
-
-          </td>
-        [/#if]
       </tr>
     [/#list]
   </table>
@@ -191,7 +174,7 @@
            class="new-part-button"
            disabled
     />
-    <p id="btn-info">Caution - this will change content data, and may break page displays.</br><strong>Backup</strong> of all the targeted content before changing, eg. with Data Toolbox</p>
+    <p id="btn-info"><strong>Caution!</strong> This will change content data, and may break page displays.<br />Some changes (especially when replacing layouts) can't be reversed by the undo function on the next page.</br><strong>Stay safe and backup</strong> all the targeted content before changing, eg. with Data Toolbox</p>
   [#elseif displaySummaryAndUndo]
     <div class="new-part-label">
       <p><strong>Check the links above to verify the content.</strong></p>
@@ -223,13 +206,12 @@
         currentItem.contents as content
           ][#if content.hasMultiUsage
             ][#list content.multiUsage as usage
-              ]${content.id}__${usage.path},[/#list
-          ][#else
+              ][#if !(usage.hideSelector?? && usage.hideSelector)]${content.id}__${usage.path},[/#if
+            ][/#list]
+          [#else
             ]${content.id},[/#if
           ][/#list
         ]";
-
-
 
       pf.selectAllElem = document.getElementById("_select_change_all_");
       pf.targetPartNameElem = document.getElementById("new_part_ref");

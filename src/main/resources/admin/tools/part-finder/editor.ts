@@ -1,21 +1,12 @@
 import { getUser as getAuthUser } from "/lib/xp/auth";
-import { getToolUrl } from "/lib/xp/admin";
-
-
-export type EditorResult = {
-  id: string;
-  url: string;
-  displayName: string;
-  path: string;
-  // Absence of error value signifies a successful operation.
-  error?: string;
-  componentPath: string[] | string | null;
-};
+import { Results } from "/admin/tools/part-finder/results";
+import { find, findIndex } from "/lib/part-finder/utils";
+import { LAYOUT_KEY } from "/admin/tools/part-finder/part-finder";
 
 // If a content has multiple usages of a component, and not all of those components are targeted for change here, then
 // the indexConfig of that component should be copied instead of renamed, in order to retain the
 // information for the component instances that still use the old one.
-const detectCompPathsToPreserve = (contentItem, targetKey, targetComponentType, targetComponentPaths) => {
+const detectCompPathPreservation = (contentItem, targetKey, targetComponentType, targetComponentPaths) => {
   const untargetedPaths =
     !targetComponentPaths || !targetComponentPaths.length || !targetComponentPaths[0]
       ? []
@@ -42,20 +33,158 @@ const detectCompPathsToPreserve = (contentItem, targetKey, targetComponentType, 
   return untargetedPaths.length > 0;
 };
 
+const verifyAllChangesWereMade = (changedComponents, requestedComponentPaths) => {
+  const changesMade = Object.keys(changedComponents).length;
+
+  if (
+    !changesMade ||
+    // If null, no specific paths were requested and all matched components should have been changed
+    (requestedComponentPaths !== null && requestedComponentPaths.length > changesMade)
+  ) {
+    log.warning(
+      `Missing change request(s): ${JSON.stringify(
+        (requestedComponentPaths || []).filter((path) => !!changedComponents[path]),
+      )}`,
+    );
+    throw Error("Not all requested changes were made.");
+  }
+};
+
+const verifyAndGetCompPath = (component): string => {
+  if (!component?.path) {
+    log.warning("Component without path: " + JSON.stringify(component));
+    throw Error("Couldn't resolve path in a component");
+  }
+  return component?.path;
+};
+
+const replaceChangedComponentsInClone = (componentPath, changedComponents, clonedContentItem) => {
+  const newComponent = changedComponents[componentPath];
+
+  const index = findIndex<{ path: string }>(clonedContentItem.components || [], (comp) => comp.path === componentPath);
+  if (index === -1) {
+    throw Error(
+      `Replacement component with path '${componentPath}', but no matching path was found in the cloned content item`,
+    );
+  }
+  // Replace component in the same place
+  clonedContentItem.components[index] = newComponent;
+};
+
+const changeOrCopyIndexConfig = (
+  currentOrigConfig,
+  newIndexConfigs,
+  origIndexConfigs,
+  preserveSomeComponentPaths,
+  configSearchPattern,
+  configReplacePattern,
+  configReplaceTarget,
+) => {
+  if ((currentOrigConfig?.path || "").match(configSearchPattern)) {
+    const newPath = currentOrigConfig.path.replace(configReplacePattern, configReplaceTarget);
+
+    const alreadyPresent = find<{ path: string }>(origIndexConfigs, (config) => config.path === newPath);
+    if (!alreadyPresent) {
+      // Spread avoids mutation
+      const newConfig = {
+        ...currentOrigConfig,
+        path: newPath,
+      };
+      newIndexConfigs.push(newConfig);
+    }
+
+    if (preserveSomeComponentPaths) {
+      // To preserve (copy, not overwrite), keep the original
+      newIndexConfigs.push(currentOrigConfig);
+    }
+  } else {
+    // If no match, keep the original:
+    newIndexConfigs.push(currentOrigConfig);
+  }
+};
+
+const componentMatchesTarget = (component, targetComponentType, oldDescriptor, targetComponentPath) =>
+  component.type === targetComponentType &&
+  (component[targetComponentType] || {}).descriptor === oldDescriptor &&
+  component.path === targetComponentPath;
+
+// By now, established a match: component type, descriptor and path matches the target.
+// So deep-clone the component data to avoid mutation, and add the clone to the collection of data to store later,
+// with path as key
+const cloneAndMarkForStorage = (
+  component,
+  targetComponentType,
+  oldAppKeyDashed,
+  oldComponentKey,
+  newAppKey,
+  newAppKeyDashed,
+  newComponentKey,
+  changedComponents,
+
+  // TODO: REMOVE THIS ARG WHEN layoutDefault MIGRATION IS DONE:
+  migrateSelectedLayoutConfig,
+) => {
+  const componentClone = {
+    ...component,
+    [targetComponentType]: {
+      ...component[targetComponentType],
+      descriptor: `${newAppKey}:${newComponentKey}`,
+      config: {
+        ...component[targetComponentType].config,
+        [newAppKeyDashed]: {
+          ...component[targetComponentType].config[oldAppKeyDashed],
+          [newComponentKey]: component[targetComponentType].config[oldAppKeyDashed][oldComponentKey],
+        },
+      },
+    },
+  };
+
+  if (oldAppKeyDashed !== newAppKeyDashed) {
+    delete componentClone[targetComponentType].config[oldAppKeyDashed];
+  }
+  if (oldComponentKey !== newComponentKey) {
+    delete componentClone[targetComponentType].config[newAppKeyDashed][oldComponentKey];
+  }
+
+  // TODO: REMOVE WHEN layoutDefault MIGRATION IS DONE - FROM HERE...
+  const layoutConfig = {
+    ...(((componentClone[targetComponentType].config || {})[newAppKeyDashed] || {})[newComponentKey] || {}),
+  };
+  if (
+    migrateSelectedLayoutConfig &&
+    Object.keys(layoutConfig).length &&
+    layoutConfig.layout?._selected &&
+    layoutConfig.layout[layoutConfig.layout._selected]
+  ) {
+    log.info(
+      `    Also migrating ${targetComponentType}'s config.layout['${layoutConfig.layout._selected}'] down to .config`,
+    );
+    for (const key in layoutConfig.layout[layoutConfig.layout._selected]) {
+      layoutConfig[key] = layoutConfig.layout[layoutConfig.layout._selected][key];
+    }
+    delete layoutConfig.layout[layoutConfig.layout._selected];
+    delete layoutConfig.layout._selected;
+
+    componentClone[targetComponentType].config[newAppKeyDashed][newComponentKey] = layoutConfig;
+  }
+  // TODO: ...TO HERE.
+
+  changedComponents[component.path] = componentClone;
+};
+
 export const createEditorFunc = (
-  repoName: string,
   oldAppKey: string,
   oldComponentKey: string,
   newAppKey: string,
   newComponentKey: string,
   targetComponentType: string,
-  results: EditorResult[],
+  results: Results,
   componentPathsPerId: Record<string, string[] | null>,
 ) => {
   const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
   const newAppKeyDashed = newAppKey.replace(/\./g, "-");
 
-  const targetKey = `${oldAppKey}:${oldComponentKey}`;
+  const oldDescriptor = `${oldAppKey}:${oldComponentKey}`;
   const pathPatternString =
     "components\\." + targetComponentType + "\\.config\\." + oldAppKeyDashed + "\\." + oldComponentKey;
 
@@ -71,141 +200,132 @@ export const createEditorFunc = (
     throw Error("Couldn't resolve user.key: " + JSON.stringify(user));
   }
 
+  // IMPORTANT!
+  // Take care to avoid indirect mutation of 'contentItem'! Don't mutate subobjects and arrays that are read from below
+  // the 'contentItem' object ( eg. contentItem?._indexConfig?.configs[i].config ).
+  //
+  // The goal is an atomic data update so we avoid storing half-baked data: the updated data
+  // is not inserted into contentItem until right before it's returned at the end, so that all operations are successful
+  // before any data is actually changed - .
+  //
+  // 1. Read out data from below contentItem,
+  // 2. write to / perform operations on new and intermediate objects/arrays,
+  // 3. only when everything's completed successfully the intermediate objects/arrays overwrite data in contentItem.
+  //
+  // On errors, report the error and return the original contentItem unchanged.
   const editor = (contentItem) => {
-    const id = contentItem?._id;
-    const targetComponentPaths = componentPathsPerId[id] === null ? [null] : componentPathsPerId[id];
-
-
-    const preserveSomeComponentPaths = detectCompPathsToPreserve(
-      contentItem,
-      targetKey,
-      targetComponentType,
-      targetComponentPaths,
-    );
-
-
-    for (let p = 0; p < targetComponentPaths.length; p++) {
-      const targetComponentPath = targetComponentPaths[p];
-
-      try {
-        for (let i = 0; i < (contentItem?._indexConfig?.configs || []).length; i++) {
-          const config = contentItem?._indexConfig?.configs[i];
-
-          if ((config.path || "").match(configSearchPattern)) {
-            const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
-
-            if (preserveSomeComponentPaths) {
-              const newConfig = {
-                ...config,
-                path: newPath,
-              };
-              contentItem?._indexConfig?.configs.push(newConfig);
-            } else {
-              config.path = newPath;
-            }
-          }
-        }
-        contentItem._indexConfig.configs = contentItem._indexConfig.configs.map((config) => {
-          if ((config.path || "").match(configSearchPattern)) {
-
-            const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
-            config.path = newPath;
-          }
-          return config;
-        });
-
-        contentItem.components = contentItem.components.map((component) => {
-          /*
-          Example component: {
-            "type": "layout",
-            "path": "/main/0",
+    /*
+    Example component structure in a content: {
+    "type": "layout",
+    "path": "/main/0",
+    "layout": {
+      "descriptor": "no.posten.website:layoutDefault",
+      "config": {
+        "no-posten-website": {
+          "layoutDefault": {
             "layout": {
-              "descriptor": "no.posten.website:layoutDefault",
-              "config": {
-                "no-posten-website": {
-                  "layoutDefault": {
-                    "layout": {
-                      "two": {
-                        "distribution": "2-1",
-                        "isFlex": false
-                      },
-                      "_selected": "two"
-                    },
-                    "marginTop": true,
-                    "marginBottom": false
-                  }
-
-           */
-
-          // Skip the edit if the component:
-          // - doesn't match the target component type
-          // - doesn't match the target component descriptor
-          // - doesn't match the target component path, if there is a target component path
-          if (
-            component.type !== targetComponentType ||
-            component[targetComponentType].descriptor !== targetKey ||
-            (targetComponentPath !== null && component.path !== targetComponentPath)
-          ) {
-            return component;
-          }
-
-          const newComponent = {
-            ...component,
-            [targetComponentType]: {
-              ...component[targetComponentType],
-              descriptor: `${newAppKey}:${newComponentKey}`,
-              config: {
-                ...component[targetComponentType].config,
-                [newAppKeyDashed]: {
-                  ...component[targetComponentType].config[oldAppKeyDashed],
-                  [newComponentKey]: component[targetComponentType].config[oldAppKeyDashed][oldComponentKey],
-                },
+              "two": {
+                "distribution": "2-1",
+                "isFlex": false
               },
+              "_selected": "two"
             },
-          };
+            "marginTop": true,
+            "marginBottom": false
+          } */
 
-          if (oldAppKeyDashed !== newAppKeyDashed) {
-            delete newComponent[targetComponentType].config[oldAppKeyDashed];
+    const changedComponents: { [path: string]: { path: string } } = {};
+    const newIndexConfigs: object[] = [];
+    let lastTargetedComponentPath: string | null = null;
+
+    const id = contentItem?._id;
+
+    try {
+      // List either selected paths to target, or if none are specifically targeted: all available component paths
+      const targetComponentPaths =
+        componentPathsPerId[id] !== null
+          ? componentPathsPerId[id]
+          : (contentItem?.components || [])
+              .map(
+                (component) =>
+                  component.type === targetComponentType &&
+                  (component[targetComponentType] || {}).descriptor === oldDescriptor &&
+                  component?.path,
+              )
+              .filter((path) => !!path);
+
+      const preserveSomeComponentPaths = detectCompPathPreservation(
+        contentItem,
+        oldDescriptor,
+        targetComponentType,
+        targetComponentPaths,
+      );
+
+      contentItem.components.forEach((component) => {
+        for (const targetComponentPath of targetComponentPaths) {
+          lastTargetedComponentPath = verifyAndGetCompPath(component);
+
+          if (componentMatchesTarget(component, targetComponentType, oldDescriptor, targetComponentPath)) {
+            cloneAndMarkForStorage(
+              component,
+              targetComponentType,
+              oldAppKeyDashed,
+              oldComponentKey,
+              newAppKey,
+              newAppKeyDashed,
+              newComponentKey,
+              changedComponents,
+              component.type === LAYOUT_KEY.toLowerCase(),
+            );
           }
-          if (oldComponentKey !== newComponentKey) {
-            delete newComponent[targetComponentType].config[newAppKeyDashed][oldComponentKey];
-          }
 
-          log.info(
-            `OK: Replaced ${targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${id}${
-              targetComponentPath !== null ? ", path: " + JSON.stringify(targetComponentPath) : ""
-            }), from '${oldAppKey}:${oldComponentKey}' to '${newAppKey}:${newComponentKey}'`,
-          );
+          lastTargetedComponentPath = null;
+        }
+      });
 
-          return newComponent;
-        });
+      verifyAllChangesWereMade(changedComponents, componentPathsPerId[id]);
 
-        results.push({
-          id,
-          url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-          displayName: contentItem?.displayName || "",
-          path: contentItem?._path || "",
-          componentPath: targetComponentPath,
-        });
-      } catch (e) {
-        log.warning(
-          `Error trying to replace ${targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${id}${
-            targetComponentPath !== null ? ", path: " + JSON.stringify(targetComponentPath) : ""
-          }), from '${oldAppKey}:${oldComponentKey}' to '${newAppKey}:${newComponentKey}'`,
+      const origIndexConfigs = contentItem?._indexConfig?.configs || [];
+      for (const currentOrigConfig of origIndexConfigs) {
+        lastTargetedComponentPath = currentOrigConfig.path + " (config path)";
+
+        changeOrCopyIndexConfig(
+          currentOrigConfig,
+          newIndexConfigs,
+          origIndexConfigs,
+          preserveSomeComponentPaths,
+          configSearchPattern,
+          configReplacePattern,
+          configReplaceTarget,
         );
-        log.error(e);
-        results.push({
-          id,
-          url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-          displayName: contentItem?.displayName || "",
-          path: contentItem?._path || "",
-          error: e instanceof Error ? e.message : "Unknown error, see log",
-          componentPath: targetComponentPath,
-        });
       }
-    }
 
-    return contentItem;
+      lastTargetedComponentPath = null;
+      // Deep-clone the current content item, inject the updated data into it
+      // (overwriting existing keys), and return the clone:
+      const clonedContentItem = {
+        ...contentItem,
+        components: [...contentItem.components],
+        _indexConfig: { ...contentItem._indexConfig },
+      };
+
+      if (newIndexConfigs.length) {
+        clonedContentItem._indexConfig.configs = newIndexConfigs;
+      }
+
+      for (const componentPath in changedComponents) {
+        lastTargetedComponentPath = componentPath;
+
+        replaceChangedComponentsInClone(componentPath, changedComponents, clonedContentItem);
+        results.reportSuccess(contentItem, componentPath);
+      }
+
+      return clonedContentItem;
+    } catch (e) {
+      results.markError(contentItem, lastTargetedComponentPath, e);
+
+      return contentItem;
+    }
   };
 
   return editor;
