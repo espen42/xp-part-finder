@@ -174,7 +174,7 @@
            class="new-part-button"
            disabled
     />
-    <p id="btn-info"><strong>Caution!</strong> This will change content data, and may break page displays.<br />Some changes (especially when replacing layouts) can't be reversed by the undo function on the next page.</br><strong>Stay safe and backup</strong> all the targeted content before changing, eg. with Data Toolbox</p>
+    <p id="btn-info"><strong>Caution!</strong> This will change content data, and may break page displays.<br />Some changes (especially when errors are marked) can't be easily reversed by a new rename or the undo function on the next page.</br><strong>Stay safe and backup</strong> all the targeted content before changing, eg. with Data Toolbox</p>
   [#elseif displaySummaryAndUndo]
     <div class="new-part-label">
       <p><strong>Check the links above to verify the content.</strong></p>
