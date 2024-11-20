@@ -51,9 +51,9 @@
 
         [#-- column 1, multi-path option --]
         [#if content.hasMultiUsage]
-          <td>
+          <td class="name-column">
             [#if displaySummaryAndUndo]
-              <div>${content.displayName}</div>
+              <div>${content.displayName}<br /><span class="repo-name">Repo: ${content.repo}</span></div>
               <ul class="multi-usage-selectors">
                 [#list content.multiUsage as usage]
                   [#if usage.error??]
@@ -68,7 +68,7 @@
               </ul>
 
             [#else]
-              <div>${content.displayName}</div>
+              <div>${content.displayName}<br /><span class="repo-name">Repo: ${content.repo}</span></div>
             [/#if]
           </td>
 
@@ -76,23 +76,24 @@
         [#else]
           [#if displaySummaryAndUndo]
             [#if content.error??]
-              <td title="Failed: content ${content.displayName}. Error message: ${content.error}">
-              ❌ ${content.displayName}
+              <td  class="name-column" title="Failed: content ${content.displayName}. Error message: ${content.error}">
+              ❌ ${content.displayName}<br /><span class="repo-name">Repo: ${content.repo}</span>
             [#else]
-              <td title="Ok: changed content ${content.displayName}">
+              <td  class="name-column" title="Ok: changed content ${content.displayName}">
               <span class="okay-check">✓</span> <span class="summary-name">${content.displayName}</span>
             [/#if]
 
           [#else]
-            <td>
-              ${content.displayName}
+            <td class="name-column">
+              ${content.displayName}<br /><span class="repo-name">Repo: ${content.repo}</span>
           [/#if]
           </td>
         [/#if]
 
         [#-- column 2 --]
-        <td>
-          <a href="${content.url}" target="_blank">${content.path}</a>
+        <td class="path-column">
+          <a href="${content.url}" target="_blank" title="Open (Content Studio)">${content.path}</a>
+          <a class="preview-link" href="/admin/site/preview/${content.repo}/draft${content.path}" target="_blank" title="Preview (draft)">🔍</a>
         </td>
 
         [#if displayReplacer || displaySummaryAndUndo]

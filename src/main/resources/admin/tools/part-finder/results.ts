@@ -6,6 +6,7 @@ type EditorResult = {
   url: string;
   displayName: string;
   path: string;
+  repo: string;
   // Absence of error value signifies a successful operation:
   error?: string;
   componentPath: string[] | string | null;
@@ -34,7 +35,8 @@ const insertAndGetSummaryContent = (contents: ContentUsage[], result: EditorResu
       id: result.id,
       url: result.url,
       displayName: result.displayName,
-      path: result.path,
+      repo: result.repo,
+      path: (result.path || "").replace(/^\/content/, ""),
       multiUsage: [],
     };
     contents.push(currentContent);
@@ -103,6 +105,7 @@ export class Results {
         ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${this.repoName}/edit/${contentItem?._id}`
         : "",
       displayName: contentItem?.displayName || "",
+      repo: this.repoName,
       path: contentItem?._path || "",
       componentPath: componentPath || null,
     });
@@ -124,6 +127,7 @@ export class Results {
           ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${this.repoName}/edit/${contentItem?._id}`
           : "",
         displayName: contentItem?.displayName || "",
+        repo: this.repoName,
         path: contentItem?._path || "",
         componentPath: componentPath,
         error: error instanceof Error ? error.message : "string" === typeof error ? error : "Unknown error, see log",

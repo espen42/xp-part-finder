@@ -141,3 +141,33 @@ table.table {
 .select-all-container {
   position: relative;
 }
+
+.path-column {
+  position: relative;
+  box-sizing: border-box;
+}
+.path-column .preview-link {
+  box-sizing: border-box;
+  text-decoration: none;
+  display: inline-block;
+  padding: 4px 8px 3px;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  opacity: .7;
+}
+.path-column .preview-link:hover {
+  opacity: 1;
+  background-color: #eee;
+  border-radius: 9px 0 0 0;
+}
+.repo-name {
+  font-size: small;
+  color: #888;
+  position: relative;
+  display: inline-block;
+  bottom: 1px;
+  right: 0;
+  width: 100%;
+  text-align: right;
+}

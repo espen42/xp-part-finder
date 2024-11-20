@@ -1,7 +1,7 @@
 {
   "name": "@itemconsulting/xp-part-finder",
   "description": "Part finder",
-  "version": "1.1.0",
+  "version": "1.3.0",
   "homepage": "https://github.com/ItemConsulting/xp-part-finder",
   "license": "MIT",
   "private": true,

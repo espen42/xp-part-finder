@@ -21,6 +21,7 @@ export type ComponentItem = {
 export type ContentUsage = {
   url: string;
   displayName: string;
+  repo: string;
   path: string;
   id: string;
   error?: string;

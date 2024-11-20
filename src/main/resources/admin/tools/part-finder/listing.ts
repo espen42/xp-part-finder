@@ -217,6 +217,7 @@ function getComponentUsages(
     contents: res.hits.map((hit) => ({
       url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${hit._id}`,
       displayName: hit.displayName,
+      repo,
       path: hit._path,
       id: hit._id,
       usagePaths: {
