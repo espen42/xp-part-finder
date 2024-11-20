@@ -73,7 +73,7 @@ on the 4th and 5th usage instance of the part, in one particular content - in on
 
 ### Using the part mover
 
-Don't miss the "Caution" section after the overview!
+Don't miss the <a href="#caution"><span style="color:red">"Caution"</span></a> section after the overview!
 
 #### Enabling the GUI
 
