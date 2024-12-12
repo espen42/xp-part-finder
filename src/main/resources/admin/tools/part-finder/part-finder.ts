@@ -21,7 +21,7 @@ import {
   stringAfterLast,
   unique,
 } from "/lib/part-finder/utils";
-import type { ComponentItem, ComponentList } from "./part-finder.freemarker";
+import type { ComponentItem, ComponentList, Usage } from "./part-finder.freemarker";
 import type { ComponentViewParams } from "/admin/views/component-view/component-view.freemarker";
 import type { Header, Link } from "/admin/views/header/header.freemarker";
 
@@ -198,6 +198,14 @@ function getComponentUsages(component: Component, repository: string): Component
 
   const repo = stringAfterLast(repository, ".");
 
+  const contents = res.hits.map((hit) => ({
+    url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${hit._id}`,
+    displayName: hit.displayName,
+    path: hit._path,
+  }));
+
+  contents.sort(sortByPath);
+
   return {
     total: res.total,
     key: component.key,
@@ -206,12 +214,12 @@ function getComponentUsages(component: Component, repository: string): Component
       key: component.key,
       type: component.type,
     }),
-    contents: res.hits.map((hit) => ({
-      url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${hit._id}`,
-      displayName: hit.displayName,
-      path: hit._path,
-    })),
+    contents,
   };
+}
+
+function sortByPath(a: Usage, b: Usage): number {
+  return a.path.localeCompare(b.path);
 }
 
 function parseComponentType(str: string = ""): ComponentDescriptorType | undefined {
