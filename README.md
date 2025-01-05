@@ -5,7 +5,7 @@ update the configuration.
 
 This application gives insight into which content uses which of your components.
 
-[![](https://jitpack.io/v/no.item/xp-part-finder.svg)](https://jitpack.io/#no.item/xp-part-finder)
+[![](https://repo.itemtest.no/api/badge/latest/releases/no/item/xp-part-finder)](https://repo.itemtest.no/#/releases/no/item/xp-part-finder)
 
 ![Part finder icon](./src/main/resources/application.svg)
 
@@ -57,6 +57,8 @@ To deploy to a local sandbox, run the following command
 enonic project deploy
 ```
 
-## Deploy to Jitpack
+## Deploy to Maven
 
-Go to the [Jitpack page for xp-part-finder](https://jitpack.io/#no.item/xp-part-finder) to deploy from Github.
+```bash
+./gradlew publish -P com.enonic.xp.app.production=true
+```
