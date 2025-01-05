@@ -44,10 +44,12 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
   // If in Turbo Frame, only render the component view
   if (req.headers["turbo-frame"] === "content-view" && componentKey && currentItemType) {
-    const component = getComponent({
-      type: currentItemType,
-      key: componentKey,
-    }) as Component;
+    const component = runAsAdmin(() =>
+      getComponent({
+        type: currentItemType,
+        key: componentKey,
+      }),
+    ) as Component;
 
     if (component) {
       return {
