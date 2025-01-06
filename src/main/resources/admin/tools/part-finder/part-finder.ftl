@@ -15,7 +15,7 @@
 
     <link rel="icon" href="[@assetUrl path='images/icon.svg'/]">
     <link rel=”mask-icon” href=”[@assetUrl path='images/icon.svg'/]” color=”#000000">
-    <link rel="stylesheet" href="[@assetUrl path='styles/bundle.css'/]" />
+    <link rel="stylesheet" href="[@assetUrl path='styles/main.min.css'/]" />
 
     <script type="module" src="[@assetUrl path='hotwired__turbo/8.0.4/dist/turbo.es2017-esm.js'/]"></script>
     <script type="module" src="[@assetUrl path='scripts/move-aria-current-on-visit.mjs'/]"></script>

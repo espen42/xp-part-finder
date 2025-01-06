@@ -13,7 +13,7 @@
     "clean": "rimraf build",
     "build": "concurrently -c auto -g --timings npm:build:*",
     "minify": "concurrently -c auto -g --timings 'npm:build:browser -- --minify' npm:build:sass 'npm:build:server -- --minify' 'npm:build:static -- --minify'",
-    "build:postcss": "npx postcss src/main/resources/assets/styles/main.css -o src/main/resources/assets/styles/bundle.css && mv src/main/resources/assets/styles/bundle.css build/resources/main/assets/styles/bundle.css",
+    "build:postcss": "npx postcss src/main/resources/assets/styles/main.css -m -d build/resources/main/assets --base src/main/resources/assets --ext min.css",
     "build:server": "npx tsup -d build/resources/main",
     "check": "concurrently -c auto -g --timings npm:lint npm:check:types",
     "check:types": "concurrently -g -r --timings npm:check:types:*",
