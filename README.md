@@ -1,9 +1,7 @@
 # Part Finder
 
-When you are working on an XP-part you want to know where on your site it's being used, so that you can test it or
-update the configuration.
-
-This application gives insight into which content uses which of your components.
+When you are working on an XP-part – you might want to know all the content where it's being used. This app provides an
+admin tool that lists usage of your components (parts, layouts, pages) to help you with testing and configuration.
 
 [![](https://repo.itemtest.no/api/badge/latest/releases/no/item/xp-part-finder)](https://repo.itemtest.no/#/releases/no/item/xp-part-finder)
 
