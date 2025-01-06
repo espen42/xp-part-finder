@@ -20,9 +20,12 @@
     "check:types:server": "npx tsc --noEmit",
     "lint": "eslint --cache 'src/main/resources/**/*.ts'",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "release": "npm run build",
+    "versioning": "npx changeset version && npm i --package-lock-only && NEW_VERSION=$(node -p \"require('./package.json').version\") && sed -i \"s/version.*/version = ${NEW_VERSION}/\" gradle.properties"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.27.10",
     "@enonic-types/core": "^7",
     "@enonic-types/global": "^7",
     "@enonic-types/lib-admin": "^7",
