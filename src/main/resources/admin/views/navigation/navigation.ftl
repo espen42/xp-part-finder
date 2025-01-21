@@ -1,3 +1,10 @@
+[#-- @ftlvariable name="itemLists" type="java.util.ArrayList" --]
+[#-- @ftlvariable name="itemList.title" type="String" --]
+[#-- @ftlvariable name="itemList.items" type="String" --]
+[#-- @ftlvariable name="item.url" type="String" --]
+[#-- @ftlvariable name="item.docCount" type="Integer" --]
+[#-- @ftlvariable name="item.key" type="String" --]
+
 [#macro render itemLists currentItemKey=""]
   <move-aria-current-on-visit class="navigation">
     [#list itemLists as itemList]
@@ -9,10 +16,10 @@
             class="component-link"
             data-turbo-frame="content-view"
             data-turbo-action="advance"
-            [#if item.total > 0]href="${item.url}"[/#if]
+            [#if item.docCount > 0]href="${item.url}"[/#if]
             [#if item.key == currentItemKey]aria-current="page"[/#if]>
 
-            <b>${item.key?keep_after(":")}</b><span>&nbsp;(${item.total})</span>
+            <b>${item.key?keep_after(":")}</b><span>&nbsp;(${item.docCount})</span>
           </a>
         [/#list]
       </nav>

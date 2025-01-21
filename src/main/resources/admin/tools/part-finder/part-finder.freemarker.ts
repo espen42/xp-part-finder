@@ -1,24 +1,7 @@
+import { ComponentNavLinkList } from "/admin/views/navigation/navigation.freemarker";
+
 export type ComponentList = {
-  itemLists: ItemList[];
+  itemLists: ComponentNavLinkList[];
   currentItemKey?: string;
   currentAppKey?: string;
-};
-
-export type ItemList = {
-  title: string;
-  items: ComponentItem[];
-};
-
-export type ComponentItem = {
-  key: string;
-  displayName: string;
-  total: number;
-  url: string;
-  contents: Usage[];
-};
-
-export type Usage = {
-  url: string;
-  displayName: string;
-  path: string;
 };

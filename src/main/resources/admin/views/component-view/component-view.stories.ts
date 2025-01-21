@@ -12,10 +12,7 @@ export default {
 } satisfies Meta;
 
 const componentArticleHeader: ComponentViewParams["currentItem"] = {
-  displayName: "Article Header",
   key: "no.item.starter:article-header",
-  total: 3,
-  url: "#",
   contents: [
     {
       url: "#",

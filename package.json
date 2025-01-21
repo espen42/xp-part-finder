@@ -33,6 +33,7 @@
     "@enonic-types/lib-content": "^7",
     "@enonic-types/lib-context": "^7",
     "@enonic-types/lib-i18n": "^7",
+    "@enonic-types/lib-node": "^7",
     "@enonic-types/lib-repo": "^7",
     "@enonic-types/lib-schema": "^7",
     "@enonic-types/lib-websocket": "^7",

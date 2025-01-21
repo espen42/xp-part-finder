@@ -1,5 +1,14 @@
-import type { ComponentItem } from "/admin/tools/part-finder/part-finder.freemarker";
+export type ComponentView = {
+  key: string;
+  contents: Usage[];
+};
 
 export type ComponentViewParams = {
-  currentItem?: ComponentItem;
+  currentItem?: ComponentView;
+};
+
+export type Usage = {
+  url: string;
+  displayName: string;
+  path: string;
 };
