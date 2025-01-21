@@ -9,15 +9,34 @@ export default {
       id,
     },
   },
-} satisfies Meta;
+} satisfies Meta<ComponentViewParams>;
 
 const componentArticleHeader: ComponentViewParams["currentItem"] = {
   key: "no.item.starter:article-header",
+  headings: [
+    {
+      text: "Display name",
+      name: "displayName",
+      url: "#",
+    },
+    {
+      text: "Type",
+      name: "type",
+      url: "#",
+    },
+    {
+      text: "Path",
+      name: "_path",
+      sortDirection: "ascending",
+      url: "#",
+    },
+  ],
   contents: [
     {
       url: "#",
       displayName: "Article",
       path: "/testing/_templates/article",
+      type: "portal:page",
     },
   ],
 };

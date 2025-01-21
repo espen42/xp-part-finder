@@ -8,10 +8,13 @@ import { getComponentUsagesInRepo } from "../../views/component-view/component-v
 import type { ComponentList } from "./part-finder.freemarker";
 import type { ComponentViewParams } from "../../views/component-view/component-view.freemarker";
 import type { Header, Link } from "../../views/header/header.freemarker";
+import type { SortDirection } from "@enonic-types/core";
 
 type PartFinderQueryParams = {
   key: string;
   type: ComponentDescriptorType;
+  sort?: string;
+  dir?: string;
 };
 
 const PAGE_TITLE = "Part finder";
@@ -52,6 +55,10 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
           type: currentItemType,
         },
         cmsRepoIds,
+        {
+          field: req.params.sort ?? "_path",
+          direction: parseSortDirection(req.params.dir),
+        },
       )
     : undefined;
 
@@ -144,6 +151,16 @@ function parseComponentType(str: string = ""): ComponentDescriptorType | undefin
   const uppercasedStr = str.toUpperCase();
 
   if (uppercasedStr === "PAGE" || uppercasedStr === "LAYOUT" || uppercasedStr === "PART") {
+    return uppercasedStr;
+  }
+
+  return undefined;
+}
+
+function parseSortDirection(str: string = ""): SortDirection | undefined {
+  const uppercasedStr = str.toUpperCase();
+
+  if (uppercasedStr === "ASC" || uppercasedStr === "DESC") {
     return uppercasedStr;
   }
 
