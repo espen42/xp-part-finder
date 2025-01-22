@@ -18,6 +18,25 @@ table.table {
       min-width: 160px;
     }
   }
+
+  .sort-link {
+    text-decoration: none;
+    color: currentColor;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  [aria-sort] > [aria-hidden="true"]::after {
+    display: inline-block;
+    margin-left: var(--spacing-8);
+    content: "▼"
+  }
+
+  [aria-sort="ascending"] > [aria-hidden="true"]::after {
+    transform: rotate(180deg);
+  }
 }
 
 .part-selectall-col {

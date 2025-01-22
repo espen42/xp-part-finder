@@ -1,11 +1,9 @@
 # Part Finder
 
-When you are working on an XP-part you want to know where on your site it's being used, so that you can test it or
-update the configuration.
+When you are working on an XP-part – you might want to know all the content where it's being used. This app provides an
+admin tool that lists usage of your components (parts, layouts, pages) to help you with testing and configuration.
 
-This application gives insight into which content uses which of your components.
-
-[![](https://jitpack.io/v/no.item/xp-part-finder.svg)](https://jitpack.io/#no.item/xp-part-finder)
+[![](https://repo.itemtest.no/api/badge/latest/releases/no/item/xp-part-finder)](https://repo.itemtest.no/#/releases/no/item/xp-part-finder)
 
 ![Part finder icon](./src/main/resources/application.svg)
 
@@ -57,9 +55,11 @@ To deploy to a local sandbox, run the following command
 enonic project deploy
 ```
 
-## Deploy to Jitpack
+## Deploy to Maven
 
-Go to the [Jitpack page for xp-part-finder](https://jitpack.io/#no.item/xp-part-finder) to deploy from Github.
+```bash
+./gradlew publish -P com.enonic.xp.app.production=true
+```
 
 ## Part mover
 

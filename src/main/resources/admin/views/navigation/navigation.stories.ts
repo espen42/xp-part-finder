@@ -25,69 +25,29 @@ export const navigation: StoryObj<ComponentList> = {
         title: "Parts",
         items: [
           {
-            displayName: "Article Header",
             key: "no.item.starter:article-header",
-            total: 3,
+            docCount: 3,
             url: "#",
-            contents: [
-              {
-                url: "#",
-                displayName: "Article",
-                path: "/testing/_templates/article",
-              },
-            ],
           },
           {
-            displayName: "BlocksView",
             key: "no.item.starter:blocks-view",
-            total: 1,
+            docCount: 1,
             url: "#",
-            contents: [
-              {
-                url: "#",
-                displayName: "Article",
-                path: "/testing/_templates/article",
-              },
-            ],
           },
           {
-            displayName: "BlocksView",
             key: "no.item.starter:blocks-view",
-            total: 1,
+            docCount: 1,
             url: "#",
-            contents: [
-              {
-                url: "#",
-                displayName: "Article",
-                path: "/testing/_templates/article",
-              },
-            ],
           },
           {
-            displayName: "BlocksView",
             key: "no.item.starter:blocks-view",
-            total: 2,
+            docCount: 2,
             url: "#",
-            contents: [
-              {
-                url: "#",
-                displayName: "Article",
-                path: "/testing/_templates/article",
-              },
-            ],
           },
           {
-            displayName: "BlocksView",
             key: "no.item.starter:blocks-view",
-            total: 3,
+            docCount: 3,
             url: "#",
-            contents: [
-              {
-                url: "#",
-                displayName: "Article",
-                path: "/testing/_templates/article",
-              },
-            ],
           },
         ],
       },
@@ -95,30 +55,14 @@ export const navigation: StoryObj<ComponentList> = {
         title: "Layouts",
         items: [
           {
-            displayName: "1 Column Layout",
             key: "no.item.starter:layout-1-col",
-            total: 1,
+            docCount: 1,
             url: "#",
-            contents: [
-              {
-                url: "#",
-                displayName: "Article",
-                path: "/testing/_templates/article",
-              },
-            ],
           },
           {
-            displayName: "2 Column Layout",
             key: "no.item.starter:layout-2-col",
-            total: 0,
+            docCount: 0,
             url: "#",
-            contents: [
-              {
-                url: "#",
-                displayName: "Article",
-                path: "/testing/_templates/article",
-              },
-            ],
           },
         ],
       },

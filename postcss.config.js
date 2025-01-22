@@ -1,7 +1,10 @@
-module.exports = {
+module.exports = (ctx) => ({
+  map: ctx.options.map,
   plugins: {
     "postcss-import": {},
-    "postcss-url": {},
+    "postcss-url": {
+      url: "copy",
+    },
     "postcss-reporter": {
       clearReportedMessages: true,
     },
@@ -10,4 +13,4 @@ module.exports = {
     autoprefixer: {},
     cssnano: {},
   },
-};
+});

@@ -1,5 +1,7 @@
+import { ComponentNavLinkList } from "/admin/views/navigation/navigation.freemarker";
+
 export type ComponentList = {
-  itemLists: ItemList[];
+  itemLists: ComponentNavLinkList[];
   currentItemKey?: string;
   currentAppKey?: string;
 };
@@ -11,10 +13,10 @@ export type ItemList = {
 
 export type ComponentItem = {
   key: string;
+  url: string;
   type: string;
   displayName: string;
   total: number;
-  url: string;
   contents: ContentUsage[];
 };
 

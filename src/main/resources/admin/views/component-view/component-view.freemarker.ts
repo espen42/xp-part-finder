@@ -1,8 +1,28 @@
-import type { ComponentItem } from "/admin/tools/part-finder/part-finder.freemarker";
+export type ComponentView = {
+  key: string;
+  contents: Usage[];
+  headings: Heading[];
+};
+
+export type AriaSortDirection = "ascending" | "descending";
+
+export type Heading = {
+  text: string;
+  name: string;
+  url: string;
+  sortDirection?: AriaSortDirection;
+};
 
 export type ComponentViewParams = {
-  currentItem?: ComponentItem;
+  currentItem?: ComponentView;
   getvalue?: string;
-  displayReplacer: boolean;
-  displaySummaryAndUndo: boolean;
+  displayReplacer?: boolean;
+  displaySummaryAndUndo?: boolean;
+};
+
+export type Usage = {
+  url: string;
+  displayName: string;
+  type: string;
+  path: string;
 };

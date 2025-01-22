@@ -1,28 +1,37 @@
-import { render } from "/lib/tineikt/freemarker";
 import { getToolUrl } from "/lib/xp/admin";
-
+import { list as listApps, type Application } from "/lib/xp/app";
 import { Content, get as getContent } from "/lib/xp/content";
 import { connect as nodeConnect } from "/lib/xp/node";
 import { run as runInContext } from "/lib/xp/context";
 import { hasRole as hasAuthRole } from "/lib/xp/auth";
-import { list as listApps } from "/lib/xp/app";
-import { getComponent, type ComponentDescriptorType } from "/lib/xp/schema";
-import { find, notNullOrUndefined, runAsAdmin, startsWith, stringAfterLast, unique } from "/lib/part-finder/utils";
-import type { ComponentItem, ComponentList } from "./part-finder.freemarker";
-import type { ComponentViewParams } from "/admin/views/component-view/component-view.freemarker";
-import type { Header, Link } from "/admin/views/header/header.freemarker";
-import { createEditorFunc } from "/admin/tools/part-finder/editor";
-import {
-  Component,
-  getCMSRepoIds,
-  getComponentUsagesInRepo,
-  listComponentsInApplication,
-} from "/admin/tools/part-finder/listing";
-import { Results } from "/admin/tools/part-finder/results";
+import { list as listRepos } from "/lib/xp/repo";
+import { listComponents, type ComponentDescriptorType, type ComponentDescriptor } from "/lib/xp/schema";
 
-export type PartFinderQueryParams = {
+import { render } from "/lib/tineikt/freemarker";
+
+import {
+  stringAfterLast,
+  assertIsDefined,
+  getPartFinderUrl,
+  notNullOrUndefined,
+  runAsAdmin,
+  startsWith,
+} from "/lib/part-finder/utils";
+import { getComponentNavLinkList } from "../../views/navigation/navigation";
+import { getComponentUsagesInRepo } from "../../views/component-view/component-view";
+import type { ComponentViewParams } from "../../views/component-view/component-view.freemarker";
+import type { Header, Link } from "../../views/header/header.freemarker";
+import type { SortDirection } from "@enonic-types/core";
+import { createEditorFunc } from "/admin/tools/part-finder/editor";
+
+import { Results } from "/admin/tools/part-finder/results";
+import { ComponentItem, ComponentList } from "/admin/tools/part-finder/part-finder.freemarker";
+
+type PartFinderQueryParams = {
   key: string;
-  type: string;
+  type: ComponentDescriptorType;
+  sort?: string;
+  dir?: string;
   replace?: string;
   getvalue?: string;
 };
@@ -64,133 +73,123 @@ const getValueRequest = (req): undefined | string => {
 // (eg. the URI parameter '...&getvalue=config.layout._selected="two"' will display all usages, but only a checkbox next to the
 // items whose values is the string "two".
 const filterSelectorsByMatchingGetvalue = (currentItem: ComponentItem | undefined, getValueString) => {
-  try {
-    if (currentItem && getValueString && getValueString.indexOf("=") !== -1) {
-      const targetValue = JSON.parse(getValueString.substring(getValueString.indexOf("=") + 1));
+  if (currentItem && getValueString && getValueString.indexOf("=") !== -1) {
+    const targetValue = JSON.parse(getValueString.substring(getValueString.indexOf("=") + 1));
 
-      currentItem.contents = currentItem.contents.map((contentItem) => ({
-        ...contentItem,
-        multiUsage: contentItem.multiUsage.map((usage) => {
-          if (usage.targetSubValue !== targetValue) {
-            usage.hideSelector = true;
-          }
-          return usage;
-        }),
-      }));
-    }
-  } catch (e) {
-    log.error(e);
+    currentItem.contents = currentItem.contents.map((contentItem) => ({
+      ...contentItem,
+      multiUsage: contentItem.multiUsage.map((usage) => {
+        if (usage.targetSubValue !== targetValue) {
+          usage.hideSelector = true;
+        }
+        return usage;
+      }),
+    }));
   }
 };
 
 export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const currentItemType = parseComponentType(req.params.type);
-  const componentKey = req.params.key;
+  const currentItemKey = req.params.key;
+  const installedApps = listAppsWithComponents();
 
-  const cmsRepoIds = getCMSRepoIds();
-
-  // If in Turbo Frame, only render the component view
-  if (req.headers["turbo-frame"] === "content-view" && componentKey && currentItemType) {
-    const component = getComponent({
-      type: currentItemType,
-      key: componentKey,
-    }) as Component;
-
-    if (component) {
-      const currentItem = getComponentUsagesInRepo(component, cmsRepoIds, req.params);
-
-      const getValueParam = getValueRequest(req);
-      filterSelectorsByMatchingGetvalue(currentItem, getValueParam);
-
-      const model: ComponentViewParams = {
-        currentItem,
-        displayReplacer: !!req.params.replace && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
-        displaySummaryAndUndo: false,
-      };
-      if (getValueParam) {
-        model.getvalue = getValueParam;
-      }
-
-      return {
-        body: wrapInHtml({
-          markup: render<ComponentViewParams>(COMPONENT_VIEW, model),
-          title: `${PAGE_TITLE} - ${component.displayName}`,
-        }),
-      };
-    }
-  }
-
-  const installedApps = runAsAdmin(() => listApps());
-
-  const allParts = listComponentsInApplication(installedApps, PART_KEY);
-  const allLayouts = listComponentsInApplication(installedApps, LAYOUT_KEY);
-  const allPages = listComponentsInApplication(installedApps, PAGE_KEY);
-
-  const parts = allParts.map((component) => {
-    return getComponentUsagesInRepo(component, cmsRepoIds, req.params);
-  });
-  const layouts = allLayouts.map((component) => {
-    return getComponentUsagesInRepo(component, cmsRepoIds, req.params);
-  });
-  const pages = allPages.map((component) => {
-    return getComponentUsagesInRepo(component, cmsRepoIds, req.params);
-  });
-
-  const allItems = parts.concat(layouts).concat(pages);
-
-  if (!componentKey) {
-    return {
-      redirect: allItems[0].url,
-    };
-  }
-
-  const currentItem = find(allItems, (item) => item.key === componentKey);
-
-  const appKeysWithUsedComponents = unique(allItems.map((item) => getAppKey(item.key)));
-
-  const filters = appKeysWithUsedComponents
-    .map((appKey) => find(installedApps, (app) => app.key === appKey))
-    .filter(notNullOrUndefined)
-    .map<Link>((app) => ({
-      text: app.key ?? "",
-      url: find(allItems, (component) => startsWith(component.key, app.key))?.url ?? "",
-    }));
-
-  if (appKeysWithUsedComponents.length === 0) {
+  if (installedApps.length === 0) {
     return {
       status: 404,
       body: "<h1>No installed applications found</h1>",
     };
   }
 
-  const currentAppKey = getAppKey(componentKey);
+  if (!currentItemKey) {
+    const firstComponent = getFirstComponent(installedApps[0]);
+
+    assertIsDefined(firstComponent);
+
+    return {
+      redirect: getPartFinderUrl({
+        key: firstComponent.key,
+        type: firstComponent.type,
+      }),
+    };
+  }
+
+  const currentAppKey = getAppKey(currentItemKey);
+  const cmsRepoIds = getCMSRepoIds();
+  const currentItem = currentItemType
+    ? getComponentUsagesInRepo(
+        {
+          key: currentItemKey,
+          type: currentItemType,
+        },
+        cmsRepoIds,
+        {
+          field: req.params.sort ?? "_path",
+          direction: parseSortDirection(req.params.dir),
+        },
+      )
+    : undefined;
+
+  if (!currentItem) {
+    return {
+      status: 404,
+      body: "<h1>Component not found</h1>",
+    };
+  }
+
+  log.info(JSON.stringify({ currentItem }, null, 2));
 
   const getValueParam = getValueRequest(req);
-  filterSelectorsByMatchingGetvalue(currentItem, getValueParam);
+  filterSelectorsByMatchingGetvalue(currentItem as unknown as ComponentItem, getValueParam);
+
+  // If in Turbo Frame, only render the component view
+  if (req.headers["turbo-frame"] === "content-view") {
+    const model: ComponentViewParams = {
+      currentItem,
+      displayReplacer: !!req.params.replace && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
+      displaySummaryAndUndo: false,
+    };
+    if (getValueParam) {
+      model.getvalue = getValueParam;
+    }
+
+    return {
+      body: wrapInHtml({
+        markup: render<ComponentViewParams>(COMPONENT_VIEW, model),
+        title: `${PAGE_TITLE} - ${currentItem.key}`,
+      }),
+    };
+  }
+
+  const itemLists = getComponentNavLinkList(cmsRepoIds, currentAppKey);
+
+  const filters = installedApps.map<Link>((app) => {
+    const firstComponent = getFirstComponent(app);
+
+    return {
+      text: app.key,
+      url: firstComponent
+        ? getPartFinderUrl({
+            key: firstComponent.key,
+            type: firstComponent.type,
+          })
+        : "",
+    };
+  });
 
   const model: ComponentList & ComponentViewParams & Header = {
-    title: `${PAGE_TITLE} - ${currentItem?.displayName}`,
+    title: `${PAGE_TITLE} - ${currentItem?.key}`,
     displayName: PAGE_TITLE,
     filters,
-    currentItemKey: componentKey,
+    currentItemKey,
     currentAppKey,
     currentItem,
-    displayReplacer: !!req.params.replace,
+    displayReplacer: !!(
+      req.params.replace &&
+      req.params.replace.trim().toLowerCase() !== "undefined" &&
+      req.params.replace.trim().toLowerCase() !== "false"
+    ),
     displaySummaryAndUndo: false,
-    itemLists: [
-      {
-        title: "Parts",
-        items: parts.filter((part) => startsWith(part.key, currentAppKey)),
-      },
-      {
-        title: "Layouts",
-        items: layouts.filter((layout) => startsWith(layout.key, currentAppKey)),
-      },
-      {
-        title: "Pages",
-        items: pages.filter((page) => startsWith(page.key, currentAppKey)),
-      },
-    ].filter((list) => list.items.length > 0),
+    itemLists,
   };
 
   if (getValueParam) {
@@ -200,6 +199,45 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   return {
     body: render<ComponentList & ComponentViewParams & Header>(VIEW, model),
   };
+}
+
+function listAppsWithComponents(): Application[] {
+  return runAsAdmin(() => listApps()).filter((app) => notNullOrUndefined(getFirstComponent(app)));
+}
+
+function getFirstComponent(app: Application): ComponentDescriptor | undefined {
+  return (
+    listComponents({
+      type: PART_KEY,
+      application: app.key,
+    })[0] ??
+    listComponents({
+      type: LAYOUT_KEY,
+      application: app.key,
+    })[0] ??
+    listComponents({
+      type: PAGE_KEY,
+      application: app.key,
+    })[0]
+  );
+}
+
+function getCMSRepoIds(): string[] {
+  return runAsAdmin(() =>
+    listRepos()
+      .map((repo) => repo.id)
+      .filter((repoId) => startsWith(repoId, "com.enonic.cms")),
+  );
+}
+
+function parseSortDirection(str: string = ""): SortDirection | undefined {
+  const uppercasedStr = str.toUpperCase();
+
+  if (uppercasedStr === "ASC" || uppercasedStr === "DESC") {
+    return uppercasedStr;
+  }
+
+  return undefined;
 }
 
 //-------------------------------

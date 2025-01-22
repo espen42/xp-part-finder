@@ -1,6 +1,8 @@
 import { createPreviewServerParams, type Preview } from "@itemconsulting/xp-storybook-utils";
 import "../src/main/resources/assets/styles/main.css";
 
+declare const process: { env: { STORYBOOK_SERVER_URL?: string } };
+
 if (!process.env.STORYBOOK_SERVER_URL) {
   throw Error(`You need to create a file named ".env" with "STORYBOOK_SERVER_URL" in it. Then restart storybook.`);
 }

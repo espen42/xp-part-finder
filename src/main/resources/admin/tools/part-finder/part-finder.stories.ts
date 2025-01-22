@@ -1,6 +1,7 @@
 import id from "./part-finder.ftl";
 import { navigation } from "../../views/navigation/navigation.stories";
 import { header } from "../../views/header/header.stories";
+import { componentView } from "../../views/component-view/component-view.stories";
 import type { Meta, StoryObj } from "@itemconsulting/xp-storybook-utils";
 
 export default {
@@ -18,7 +19,7 @@ export const partFinder: StoryObj = {
     currentAppKey: header.args?.currentAppKey,
     filters: header.args?.filters,
     itemLists: navigation.args?.itemLists,
-    currentItem: navigation.args?.itemLists?.[0].items[0],
-    currentItemKey: navigation.args?.itemLists?.[0].items[0].key,
+    currentItem: componentView.args?.currentItem,
+    currentItemKey: componentView.args?.currentItem?.key,
   },
 };
