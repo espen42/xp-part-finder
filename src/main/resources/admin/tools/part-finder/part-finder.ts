@@ -35,6 +35,7 @@ export type PartFinderQueryParams = {
   dir?: string;
   replace?: string;
   getvalue?: string;
+  repo?: string;
 };
 
 export const PART_KEY = "PART";
@@ -110,6 +111,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
       redirect: getPartFinderUrl({
         key: firstComponent.key,
         type: firstComponent.type,
+        repo: req.params.repo || "",
       }),
     };
   }
@@ -122,7 +124,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     .replace(/^false$/, "");
 
   const currentAppKey = getAppKey(currentItemKey);
-  const cmsRepoIds = getCMSRepoIds();
+  const cmsRepoIds = getCMSRepoIds(req.params.repo);
   const currentItem = currentItemType
     ? getComponentUsagesInRepo(
         {
@@ -180,6 +182,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
         ? getPartFinderUrl({
             key: firstComponent.key,
             type: firstComponent.type,
+            repo: req.params.repo || "",
           })
         : "",
     };
@@ -229,11 +232,17 @@ function getFirstComponent(app: Application): ComponentDescriptor | undefined {
   );
 }
 
-function getCMSRepoIds(): string[] {
+function getCMSRepoIds(repoParam: string | undefined | null): string[] {
+  repoParam = (repoParam || "").trim().replace(/^undefined$/, "");
+  if (startsWith(repoParam, "com.enonic.cms.")) {
+    repoParam = repoParam.replace(/^com\.enonic\.cms\./, "");
+  }
+
   return runAsAdmin(() =>
     listRepos()
       .map((repo) => repo.id)
-      .filter((repoId) => startsWith(repoId, "com.enonic.cms")),
+      .filter((repoId) => startsWith(repoId, "com.enonic.cms."))
+      .filter((repoId) => !repoParam || repoId === "com.enonic.cms." + repoParam),
   );
 }
 
@@ -340,7 +349,7 @@ export function post(req: XP.Request): XP.Response {
 
   const results = new Results(sourceKey, newKey, componentType);
 
-  const repoIds = getCMSRepoIds();
+  const repoIds = getCMSRepoIds(req.params.repo);
   repoIds.forEach((targetRepo) => {
     const repoName = stringAfterLast(targetRepo, ".");
     results.setRepoContext(repoName);
