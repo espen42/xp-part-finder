@@ -1,5 +1,6 @@
 [#-- @ftlvariable name="currentItem" type="Object" --]
 [#-- @ftlvariable name="currentItem.key" type="String" --]
+[#-- @ftlvariable name="currentItem.type" type="String" --]
 [#-- @ftlvariable name="currentItem.headings" type="java.util.ArrayList" --]
 [#-- @ftlvariable name="currentItem.contents" type="java.util.ArrayList" --]
 <turbo-frame id="content-view">

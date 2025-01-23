@@ -61,8 +61,11 @@ export function runAsAdmin<T>(callback: () => T, params: ContextParams = {}): T 
   );
 }
 
+export const hasStringValue = (value) => value != null && (value + "").trim();
+
 export function getPartFinderUrl(params: Record<string, string>): string {
   const queryParams = objectKeys(params)
+    .filter((key) => hasStringValue(key) && hasStringValue(params[key]))
     .map((key) => `${key}=${encodeURIComponent(params[key])}`)
     .join("&");
 

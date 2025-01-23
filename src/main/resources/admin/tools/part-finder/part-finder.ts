@@ -27,7 +27,7 @@ import { createEditorFunc } from "/admin/tools/part-finder/editor";
 import { Results } from "/admin/tools/part-finder/results";
 import { ComponentItem, ComponentList } from "/admin/tools/part-finder/part-finder.freemarker";
 
-type PartFinderQueryParams = {
+export type PartFinderQueryParams = {
   key: string;
   type: ComponentDescriptorType;
   sort?: string;
@@ -126,6 +126,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
           field: req.params.sort ?? "_path",
           direction: parseSortDirection(req.params.dir),
         },
+        req.params.getvalue || "",
+        req.params.replace || "",
       )
     : undefined;
 
@@ -136,7 +138,6 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     };
   }
 
-  log.info(JSON.stringify({ currentItem }, null, 2));
 
   const getValueParam = getValueRequest(req);
   filterSelectorsByMatchingGetvalue(currentItem as unknown as ComponentItem, getValueParam);

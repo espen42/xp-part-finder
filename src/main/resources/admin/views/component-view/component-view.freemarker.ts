@@ -1,5 +1,6 @@
 export type ComponentView = {
   key: string;
+  type: string;
   contents: Usage[];
   headings: Heading[];
 };

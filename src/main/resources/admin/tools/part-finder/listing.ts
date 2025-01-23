@@ -16,7 +16,7 @@ import { LAYOUT_KEY, PAGE_KEY, PART_KEY, PartFinderQueryParams } from "./part-fi
 export type Component = PartDescriptor | LayoutDescriptor | PageDescriptor;
 
 function getPartFinderUrl(params: PartFinderQueryParams): string {
-  const queryParams = objectKeys(params)
+  const queryParams = (objectKeys(params) as string[])
     .filter((key) => !!key)
     .map((key: string) => `${key}=${encodeURIComponent(params[key])}`)
     .join("&");
@@ -117,10 +117,12 @@ const makeFlatSearchable = (object, key = "", result = {}) => {
   return result;
 };
 
-const pushUsagePath = (component, usagePaths, subPath) => {
-  if (subPath) {
+const pushUsagePath = (component, usagePaths, getvalueParam) => {
+  if (getvalueParam) {
     const subPathToSearch =
-      typeof subPath === "string" && subPath.indexOf("=") !== -1 ? subPath.slice(0, subPath.indexOf("=")) : subPath;
+      typeof getvalueParam === "string" && getvalueParam.indexOf("=") !== -1
+        ? getvalueParam.slice(0, getvalueParam.indexOf("="))
+        : getvalueParam;
 
     const flatComponent = makeFlatSearchable(component);
     usagePaths.push({
@@ -134,22 +136,23 @@ const pushUsagePath = (component, usagePaths, subPath) => {
   }
 };
 
-function getUsagePaths(
-  hit: { page?; _path: string },
+export function getUsagePaths(
+  content: { page?; _path: string },
   targetTypeUpperCase: string,
   targetDescriptor: string,
-  subPath: string | undefined,
+  getvalueParam: string | undefined,
 ): UsagePathSubvalue[] | null {
   const usagePaths: UsagePathSubvalue[] = [];
   const targetType = targetTypeUpperCase.toLowerCase();
+  const layoutType = LAYOUT_KEY.toLowerCase();
 
   switch (targetTypeUpperCase) {
     case LAYOUT_KEY:
-      Object.keys(hit?.page?.regions || {}).forEach((rkey) => {
-        const region = (hit?.page?.regions || {})[rkey] || { components: [] };
+      Object.keys(content?.page?.regions || {}).forEach((rkey) => {
+        const region = (content?.page?.regions || {})[rkey] || { components: [] };
         region.components.forEach((component) => {
           if (component.descriptor === targetDescriptor && component.type === targetType) {
-            pushUsagePath(component, usagePaths, subPath);
+            pushUsagePath(component, usagePaths, getvalueParam);
           }
         });
       });
@@ -160,19 +163,19 @@ function getUsagePaths(
 
     case PART_KEY:
       // Find parts directly in page-level regions
-      Object.keys(hit?.page?.regions || {}).forEach((regionName) => {
-        const region = (hit?.page?.regions || {})[regionName] || { components: [] };
+      Object.keys(content?.page?.regions || {}).forEach((regionName) => {
+        const region = (content?.page?.regions || {})[regionName] || { components: [] };
         region.components.forEach((component) => {
           if (component.descriptor === targetDescriptor && component.type === targetType) {
-            pushUsagePath(component, usagePaths, subPath);
+            pushUsagePath(component, usagePaths, getvalueParam);
 
             // Find parts directly in layout-level regions:
-          } else if (component.type === LAYOUT_KEY.toLowerCase() && component.regions) {
+          } else if (component.type === layoutType && component.regions) {
             Object.keys(component.regions).forEach((subRegionName) => {
               const subRegion = component.regions[subRegionName] || { components: [] };
               subRegion.components.forEach((subComponent) => {
                 if (subComponent.descriptor === targetDescriptor && subComponent.type === targetType) {
-                  pushUsagePath(subComponent, usagePaths, subPath);
+                  pushUsagePath(subComponent, usagePaths, getvalueParam);
                 }
               });
             });
@@ -218,7 +221,7 @@ function getComponentUsages(
       url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${hit._id}`,
       displayName: hit.displayName,
       repo,
-      path: hit._path,
+      path: hit._path.replace(/^\/content/, ""),
       id: hit._id,
       usagePaths: {
         [component.key]: getUsagePaths(hit, component.type, component.key, params.getvalue),

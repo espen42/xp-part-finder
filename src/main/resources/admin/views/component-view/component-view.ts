@@ -3,6 +3,7 @@ import { queryAllRepos } from "/lib/part-finder/nodes";
 import { getPartFinderUrl } from "/lib/part-finder/utils";
 import type { AriaSortDirection, ComponentView, Heading } from "./component-view.freemarker";
 import type { Content, SortDirection, SortDsl } from "@enonic-types/core";
+import { getUsagePaths } from "/admin/tools/part-finder/listing";
 
 const TABLE_HEADINGS: Omit<Heading, "url">[] = [
   {
@@ -10,7 +11,7 @@ const TABLE_HEADINGS: Omit<Heading, "url">[] = [
     name: "displayName",
   },
   {
-    text: "Type",
+    text: "Content type",
     name: "type",
   },
   {
@@ -28,6 +29,8 @@ export function getComponentUsagesInRepo(
   component: { key: string; type: string },
   repositories: string[],
   sort: Partial<SortDsl>,
+  getvalueParam: string,
+  replaceParam: string,
 ): ComponentView {
   const contents = queryAllRepos<Content>(repositories, {
     count: 1000,
@@ -41,21 +44,34 @@ export function getComponentUsagesInRepo(
         values: [component.key],
       },
     },
-  }).map((content) => ({
-    url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${content.repoId}/edit/${content._id}`,
-    displayName: content.displayName ?? content._name,
-    path: content._path,
-    type: content.type,
-  }));
+  }).map((content) => {
+    const repo = content.repoId.replace(/^com\.enonic\.cms\./, "");
+    return {
+      url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${content._id}`,
+      displayName: content.displayName ?? content._name,
+      path: content._path.replace(/^\/content/, ""),
+      type: content.type,
+      repo,
+      id: content._id,
+      usagePaths: {
+        [component.key]: getUsagePaths(content, component.type, component.key, getvalueParam),
+      },
+      multiUsage: [],
+      hasMultiUsage: false,
+    };
+  });
 
   return {
     key: component.key,
+    type: component.type,
     contents,
     headings: TABLE_HEADINGS.map((heading) => ({
       ...heading,
       url: getPartFinderUrl({
         key: component.key,
         type: component.type,
+        replace: replaceParam,
+        getvalue: getvalueParam,
         sort: heading.name,
         dir:
           heading.name === sort.field
