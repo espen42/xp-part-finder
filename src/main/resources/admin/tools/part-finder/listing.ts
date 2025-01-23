@@ -11,7 +11,7 @@ import {
 } from "/lib/xp/schema";
 import { ComponentItem, UsagePathSubvalue } from "/admin/tools/part-finder/part-finder.freemarker";
 import { query } from "/lib/xp/content";
-import { LAYOUT_KEY, PAGE_KEY, PART_KEY, PartFinderQueryParams } from "./part-finder";
+import { PartFinderQueryParams } from "./part-finder";
 
 export type Component = PartDescriptor | LayoutDescriptor | PageDescriptor;
 
@@ -117,75 +117,57 @@ const makeFlatSearchable = (object, key = "", result = {}) => {
   return result;
 };
 
-const pushUsagePath = (component, usagePaths, getvalueParam) => {
+const pushUsagePath = (componentPath: string, usagePaths: UsagePathSubvalue[], componentConfig, getvalueParam) => {
   if (getvalueParam) {
     const subPathToSearch =
       typeof getvalueParam === "string" && getvalueParam.indexOf("=") !== -1
         ? getvalueParam.slice(0, getvalueParam.indexOf("="))
         : getvalueParam;
 
-    const flatComponent = makeFlatSearchable(component);
+    const flatComponent = makeFlatSearchable(componentConfig);
     usagePaths.push({
-      path: component.path,
+      path: componentPath,
       targetSubValue: flatComponent[subPathToSearch],
     });
   } else {
     usagePaths.push({
-      path: component.path,
+      path: componentPath,
     });
   }
 };
 
 export function getUsagePaths(
-  content: { page?; _path: string },
+  content: { components?; _path: string },
   targetTypeUpperCase: string,
   targetDescriptor: string,
   getvalueParam: string | undefined,
 ): UsagePathSubvalue[] | null {
   const usagePaths: UsagePathSubvalue[] = [];
   const targetType = targetTypeUpperCase.toLowerCase();
-  const layoutType = LAYOUT_KEY.toLowerCase();
 
-  switch (targetTypeUpperCase) {
-    case LAYOUT_KEY:
-      Object.keys(content?.page?.regions || {}).forEach((rkey) => {
-        const region = (content?.page?.regions || {})[rkey] || { components: [] };
-        region.components.forEach((component) => {
-          if (component.descriptor === targetDescriptor && component.type === targetType) {
-            pushUsagePath(component, usagePaths, getvalueParam);
-          }
-        });
-      });
-      return usagePaths;
+  (content?.components || []).forEach((component) => {
+    /** Example component object:
+     *        {
+     *         "type": "layout",
+     *         "path": "/main/0",
+     *         "layout": {                                            <-- target type points to componentData
+     *           "descriptor": "no.posten.website:layoutDefault",
+     *           "config": {
+     *             "no-posten-website": {
+     *               "layoutDefault": {                               <-- componentConfig pointed to by componentData.config then keys from the descriptor but split at the colon
+     *                 ...
+     *                 ...
+     */
 
-    case PAGE_KEY:
-      return null;
-
-    case PART_KEY:
-      // Find parts directly in page-level regions
-      Object.keys(content?.page?.regions || {}).forEach((regionName) => {
-        const region = (content?.page?.regions || {})[regionName] || { components: [] };
-        region.components.forEach((component) => {
-          if (component.descriptor === targetDescriptor && component.type === targetType) {
-            pushUsagePath(component, usagePaths, getvalueParam);
-
-            // Find parts directly in layout-level regions:
-          } else if (component.type === layoutType && component.regions) {
-            Object.keys(component.regions).forEach((subRegionName) => {
-              const subRegion = component.regions[subRegionName] || { components: [] };
-              subRegion.components.forEach((subComponent) => {
-                if (subComponent.descriptor === targetDescriptor && subComponent.type === targetType) {
-                  pushUsagePath(subComponent, usagePaths, getvalueParam);
-                }
-              });
-            });
-          }
-        });
-      });
-      return usagePaths;
-  }
-
-  return [];
+    const componentData = (component || {})[targetType] || {};
+    const componentDescriptor = componentData.descriptor;
+    if (component?.type === targetType && componentDescriptor === targetDescriptor) {
+      const splitDescriptor = componentDescriptor.split(":");
+      const componentConfig = ((componentData.config || {})[splitDescriptor[0]] || {})[splitDescriptor[1]];
+      pushUsagePath(component.path, usagePaths, componentConfig, getvalueParam);
+    }
+  });
+  return usagePaths;
 }
 
 function getComponentUsages(
