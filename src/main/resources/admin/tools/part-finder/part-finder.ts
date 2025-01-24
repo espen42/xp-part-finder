@@ -26,6 +26,7 @@ import { createEditorFunc } from "/admin/tools/part-finder/editor";
 
 import { Results } from "/admin/tools/part-finder/results";
 import { ComponentItem, ComponentList } from "/admin/tools/part-finder/part-finder.freemarker";
+import { processMultiUsage } from "/admin/tools/part-finder/listing";
 
 export type PartFinderQueryParams = {
   key: string;
@@ -113,6 +114,13 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     };
   }
 
+  const getValueParam = getValueRequest(req);
+  const displayReplacer = !!(req.params.replace + "")
+    .trim()
+    .toLowerCase()
+    .replace(/^undefined$/, "")
+    .replace(/^false$/, "");
+
   const currentAppKey = getAppKey(currentItemKey);
   const cmsRepoIds = getCMSRepoIds();
   const currentItem = currentItemType
@@ -126,8 +134,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
           field: req.params.sort ?? "_path",
           direction: parseSortDirection(req.params.dir),
         },
-        req.params.getvalue || "",
-        req.params.replace || "",
+        getValueParam,
+        displayReplacer,
       )
     : undefined;
 
@@ -138,15 +146,15 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     };
   }
 
+  processMultiUsage(currentItem);
 
-  const getValueParam = getValueRequest(req);
   filterSelectorsByMatchingGetvalue(currentItem as unknown as ComponentItem, getValueParam);
 
   // If in Turbo Frame, only render the component view
   if (req.headers["turbo-frame"] === "content-view") {
     const model: ComponentViewParams = {
       currentItem,
-      displayReplacer: !!req.params.replace && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
+      displayReplacer: displayReplacer && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
       displaySummaryAndUndo: false,
     };
     if (getValueParam) {
@@ -161,7 +169,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     };
   }
 
-  const itemLists = getComponentNavLinkList(cmsRepoIds, currentAppKey);
+  const itemLists = getComponentNavLinkList(cmsRepoIds, currentAppKey, displayReplacer, getValueParam);
 
   const filters = installedApps.map<Link>((app) => {
     const firstComponent = getFirstComponent(app);
@@ -184,11 +192,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     currentItemKey,
     currentAppKey,
     currentItem,
-    displayReplacer: !!(
-      req.params.replace &&
-      req.params.replace.trim().toLowerCase() !== "undefined" &&
-      req.params.replace.trim().toLowerCase() !== "false"
-    ),
+    displayReplacer,
     displaySummaryAndUndo: false,
     itemLists,
   };

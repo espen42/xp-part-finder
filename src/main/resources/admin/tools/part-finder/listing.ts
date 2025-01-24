@@ -1,79 +1,6 @@
-import { flatMap, objectKeys, runAsAdmin, startsWith, stringAfterLast } from "/lib/part-finder/utils";
-import { getToolUrl } from "/lib/xp/admin";
-import { list as listRepos } from "/lib/xp/repo";
-import type { Application } from "/lib/xp/app";
-import {
-  ComponentDescriptorType,
-  type LayoutDescriptor,
-  listComponents,
-  type PageDescriptor,
-  PartDescriptor,
-} from "/lib/xp/schema";
-import { ComponentItem, UsagePathSubvalue } from "/admin/tools/part-finder/part-finder.freemarker";
-import { query } from "/lib/xp/content";
-import { PartFinderQueryParams } from "./part-finder";
+import { UsagePathSubvalue } from "/admin/tools/part-finder/part-finder.freemarker";
 
-export type Component = PartDescriptor | LayoutDescriptor | PageDescriptor;
-
-function getPartFinderUrl(params: PartFinderQueryParams): string {
-  const queryParams = (objectKeys(params) as string[])
-    .filter((key) => !!key)
-    .map((key: string) => `${key}=${encodeURIComponent(params[key])}`)
-    .join("&");
-
-  return `${getToolUrl("no.item.partfinder", "part-finder")}?${queryParams}`;
-}
-
-export function getCMSRepoIds(): string[] {
-  return runAsAdmin(() =>
-    listRepos()
-      .map((repo) => repo.id)
-      .filter((repoId) => startsWith(repoId, "com.enonic.cms")),
-  );
-}
-
-export function listComponentsInApplication(
-  installedApps: Application[],
-  type: ComponentDescriptorType,
-): PartDescriptor[] {
-  return runAsAdmin(() =>
-    flatMap(installedApps, (app) =>
-      listComponents({
-        application: app.key,
-        type,
-      }),
-    ),
-  );
-}
-
-export function getComponentUsagesInRepo(
-  component: Component,
-  repositories: string[],
-  params: Partial<PartFinderQueryParams>,
-): ComponentItem {
-  const currentItem = repositories
-    .map((repository) => getComponentUsages(component, repository, params))
-    .reduce<ComponentItem>(
-      (usages, componentUsage) => {
-        return {
-          url: componentUsage.url,
-          total: usages.total + componentUsage.total,
-          key: usages.key,
-          type: usages.type.toLowerCase(),
-          displayName: usages.displayName,
-          contents: usages.contents.concat(componentUsage.contents),
-        };
-      },
-      {
-        url: "",
-        total: 0,
-        key: component.key,
-        type: component.type.toLowerCase(),
-        displayName: component.displayName,
-        contents: [],
-      },
-    );
-
+export function processMultiUsage(currentItem) {
   if (currentItem?.contents && currentItem.contents.length) {
     currentItem.contents.forEach((content) => {
       if (content?.usagePaths) {
@@ -85,11 +12,10 @@ export function getComponentUsagesInRepo(
         if (relevantUsages.length > 0) {
           content.hasMultiUsage = true;
         }
+        delete content.usagePaths;
       }
     });
   }
-
-  return currentItem;
 }
 
 const makeFlatSearchable = (object, key = "", result = {}) => {
@@ -168,48 +94,4 @@ export function getUsagePaths(
     }
   });
   return usagePaths;
-}
-
-function getComponentUsages(
-  component: Component,
-  repository: string,
-  params: Partial<PartFinderQueryParams>,
-): ComponentItem {
-  const res = runAsAdmin(
-    () =>
-      query({
-        query: `components.${component.type}.descriptor = '${component.key}'`,
-        count: 1000,
-      }),
-    {
-      repository,
-    },
-  );
-
-  const repo = stringAfterLast(repository, ".");
-
-  return {
-    total: res.total,
-    key: component.key,
-    type: component.type.toLowerCase(),
-    displayName: component.displayName,
-    url: getPartFinderUrl({
-      key: component.key,
-      type: component.type,
-      replace: params.replace,
-      getvalue: params.getvalue,
-    }),
-    contents: res.hits.map((hit) => ({
-      url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${hit._id}`,
-      displayName: hit.displayName,
-      repo,
-      path: hit._path.replace(/^\/content/, ""),
-      id: hit._id,
-      usagePaths: {
-        [component.key]: getUsagePaths(hit, component.type, component.key, params.getvalue),
-      },
-      multiUsage: [],
-      hasMultiUsage: false,
-    })),
-  };
 }

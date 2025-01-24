@@ -29,8 +29,8 @@ export function getComponentUsagesInRepo(
   component: { key: string; type: string },
   repositories: string[],
   sort: Partial<SortDsl>,
-  getvalueParam: string,
-  replaceParam: string,
+  getvalueParam: string | undefined,
+  replaceParam: boolean,
 ): ComponentView {
   const contents = queryAllRepos<Content>(repositories, {
     count: 1000,
@@ -70,8 +70,8 @@ export function getComponentUsagesInRepo(
       url: getPartFinderUrl({
         key: component.key,
         type: component.type,
-        replace: replaceParam,
-        getvalue: getvalueParam,
+        replace: replaceParam + "",
+        getvalue: getvalueParam || "",
         sort: heading.name,
         dir:
           heading.name === sort.field
