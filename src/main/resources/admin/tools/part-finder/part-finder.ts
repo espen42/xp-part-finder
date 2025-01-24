@@ -26,7 +26,7 @@ import { createEditorFunc } from "/admin/tools/part-finder/editor";
 
 import { Results } from "/admin/tools/part-finder/results";
 import { ComponentItem, ComponentList } from "/admin/tools/part-finder/part-finder.freemarker";
-import { processMultiUsage } from "/admin/tools/part-finder/listing";
+import { processMultiUsage } from "/admin/tools/part-finder/usagePaths";
 
 export type PartFinderQueryParams = {
   key: string;

@@ -3,7 +3,7 @@ import { queryAllRepos } from "/lib/part-finder/nodes";
 import { getPartFinderUrl } from "/lib/part-finder/utils";
 import type { AriaSortDirection, ComponentView, Heading } from "./component-view.freemarker";
 import type { Content, SortDirection, SortDsl } from "@enonic-types/core";
-import { getUsagePaths } from "/admin/tools/part-finder/listing";
+import { getUsagePaths } from "/admin/tools/part-finder/usagePaths";
 
 const TABLE_HEADINGS: Omit<Heading, "url">[] = [
   {
