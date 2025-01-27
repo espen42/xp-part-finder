@@ -34,7 +34,7 @@
 
     [#if hasNoschema]
       <div class="no-schema">
-        <h2>⚠️Missing schema</h2>
+        <h2>Missing schema ⚠️</h2>
         <p>Below are components found in content data, but without a matching type in the schema that comes from the app.<br/><br/>Could happen as a result of changes in code without updating/converting/deleting references in content yet. Should probably be checked for deprecated data:</p>
 
         [#list noSchemaItems as itemList]

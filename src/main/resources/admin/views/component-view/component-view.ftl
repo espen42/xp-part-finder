@@ -19,7 +19,7 @@
       <caption class="label-big">${currentItem.type}: ${currentItem.key}</caption>
     [/#if]
 
-    [#-- header --]
+    [#-- table header --]
     <thead>
       <tr>
         [#list currentItem.headings as heading]
@@ -69,7 +69,7 @@
       [#list currentItem.contents as content]
         <tr>
 
-          [#-- column 1, multi-path option --]
+          [#-- table column 1, multi-path option --]
         [#if content.hasMultiUsage]
           <td class="name-column">
             [#if displaySummaryAndUndo]
@@ -92,7 +92,7 @@
             [/#if]
           </td>
 
-        [#-- column 1, single-path option --]
+        [#-- table column 1, single-path option --]
         [#else]
           [#if displaySummaryAndUndo]
             [#if content.error??]
@@ -110,10 +110,10 @@
           </td>
         [/#if]
 
-          [#-- column 2 --]
+          [#-- table column 2 --]
           <td class="type-column">${content.type}</td>
 
-          [#-- column 3 --]
+          [#-- table column 3 --]
           <td class="path-column">
             <a href="${content.url}" target="_blank" title="Open (Content Studio)">${content.path}</a>
             <a class="preview-link" href="/admin/site/preview/${content.repo}/draft${content.path}" target="_blank" title="Preview (draft)">🔍</a>
@@ -122,7 +122,7 @@
 
           [#if displayReplacer || displaySummaryAndUndo]
 
-          [#-- column 4, multi-path option --]
+          [#-- table column 4, multi-path option --]
             [#if content.hasMultiUsage]
               <td>
                 <div>
@@ -158,7 +158,7 @@
                 </ul>
               </td>
 
-            [#-- column 4, single-path option --]
+            [#-- table column 4, single-path option --]
             [#else]
               [#if displaySummaryAndUndo]
                 [#if content.error??]

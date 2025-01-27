@@ -71,6 +71,9 @@ export function getUsagePaths(
   const usagePaths: UsagePathSubvalue[] = [];
   const targetType = targetTypeUpperCase.toLowerCase();
 
+  if (content?.components && typeof content.components === "object" && !Array.isArray(content.components)) {
+    content.components = [content.components];
+  }
   (content?.components || []).forEach((component) => {
     /** Example component object:
      *        {
