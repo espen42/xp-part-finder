@@ -169,7 +169,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     };
   }
 
-  const itemLists = getComponentNavLinkList(cmsRepoIds, currentAppKey, displayReplacer, getValueParam);
+  const { active, noSchema } = getComponentNavLinkList(cmsRepoIds, currentAppKey, displayReplacer, getValueParam);
 
   const filters = installedApps.map<Link>((app) => {
     const firstComponent = getFirstComponent(app);
@@ -194,7 +194,9 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     currentItem,
     displayReplacer,
     displaySummaryAndUndo: false,
-    itemLists,
+    itemLists: active,
+    noSchemaItems: noSchema,
+    hasNoschema: Object.keys(noSchema || {}).length > 0,
   };
 
   if (getValueParam) {

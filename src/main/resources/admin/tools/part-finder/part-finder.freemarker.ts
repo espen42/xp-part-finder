@@ -2,6 +2,8 @@ import { ComponentNavLinkList } from "/admin/views/navigation/navigation.freemar
 
 export type ComponentList = {
   itemLists: ComponentNavLinkList[];
+  noSchemaItems: ComponentNavLinkList[];
+  hasNoschema: boolean;
   currentItemKey?: string;
   currentAppKey?: string;
 };
