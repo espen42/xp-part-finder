@@ -97,7 +97,7 @@
           [#if displaySummaryAndUndo]
             [#if content.error??]
             <td  class="name-column" title="Failed: content ${content.displayName}. Error message: ${content.error}">
-              ❌ ${content.displayName}<br /><span class="repo-name">Repo: ${content.repo}</span>
+              ❌ ${content.displayName}<br /><span class="repo-name" title="Use /remove URI parameter: repo=${content.repo}">Repo: ${content.repo}</span>
             [#else]
               <td  class="name-column" title="Ok: changed content ${content.displayName}">
               <span class="okay-check">✓</span> <span class="summary-name">${content.displayName}</span>

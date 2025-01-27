@@ -88,19 +88,13 @@ export function getUsagePaths(
     const componentData = (component || {})[targetType] || {};
     const componentDescriptor = componentData.descriptor;
 
-    /*log.info(
-      "\n---\n" +
-        JSON.stringify({ component, componentData, componentDescriptor, targetDescriptor, targetType }, null, 2),
-    );*/
-
     if (component?.type === targetType && componentDescriptor === targetDescriptor) {
       const splitDescriptor = componentDescriptor.split(":");
       const componentConfig = ((componentData.config || {})[splitDescriptor[0]] || {})[splitDescriptor[1]];
 
-      //log.info("\n!!!\n" + JSON.stringify({ splitDescriptor, componentConfig }, null, 2));
-
       pushUsagePath(component.path, usagePaths, componentConfig, getvalueParam);
     }
   });
+
   return usagePaths;
 }

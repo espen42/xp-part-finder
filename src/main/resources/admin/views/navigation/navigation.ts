@@ -73,6 +73,7 @@ export function getComponentNavLinkList(
   currentAppKey: string,
   displayReplacer: boolean,
   getvalueParam: string | undefined,
+  repoParam: string,
 ): {
   active: ComponentNavLinkList[];
   noSchema: ComponentNavLinkList[];
@@ -116,13 +117,23 @@ export function getComponentNavLinkList(
 
   handleUppercasedAndNoSchemaKeys(res, currentAppKey, appFilter);
 
-  const getDecoratedUrl = (params: { key: string; type: string; replace?: string; getvalue?: string }): string => {
+  const getDecoratedUrl = (params: {
+    key: string;
+    type: string;
+    repo?: string;
+    replace?: string;
+    getvalue?: string;
+  }): string => {
     if (displayReplacer) {
       params.replace = "true";
     }
     if (getvalueParam) {
       params.getvalue = getvalueParam;
     }
+    if (repoParam) {
+      params.repo = repoParam;
+    }
+
     const url = getPartFinderUrl(params);
 
     return url;

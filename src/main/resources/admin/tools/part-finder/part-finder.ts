@@ -69,6 +69,18 @@ const getValueRequest = (req): undefined | string => {
   const getValueParam = (req.params.getvalue || "").trim();
   return getValueParam === "undefined" || getValueParam === "false" || getValueParam === "" ? undefined : getValueParam;
 };
+const getDisplayReplacerParam = (req) =>
+  !!(req.params.replace + "")
+    .trim()
+    .toLowerCase()
+    .replace(/^undefined$/, "")
+    .replace(/^false$/, "");
+const getRepoParam = (req) =>
+  (req.params.repo + "")
+    .trim()
+    .toLowerCase()
+    .replace(/^undefined$/, "");
+
 // The request parameter "getvalue" can be just a path to a value on the component data (eg. "config.layout._selected"),
 // but it can also have a "=" and a target value after (eg. 'config.layout._selected="two"'). If it does, this is used
 // to remove the checkbox selector on usage items (component paths) where the value does NOT match whatever comes after the "="
@@ -117,14 +129,11 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   }
 
   const getValueParam = getValueRequest(req);
-  const displayReplacer = !!(req.params.replace + "")
-    .trim()
-    .toLowerCase()
-    .replace(/^undefined$/, "")
-    .replace(/^false$/, "");
+  const displayReplacer = getDisplayReplacerParam(req);
+  const repoParam = getRepoParam(req);
 
   const currentAppKey = getAppKey(currentItemKey);
-  const cmsRepoIds = getCMSRepoIds(req.params.repo);
+  const cmsRepoIds = getCMSRepoIds(repoParam);
   const currentItem = currentItemType
     ? getComponentUsagesInRepo(
         {
@@ -138,6 +147,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
         },
         getValueParam,
         displayReplacer,
+        repoParam,
       )
     : undefined;
 
@@ -162,6 +172,9 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     if (getValueParam) {
       model.getvalue = getValueParam;
     }
+    if (repoParam) {
+      model.repoParam = repoParam;
+    }
 
     return {
       body: wrapInHtml({
@@ -171,7 +184,13 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     };
   }
 
-  const { active, noSchema } = getComponentNavLinkList(cmsRepoIds, currentAppKey, displayReplacer, getValueParam);
+  const { active, noSchema } = getComponentNavLinkList(
+    cmsRepoIds,
+    currentAppKey,
+    displayReplacer,
+    getValueParam,
+    repoParam,
+  );
 
   const filters = installedApps.map<Link>((app) => {
     const firstComponent = getFirstComponent(app);
@@ -182,7 +201,9 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
         ? getPartFinderUrl({
             key: firstComponent.key,
             type: firstComponent.type,
-            repo: req.params.repo || "",
+            repo: repoParam,
+            getvalue: getValueParam || "",
+            replace: displayReplacer + "",
           })
         : "",
     };
@@ -204,6 +225,9 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
   if (getValueParam) {
     model.getvalue = getValueParam;
+  }
+  if (repoParam) {
+    model.repoParam = repoParam;
   }
 
   return {
@@ -232,8 +256,7 @@ function getFirstComponent(app: Application): ComponentDescriptor | undefined {
   );
 }
 
-function getCMSRepoIds(repoParam: string | undefined | null): string[] {
-  repoParam = (repoParam || "").trim().replace(/^undefined$/, "");
+function getCMSRepoIds(repoParam: string): string[] {
   if (startsWith(repoParam, "com.enonic.cms.")) {
     repoParam = repoParam.replace(/^com\.enonic\.cms\./, "");
   }
@@ -349,7 +372,9 @@ export function post(req: XP.Request): XP.Response {
 
   const results = new Results(sourceKey, newKey, componentType);
 
-  const repoIds = getCMSRepoIds(req.params.repo);
+  const repoParam = getRepoParam(req);
+  const repoIds = getCMSRepoIds(repoParam);
+
   repoIds.forEach((targetRepo) => {
     const repoName = stringAfterLast(targetRepo, ".");
     results.setRepoContext(repoName);

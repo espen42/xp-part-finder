@@ -31,6 +31,7 @@ export function getComponentUsagesInRepo(
   sort: Partial<SortDsl>,
   getvalueParam: string | undefined,
   replaceParam: boolean,
+  repoParam: string | undefined,
 ): ComponentView {
   const contents = queryAllRepos<Content>(repositories, {
     count: 1000,
@@ -72,6 +73,7 @@ export function getComponentUsagesInRepo(
         type: component.type,
         replace: replaceParam + "",
         getvalue: getvalueParam || "",
+        repoParam: repoParam || "",
         sort: heading.name,
         dir:
           heading.name === sort.field
