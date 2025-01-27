@@ -6,6 +6,7 @@ import type { Header } from "./header.freemarker";
 export default {
   title: "Components/Header",
   parameters: {
+    layout: "fullscreen",
     server: {
       id,
       params: {

@@ -1,245 +1,57 @@
-import { render } from "/lib/tineikt/freemarker";
 import { getToolUrl } from "/lib/xp/admin";
-
-import { Content, get as getContent } from "/lib/xp/content";
-import { run as runInContext } from "/lib/xp/context";
-import { connect as nodeConnect } from "/lib/xp/node";
-import { hasRole as hasAuthRole, getUser as getAuthUser } from "/lib/xp/auth";
-
-import { query } from "/lib/xp/content";
 import { list as listApps, type Application } from "/lib/xp/app";
+import { Content, get as getContent } from "/lib/xp/content";
+import { connect as nodeConnect } from "/lib/xp/node";
+import { run as runInContext } from "/lib/xp/context";
+import { hasRole as hasAuthRole } from "/lib/xp/auth";
 import { list as listRepos } from "/lib/xp/repo";
+import { listComponents, type ComponentDescriptorType, type ComponentDescriptor } from "/lib/xp/schema";
+
+import { render } from "/lib/tineikt/freemarker";
+
 import {
-  listComponents,
-  getComponent,
-  type LayoutDescriptor,
-  type PageDescriptor,
-  type PartDescriptor,
-  type ComponentDescriptorType,
-} from "/lib/xp/schema";
-import {
-  find,
-  flatMap,
+  stringAfterLast,
+  assertIsDefined,
+  getPartFinderUrl,
   notNullOrUndefined,
-  objectKeys,
   runAsAdmin,
   startsWith,
-  stringAfterLast,
-  unique,
 } from "/lib/part-finder/utils";
-import type { ComponentItem, ComponentList } from "./part-finder.freemarker";
-import type { ComponentViewParams } from "/admin/views/component-view/component-view.freemarker";
-import type { Header, Link } from "/admin/views/header/header.freemarker";
+import { getComponentNavLinkList } from "../../views/navigation/navigation";
+import { getComponentUsagesInRepo } from "../../views/component-view/component-view";
+import type { ComponentViewParams } from "../../views/component-view/component-view.freemarker";
+import type { Header, Link } from "../../views/header/header.freemarker";
+import type { SortDirection } from "@enonic-types/core";
+import { createEditorFunc } from "/admin/tools/part-finder/editor";
 
-type Component = PartDescriptor | LayoutDescriptor | PageDescriptor;
+import { Results } from "/admin/tools/part-finder/results";
+import { ComponentItem, ComponentList } from "/admin/tools/part-finder/part-finder.freemarker";
+import { processMultiUsage } from "/admin/tools/part-finder/usagePaths";
 
-type PartFinderQueryParams = {
+export type PartFinderQueryParams = {
   key: string;
-  type: string;
+  type: ComponentDescriptorType;
+  sort?: string;
+  dir?: string;
   replace?: string;
+  getvalue?: string;
 };
 
-const PART_KEY = "PART";
-const LAYOUT_KEY = "LAYOUT";
-const PAGE_KEY = "PAGE";
+export const PART_KEY = "PART";
+export const LAYOUT_KEY = "LAYOUT";
+export const PAGE_KEY = "PAGE";
 
 const PAGE_TITLE = "Part finder";
-const view = resolve("part-finder.ftl");
-const componentView = resolve("../../views/component-view/component-view.ftl");
 
-export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
-  const currentItemType = parseComponentType(req.params.type);
-  const componentKey = req.params.key;
+const VIEW = resolve("part-finder.ftl");
+const COMPONENT_VIEW = resolve("../../views/component-view/component-view.ftl");
 
-  const cmsRepoIds = getCMSRepoIds();
-
-  // If in Turbo Frame, only render the component view
-  if (req.headers["turbo-frame"] === "content-view" && componentKey && currentItemType) {
-    const component = getComponent({
-      type: currentItemType,
-      key: componentKey,
-    }) as Component;
-
-    if (component) {
-      const currentItem = getComponentUsagesInRepo(component, cmsRepoIds);
-
-      return {
-        body: wrapInHtml({
-          markup: render<ComponentViewParams>(componentView, {
-            currentItem,
-            displayReplacer: !!req.params.replace && currentItemType === PART_KEY,
-            displaySummaryAndUndo: false,
-          }),
-          title: `${PAGE_TITLE} - ${component.displayName}`,
-        }),
-      };
-    }
-  }
-
-  const installedApps = runAsAdmin(() => listApps());
-
-  const allParts = listComponentsInApplication(installedApps, PART_KEY);
-  const allLayouts = listComponentsInApplication(installedApps, LAYOUT_KEY);
-  const allPages = listComponentsInApplication(installedApps, PAGE_KEY);
-
-  const parts = allParts.map((component) => getComponentUsagesInRepo(component, cmsRepoIds));
-  const layouts = allLayouts.map((component) => getComponentUsagesInRepo(component, cmsRepoIds));
-  const pages = allPages.map((component) => getComponentUsagesInRepo(component, cmsRepoIds));
-
-  const allItems = parts.concat(layouts).concat(pages);
-
-  if (!componentKey) {
-    return {
-      redirect: allItems[0].url,
-    };
-  }
-
-  const currentItem = find(allItems, (item) => item.key === componentKey);
-
-  const appKeysWithUsedComponents = unique(allItems.map((item) => getAppKey(item.key)));
-
-  const filters = appKeysWithUsedComponents
-    .map((appKey) => find(installedApps, (app) => app.key === appKey))
-    .filter(notNullOrUndefined)
-    .map<Link>((app) => ({
-      text: app.key ?? "",
-      url: find(allItems, (component) => startsWith(component.key, app.key))?.url ?? "",
-    }));
-
-  if (appKeysWithUsedComponents.length === 0) {
-    return {
-      status: 404,
-      body: "<h1>No installed applications found</h1>",
-    };
-  }
-
-  const currentAppKey = getAppKey(componentKey);
-
-  const model = {
-    title: `${PAGE_TITLE} - ${currentItem?.displayName}`,
-    displayName: PAGE_TITLE,
-    filters,
-    currentItemKey: componentKey,
-    currentAppKey,
-    currentItem,
-    displayReplacer: !!req.params.replace,
-    displaySummaryAndUndo: false,
-    itemLists: [
-      {
-        title: "Parts",
-        items: parts.filter((part) => startsWith(part.key, currentAppKey)),
-      },
-      {
-        title: "Layouts",
-        items: layouts.filter((layout) => startsWith(layout.key, currentAppKey)),
-      },
-      {
-        title: "Pages",
-        items: pages.filter((page) => startsWith(page.key, currentAppKey)),
-      },
-    ].filter((list) => list.items.length > 0),
-  };
-
-  const logModel = { ...model };
-  // @ts-expect-error nope
-  delete logModel.itemLists;
-
-  return {
-    body: render<ComponentList & ComponentViewParams & Header>(view, model),
-  };
-}
-
-function getAppKey(key: string): string {
+export function getAppKey(key: string): string {
   return key.split(":")[0];
 }
 
-function getPartFinderUrl(params: PartFinderQueryParams): string {
-  const queryParams = objectKeys(params)
-    .filter((key) => !!key)
-    .map((key: string) => `${key}=${encodeURIComponent(params[key])}`)
-    .join("&");
-
-  return `${getToolUrl("no.item.partfinder", "part-finder")}?${queryParams}`;
-}
-
-function wrapInHtml({ markup, title }: { markup: string; title: string }): string {
+export function wrapInHtml({ markup, title }: { markup: string; title: string }): string {
   return `<!DOCTYPE html><html lang="en"><head><title>${title}</title></head><body>${markup}</body></html>`;
-}
-
-function getCMSRepoIds(): string[] {
-  return runAsAdmin(() =>
-    listRepos()
-      .map((repo) => repo.id)
-      .filter((repoId) => startsWith(repoId, "com.enonic.cms")),
-  );
-}
-
-function listComponentsInApplication(installedApps: Application[], type: ComponentDescriptorType): PartDescriptor[] {
-  return runAsAdmin(() =>
-    flatMap(installedApps, (app) =>
-      listComponents({
-        application: app.key,
-        type,
-      }),
-    ),
-  );
-}
-
-function getComponentUsagesInRepo(component: Component, repositories: string[]): ComponentItem {
-  return repositories
-    .map((repository) => getComponentUsages(component, repository))
-    .reduce<ComponentItem>(
-      (usages, componentUsage) => {
-        return {
-          url: componentUsage.url,
-          total: usages.total + componentUsage.total,
-          key: usages.key,
-          type: usages.type.toLowerCase(),
-          displayName: usages.displayName,
-          contents: usages.contents.concat(componentUsage.contents),
-        };
-      },
-      {
-        url: "",
-        total: 0,
-        key: component.key,
-        type: component.type.toLowerCase(),
-        displayName: component.displayName,
-        contents: [],
-      },
-    );
-}
-
-function getComponentUsages(component: Component, repository: string): ComponentItem {
-  const res = runAsAdmin(
-    () =>
-      query({
-        query: `components.${component.type}.descriptor = '${component.key}'`,
-        count: 1000,
-      }),
-    {
-      repository,
-    },
-  );
-
-  const repo = stringAfterLast(repository, ".");
-
-  return {
-    total: res.total,
-    key: component.key,
-    type: component.type.toLowerCase(),
-    displayName: component.displayName,
-    url: getPartFinderUrl({
-      key: component.key,
-      type: component.type,
-    }),
-    contents: res.hits.map((hit) => ({
-      url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${hit._id}`,
-      displayName: hit.displayName,
-      path: hit._path,
-      id: hit._id,
-    })),
-  };
 }
 
 function parseComponentType(str: string = ""): ComponentDescriptorType | undefined {
@@ -252,7 +64,229 @@ function parseComponentType(str: string = ""): ComponentDescriptorType | undefin
   return undefined;
 }
 
+const getValueRequest = (req): undefined | string => {
+  const getValueParam = (req.params.getvalue || "").trim();
+  return getValueParam === "undefined" || getValueParam === "false" || getValueParam === "" ? undefined : getValueParam;
+};
+// The request parameter "getvalue" can be just a path to a value on the component data (eg. "config.layout._selected"),
+// but it can also have a "=" and a target value after (eg. 'config.layout._selected="two"'). If it does, this is used
+// to remove the checkbox selector on usage items (component paths) where the value does NOT match whatever comes after the "="
+// (eg. the URI parameter '...&getvalue=config.layout._selected="two"' will display all usages, but only a checkbox next to the
+// items whose values is the string "two".
+const filterSelectorsByMatchingGetvalue = (currentItem: ComponentItem | undefined, getValueString) => {
+  if (currentItem && getValueString && getValueString.indexOf("=") !== -1) {
+    const targetValue = JSON.parse(getValueString.substring(getValueString.indexOf("=") + 1));
+
+    currentItem.contents = currentItem.contents.map((contentItem) => ({
+      ...contentItem,
+      multiUsage: contentItem.multiUsage.map((usage) => {
+        if (usage.targetSubValue !== targetValue) {
+          usage.hideSelector = true;
+        }
+        return usage;
+      }),
+    }));
+  }
+};
+
+export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
+  const currentItemType = parseComponentType(req.params.type);
+  const currentItemKey = req.params.key;
+  const installedApps = listAppsWithComponents();
+
+  if (installedApps.length === 0) {
+    return {
+      status: 404,
+      body: "<h1>No installed applications found</h1>",
+    };
+  }
+
+  if (!currentItemKey) {
+    const firstComponent = getFirstComponent(installedApps[0]);
+
+    assertIsDefined(firstComponent);
+
+    return {
+      redirect: getPartFinderUrl({
+        key: firstComponent.key,
+        type: firstComponent.type,
+      }),
+    };
+  }
+
+  const getValueParam = getValueRequest(req);
+  const displayReplacer = !!(req.params.replace + "")
+    .trim()
+    .toLowerCase()
+    .replace(/^undefined$/, "")
+    .replace(/^false$/, "");
+
+  const currentAppKey = getAppKey(currentItemKey);
+  const cmsRepoIds = getCMSRepoIds();
+  const currentItem = currentItemType
+    ? getComponentUsagesInRepo(
+        {
+          key: currentItemKey,
+          type: currentItemType,
+        },
+        cmsRepoIds,
+        {
+          field: req.params.sort ?? "_path",
+          direction: parseSortDirection(req.params.dir),
+        },
+        getValueParam,
+        displayReplacer,
+      )
+    : undefined;
+
+  if (!currentItem) {
+    return {
+      status: 404,
+      body: "<h1>Component not found</h1>",
+    };
+  }
+
+  processMultiUsage(currentItem);
+
+  filterSelectorsByMatchingGetvalue(currentItem as unknown as ComponentItem, getValueParam);
+
+  // If in Turbo Frame, only render the component view
+  if (req.headers["turbo-frame"] === "content-view") {
+    const model: ComponentViewParams = {
+      currentItem,
+      displayReplacer: displayReplacer && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
+      displaySummaryAndUndo: false,
+    };
+    if (getValueParam) {
+      model.getvalue = getValueParam;
+    }
+
+    return {
+      body: wrapInHtml({
+        markup: render<ComponentViewParams>(COMPONENT_VIEW, model),
+        title: `${PAGE_TITLE} - ${currentItem.key}`,
+      }),
+    };
+  }
+
+  const { active, noSchema } = getComponentNavLinkList(cmsRepoIds, currentAppKey, displayReplacer, getValueParam);
+
+  const filters = installedApps.map<Link>((app) => {
+    const firstComponent = getFirstComponent(app);
+
+    return {
+      text: app.key,
+      url: firstComponent
+        ? getPartFinderUrl({
+            key: firstComponent.key,
+            type: firstComponent.type,
+          })
+        : "",
+    };
+  });
+
+  const model: ComponentList & ComponentViewParams & Header = {
+    title: `${PAGE_TITLE} - ${currentItem?.key}`,
+    displayName: PAGE_TITLE,
+    filters,
+    currentItemKey,
+    currentAppKey,
+    currentItem,
+    displayReplacer,
+    displaySummaryAndUndo: false,
+    itemLists: active,
+    noSchemaItems: noSchema,
+    hasNoschema: Object.keys(noSchema || {}).length > 0,
+  };
+
+  if (getValueParam) {
+    model.getvalue = getValueParam;
+  }
+
+  return {
+    body: render<ComponentList & ComponentViewParams & Header>(VIEW, model),
+  };
+}
+
+function listAppsWithComponents(): Application[] {
+  return runAsAdmin(() => listApps()).filter((app) => notNullOrUndefined(getFirstComponent(app)));
+}
+
+function getFirstComponent(app: Application): ComponentDescriptor | undefined {
+  return (
+    listComponents({
+      type: PART_KEY,
+      application: app.key,
+    })[0] ??
+    listComponents({
+      type: LAYOUT_KEY,
+      application: app.key,
+    })[0] ??
+    listComponents({
+      type: PAGE_KEY,
+      application: app.key,
+    })[0]
+  );
+}
+
+function getCMSRepoIds(): string[] {
+  return runAsAdmin(() =>
+    listRepos()
+      .map((repo) => repo.id)
+      .filter((repoId) => startsWith(repoId, "com.enonic.cms")),
+  );
+}
+
+function parseSortDirection(str: string = ""): SortDirection | undefined {
+  const uppercasedStr = str.toUpperCase();
+
+  if (uppercasedStr === "ASC" || uppercasedStr === "DESC") {
+    return uppercasedStr;
+  }
+
+  return undefined;
+}
+
 //-------------------------------
+
+const parseComponentPathsPerId = (targetIds) => {
+  let i: number, id: string, path: string | null;
+  const componentPathsPerId: Record<string, string[] | null> = {};
+
+  for (i = 0; i < targetIds.length; i++) {
+    id = targetIds[i];
+    path = null;
+
+    // If one of the targetIds have "__" in it, it signifies that this target is a multi-component-in-one-page one
+    // (which has id before "__" and path after), aka multi-path-usage (ie. an id should only replace this and that
+    // component path, and keep the same component on other paths).
+    // And in that case, all the targets by that id should be multi's. And vice versa. Check that, throw error if mix-up.
+    // If no mix-up, register the path or lack of path for that ID, for the editor func to handle.
+    if (id.indexOf("__") !== -1) {
+      id = targetIds[i].split("__")[0];
+      path = targetIds[i].replace(/^.*?__/, "");
+
+      if (componentPathsPerId[id] === null) {
+        throw Error(
+          `Parameter error: componentPathsPerId[${JSON.stringify(id)}] is already null instead of an array, can't add ${JSON.stringify(path)}`,
+        );
+      }
+
+      componentPathsPerId[id] = componentPathsPerId[id] || [];
+      // @ts-expect-error TS2531
+      componentPathsPerId[id].push(path);
+    } else {
+      if (Array.isArray(componentPathsPerId[id])) {
+        throw Error(
+          `Parameter error: componentPathsPerId[${JSON.stringify(id)}'] is already an array, can't set it to null`,
+        );
+      }
+      componentPathsPerId[id] = null;
+    }
+  }
+
+  return componentPathsPerId;
+};
 
 export function post(req: XP.Request): XP.Response {
   if (!hasAuthRole("system.admin")) {
@@ -263,7 +297,7 @@ export function post(req: XP.Request): XP.Response {
   }
 
   const sourceKey = (req.params.key || "").trim();
-  const targetKey = (req.params.new_part_ref || "").trim();
+  const newKey = (req.params.new_part_ref || "").trim();
   const componentType = ((req.params.type || "") + "").trim().toLowerCase();
 
   const targetBranch = "draft";
@@ -276,7 +310,7 @@ export function post(req: XP.Request): XP.Response {
 
   const args: { [key: string]: string } = {
     key: sourceKey,
-    new_part_ref: targetKey,
+    new_part_ref: newKey,
     type: componentType,
   };
 
@@ -290,97 +324,31 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
-  const createEditorFunc = (oldAppKey: string, oldComponentKey: string, newAppKey: string, newComponentKey: string) => {
-    const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
-    const newAppKeyDashed = newAppKey.replace(/\./g, "-");
-
-    const pathPatternString =
-      "components\\." + componentType + "\\.config\\." + oldAppKeyDashed + "\\." + oldComponentKey;
-
-    // Looks for "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.<something more whatever>"
-    // but not "components.<componentType>.config.<oldAppKeyDashed>.<key that starts with oldComponentKey but continues before the dot or end>" or "components.<componentType>.config.<oldAppKeyDashed>.<oldComponentKey>.." etc:
-    const configSearchPattern = new RegExp("^" + pathPatternString + "($|\\.(?!\\.|$))");
-    const configReplacePattern = new RegExp("^(" + pathPatternString + "\\b)");
-    const configReplaceTarget = "components." + componentType + ".config." + newAppKeyDashed + "." + newComponentKey;
-
-    const user = getAuthUser();
-    if (!user?.key) {
-      throw Error("Couldn't resolve user.key: " + JSON.stringify(user));
-    }
-
-    const editor = (contentItem) => {
-      contentItem._indexConfig.configs = contentItem._indexConfig.configs.map((config) => {
-        if ((config.path || "").match(configSearchPattern)) {
-          const newPath = config.path.replace(configReplacePattern, configReplaceTarget);
-
-          config.path = newPath;
-        }
-        return config;
-      });
-
-      contentItem.components = contentItem.components.map((component) => {
-        if (
-          component.type !== componentType ||
-          component[componentType].descriptor !== `${oldAppKey}:${oldComponentKey}`
-        ) {
-          return component;
-        }
-
-        const newComponent = {
-          ...component,
-          [componentType]: {
-            ...component[componentType],
-            descriptor: `${newAppKey}:${newComponentKey}`,
-            config: {
-              ...component[componentType].config,
-              [newAppKeyDashed]: {
-                ...component[componentType].config[oldAppKeyDashed],
-                [newComponentKey]: component[componentType].config[oldAppKeyDashed][oldComponentKey],
-              },
-            },
-          },
-        };
-
-        if (oldAppKeyDashed !== newAppKeyDashed) {
-          delete newComponent[componentType].config[oldAppKeyDashed];
-        }
-        if (oldComponentKey !== newComponentKey) {
-          delete newComponent[componentType].config[newAppKeyDashed][oldComponentKey];
-        }
-
-        /* Not needed - and doesn't seem to change the node either?
-         newComponent.workflow = {
-          ...newComponent.workflow,
-          state: "IN_PROGRESS",
-        };
-        newComponent.modifier = user.key;
-        newComponent.modifiedTime = new Date().toISOString();
-        */
-
-        return newComponent;
-      });
-
-      return contentItem;
+  let componentPathsPerId;
+  try {
+    componentPathsPerId = parseComponentPathsPerId(targetIds);
+  } catch (e) {
+    log.error(e);
+    return {
+      status: 400,
+      body: "BAD REQUEST. Parameter error",
     };
-
-    return editor;
-  };
+  }
 
   const [oldAppKey, oldComponentKey] = sourceKey.split(":");
-  const [newAppKey, newComponentKey] = targetKey.split(":");
-  const editor = createEditorFunc(oldAppKey, oldComponentKey, newAppKey, newComponentKey);
+  const [newAppKey, newComponentKey] = newKey.split(":");
 
-  const okays: { id: string; url: string; displayName: string; path: string }[] = [];
-  const errors: { id: string; url: string; displayName: string; path: string; error: true; message: string }[] = [];
+  const results = new Results(sourceKey, newKey, componentType);
 
   const repoIds = getCMSRepoIds();
   repoIds.forEach((targetRepo) => {
+    const repoName = stringAfterLast(targetRepo, ".");
+    results.setRepoContext(repoName);
+
     const repo = nodeConnect({
       repoId: targetRepo,
       branch: targetBranch,
     });
-
-    const repoName = stringAfterLast(targetRepo, ".");
 
     runInContext(
       {
@@ -389,10 +357,19 @@ export function post(req: XP.Request): XP.Response {
         principals: ["role:system.admin"],
       },
       () => {
-        let i: number, id: string, item: Content | null;
+        let item: Content | null;
 
-        for (i = 0; i < targetIds.length; i++) {
-          id = targetIds[i];
+        const editor = createEditorFunc(
+          oldAppKey,
+          oldComponentKey,
+          newAppKey,
+          newComponentKey,
+          componentType,
+          results,
+          componentPathsPerId,
+        );
+
+        Object.keys(componentPathsPerId).forEach((id) => {
           item = null;
 
           try {
@@ -405,38 +382,16 @@ export function post(req: XP.Request): XP.Response {
                 key: id,
                 editor: editor,
               });
-
-              log.info(
-                `OK: Replaced ${componentType} on content item '${item?.displayName || ""}' (id ${id}), from '${sourceKey}' to '${targetKey}'`,
-              );
-              okays.push({
-                id,
-                url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-                displayName: item?.displayName || "",
-                path: item?._path || "",
-              });
             }
           } catch (e) {
-            log.warning(
-              `Error trying to replace ${componentType} on content item '${item?.displayName || ""}' (id ${id}), from '${sourceKey}' to '${targetKey}'`,
-            );
-            log.error(e);
-            errors.push({
-              id,
-              url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${id}`,
-              displayName: item?.displayName || "",
-              path: item?._path || "",
-              error: true,
-              message: e instanceof Error ? e.message : "Unknown error, see log",
-            });
+            results.markError(item, null, e, id);
           }
-        }
+        });
       },
     );
   });
 
-  const taskSummary = `${oldAppKey}:${oldComponentKey} → ${newAppKey}:${newComponentKey}`;
-  const componentKey = `${newAppKey}:${newComponentKey}`;
+  const taskSummary = `${sourceKey} → ${newKey}`;
   const appKey = getAppKey(newComponentKey);
   const type = componentType.toUpperCase();
 
@@ -445,22 +400,23 @@ export function post(req: XP.Request): XP.Response {
     displayName: PAGE_TITLE,
     filters: [],
     itemLists: [],
-    currentItemKey: componentKey,
+    currentItemKey: newKey,
     currentAppKey: appKey,
     displayReplacer: false,
     displaySummaryAndUndo: true,
-    oldItemKey: `${oldAppKey}:${oldComponentKey}`,
+    oldItemKey: `${sourceKey}`,
+    newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true`,
     currentItem: {
       url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
       total: targetIds.length,
-      key: componentKey,
+      key: newKey,
       type: componentType,
       displayName: "",
-      contents: [...okays.map((item) => ({ ...item, okay: true })), ...errors],
+      contents: results.buildContentResult(),
     },
   };
 
   return {
-    body: render(componentView, model),
+    body: render(COMPONENT_VIEW, model),
   };
 }
