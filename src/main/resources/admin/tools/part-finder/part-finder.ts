@@ -463,8 +463,6 @@ export function post(req: XP.Request): XP.Response {
   const model = {
     title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
     displayName: PAGE_TITLE,
-    filters: [],
-    itemLists: [],
     currentItemKey: newKey,
     currentAppKey: appKey,
     displayReplacer: false,
@@ -473,11 +471,26 @@ export function post(req: XP.Request): XP.Response {
     newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true`,
     currentItem: {
       url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
-      total: targetIds.length,
       key: newKey,
       type: componentType,
-      displayName: "",
       contents: results.buildContentResult(),
+      headings: [
+        {
+          text: "Display name",
+          name: "displayName",
+          url: "#",
+        },
+        {
+          text: "Content type",
+          name: "type",
+          url: "#",
+        },
+        {
+          text: "Path",
+          name: "_path",
+          url: "#",
+        },
+      ],
     },
   };
 

@@ -5,6 +5,7 @@ type EditorResult = {
   id: string;
   url: string;
   displayName: string;
+  type: string;
   path: string;
   repo: string;
   // Absence of error value signifies a successful operation:
@@ -35,6 +36,7 @@ const insertAndGetSummaryContent = (contents: ContentUsage[], result: EditorResu
       id: result.id,
       url: result.url,
       displayName: result.displayName,
+      type: result.type,
       repo: result.repo,
       path: (result.path || "").replace(/^\/content/, ""),
       multiUsage: [],
@@ -105,6 +107,7 @@ export class Results {
         ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${this.repoName}/edit/${contentItem?._id}`
         : "",
       displayName: contentItem?.displayName || "",
+      type: contentItem.type,
       repo: this.repoName,
       path: contentItem?._path || "",
       componentPath: componentPath || null,
@@ -127,6 +130,7 @@ export class Results {
           ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${this.repoName}/edit/${contentItem?._id}`
           : "",
         displayName: contentItem?.displayName || "",
+        type: contentItem.type,
         repo: this.repoName,
         path: contentItem?._path || "",
         componentPath: componentPath,
