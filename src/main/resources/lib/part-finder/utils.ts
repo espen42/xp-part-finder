@@ -21,6 +21,15 @@ export function find<T>(arr: T[], predicate: (value: T) => boolean): T | undefin
   }
 }
 
+export function findIndex<A>(arr: A[], predicate: (value: A) => boolean): number {
+  for (let i = 0; i < arr.length; i++) {
+    if (predicate(arr[i])) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 export function unique(arr: string[]): string[] {
   return arr.filter((value, index, all) => all.indexOf(value) === index);
 }
@@ -52,8 +61,11 @@ export function runAsAdmin<T>(callback: () => T, params: ContextParams = {}): T 
   );
 }
 
+export const hasStringValue = (value) => value != null && (value + "").trim();
+
 export function getPartFinderUrl(params: Record<string, string>): string {
   const queryParams = objectKeys(params)
+    .filter((key) => hasStringValue(key) && hasStringValue(params[key]))
     .map((key) => `${key}=${encodeURIComponent(params[key])}`)
     .join("&");
 
