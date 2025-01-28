@@ -51,14 +51,14 @@ const handleUppercasedAndNoSchemaKeys = (aggregatedResult, currentAppKey, appFil
 
             if (caseSensitiveKey !== resultKey) {
               bucket.key = caseSensitiveKey;
-              log.info(
+              log.debug(
                 `Verified and corrected ${compType} key for case-sensitivity: '${resultKey}' --> '${caseSensitiveKey}'`,
               );
             }
           }
         }
         if (!processedResultKeys[compType][resultKey]) {
-          log.warning(
+          log.debug(
             `A ${compType} key '${resultKey}' was found among stored data (aggregatedResult) but not among the schema for app '${currentAppKey}'. Most likely it's deprecated. Moving to separate list.`,
           );
           const deprCompType = NOSCHEMA_TYPES[compType];
@@ -166,7 +166,7 @@ export function getComponentNavLinkList(
     };
   };
 
-  return {
+  const resultingItemLists = {
     active: [
       getItemList("Parts", "part", PART_KEY),
       getItemList("Layouts", "layout", LAYOUT_KEY),
@@ -178,4 +178,16 @@ export function getComponentNavLinkList(
       getItemList("Pages", NOSCHEMA_TYPES.page, PAGE_KEY),
     ].filter((list) => list.items.length > 0),
   };
+
+  if (
+    resultingItemLists.noSchema &&
+    resultingItemLists.noSchema.length &&
+    resultingItemLists.noSchema[0].items.length
+  ) {
+    log.warning(
+      `No-schema: component(s) found among stored data (aggregatedResult) but missing from the app '${currentAppKey}'. Deprecated? Investigate: ${JSON.stringify(resultingItemLists.noSchema)}`,
+    );
+  }
+
+  return resultingItemLists;
 }

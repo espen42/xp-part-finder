@@ -92,8 +92,8 @@ export function getUsagePaths(
     const componentDescriptor = componentData.descriptor;
 
     if (component?.type === targetType && componentDescriptor === targetDescriptor) {
-      const splitDescriptor = componentDescriptor.split(":");
-      const componentConfig = ((componentData.config || {})[splitDescriptor[0]] || {})[splitDescriptor[1]];
+      const configSubkeys = componentDescriptor.replace(/\./g, "-").split(":");
+      const componentConfig = ((componentData.config || {})[configSubkeys[0]] || {})[configSubkeys[1]];
 
       pushUsagePath(component.path, usagePaths, componentConfig, getvalueParam);
     }

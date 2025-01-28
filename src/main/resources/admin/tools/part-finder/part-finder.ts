@@ -81,6 +81,37 @@ const getRepoParam = (req) =>
     .toLowerCase()
     .replace(/^undefined$/, "");
 
+const parseTargetValue = (getValueString) => {
+  let targetValue;
+  try {
+    targetValue = JSON.parse(getValueString.substring(getValueString.indexOf("=") + 1));
+  } catch (e1: unknown) {
+    if (e1 instanceof Error) {
+      log.info(e1.message);
+    } else {
+      log.warning(e1);
+    }
+
+    try {
+      targetValue = getValueString.substring(getValueString.indexOf("=") + 1);
+      if (targetValue === "undefined") {
+        targetValue = undefined;
+      }
+      log.info(`Fallback: handling URI parameter getvalue target as raw string instead of JSON: '${targetValue}'`);
+    } catch (e2: unknown) {
+      if (e2 instanceof Error) {
+        log.warning(e2.message);
+      } else {
+        log.warning(e1);
+      }
+
+      throw Error(`Couldn't parse requested getvalue: '${getValueString}'`);
+    }
+  }
+
+  return targetValue;
+};
+
 // The request parameter "getvalue" can be just a path to a value on the component data (eg. "config.layout._selected"),
 // but it can also have a "=" and a target value after (eg. 'config.layout._selected="two"'). If it does, this is used
 // to remove the checkbox selector on usage items (component paths) where the value does NOT match whatever comes after the "="
@@ -88,7 +119,7 @@ const getRepoParam = (req) =>
 // items whose values is the string "two".
 const filterSelectorsByMatchingGetvalue = (currentItem: ComponentItem | undefined, getValueString) => {
   if (currentItem && getValueString && getValueString.indexOf("=") !== -1) {
-    const targetValue = JSON.parse(getValueString.substring(getValueString.indexOf("=") + 1));
+    const targetValue = parseTargetValue(getValueString);
 
     currentItem.contents = currentItem.contents.map((contentItem) => ({
       ...contentItem,
