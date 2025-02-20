@@ -1,5 +1,6 @@
 export type ComponentView = {
   key: string;
+  type: string;
   contents: Usage[];
   headings: Heading[];
 };
@@ -15,6 +16,10 @@ export type Heading = {
 
 export type ComponentViewParams = {
   currentItem?: ComponentView;
+  getvalue?: string;
+  repoParam?: string;
+  displayReplacer?: boolean;
+  displaySummaryAndUndo?: boolean;
 };
 
 export type Usage = {

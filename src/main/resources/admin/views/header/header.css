@@ -33,7 +33,32 @@
     display: flex;
     flex-direction: row;
     gap: var(--spacing-16);
-    margin-bottom: var(--spacing-16);
+    padding-top: var(--spacing-8);
+    padding-bottom: var(--spacing-24);
+    overflow-x: auto;
+  }
+
+  .repofilter {
+    padding-left: var(--spacing-32);
+    position: relative;
+    padding-bottom: var(--spacing-8);;
+
+    .icon {
+      position: absolute;
+      left: 0;
+    }
+
+    .repo-qualifier {
+      opacity: .65;
+      display: inline-block;
+      margin-left: var(--spacing-16);
+    }
+
+    pre {
+      display: inline-block;
+      margin-left: var(--spacing-16);
+      opacity: .65;
+    }
   }
 }
 

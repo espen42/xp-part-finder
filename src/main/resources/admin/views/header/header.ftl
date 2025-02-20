@@ -1,5 +1,6 @@
 [#-- @ftlvariable name="displayName" type="String" --]
 [#-- @ftlvariable name="currentAppKey" type="String" --]
+[#-- @ftlvariable name="repoParam" type="String" --]
 [#-- @ftlvariable name="filters" type="java.util.ArrayList" --]
 
 <header class="header">
@@ -19,6 +20,14 @@
           </a>
         [/#list]
       </nav>
+
+      [#if repoParam??]
+        <div class="repofilter">
+          <span class="icon">🔎</span>
+          Project (repo) filter is active: <span class="repo-qualifier">com.enonic.cms.</span><strong>${repoParam}</strong><br />
+          Edit/remove the URI parameter: <pre>...&repo=${repoParam}</pre>
+        </div>
+      [/#if]
     </div>
   [/#if]
 </header>

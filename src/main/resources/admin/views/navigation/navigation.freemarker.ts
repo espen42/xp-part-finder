@@ -6,5 +6,7 @@ export type ComponentNavLinkList = {
 export type ComponentNavLink = {
   key: string;
   url: string;
+  replace?: string;
+  getvalue?: string;
   docCount: number;
 };

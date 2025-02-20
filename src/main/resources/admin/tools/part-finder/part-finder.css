@@ -6,7 +6,7 @@
   grid-template-areas:
     ". header header ."
     ". sidebar main .";
-  grid-template-columns: minmax(var(--content-grid--padding-inline), 1fr) min(420px, 33% - var(--content-grid--padding-inline) * 2) min(860px, 66% - var(--content-grid--padding-inline) * 2) minmax(var(--content-grid--padding-inline), 1fr);
+  grid-template-columns: minmax(var(--content-grid--padding-inline), 1fr) min(420px, 33% - var(--content-grid--padding-inline) * 2) min(1000px, 70% - var(--content-grid--padding-inline) * 2) minmax(var(--content-grid--padding-inline), 1fr);
   grid-template-rows: fit-content(100px) auto;
   column-gap: var(--spacing-32);
 

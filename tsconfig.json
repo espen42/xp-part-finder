@@ -46,6 +46,7 @@
 		// Completeness
 		//──────────────────────────────────────────────────────────────────────
 		"skipLibCheck": true,
+    "noImplicitAny": false
 	},
 	"exclude": [
 		"src/main/resources/assets/**/*.*",
@@ -54,9 +55,9 @@
 	"include": [
 		// Make sure default types matches Nashorn
 		"node_modules/typescript/lib/lib.es5.d.ts",
-
 		"src/main/resources/**/*.ts",
-    ".xp-codegen/**/*.d.ts",
-    ".storybook/**/*"
-  ]
+		".xp-codegen/**/*.d.ts",
+		".storybook/**/*",
+		"node_modules/@types/node/globals.d.ts"
+	]
 }
