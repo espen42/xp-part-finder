@@ -31,11 +31,11 @@
     "@enonic-types/global": "^7",
     "@enonic-types/lib-admin": "^7",
     "@enonic-types/lib-app": "^7",
-    "@enonic-types/lib-content": "^7",
-    "@enonic-types/lib-node": "^7",
     "@enonic-types/lib-auth": "^7",
+    "@enonic-types/lib-content": "^7",
     "@enonic-types/lib-context": "^7",
     "@enonic-types/lib-i18n": "^7",
+    "@enonic-types/lib-node": "^7",
     "@enonic-types/lib-repo": "^7",
     "@enonic-types/lib-schema": "^7",
     "@enonic-types/lib-websocket": "^7",
@@ -78,5 +78,8 @@
     "tsup": "^8.3.5",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.21.0"
+  },
+  "dependencies": {
+    "just-clone": "^6.2.0"
   }
 }

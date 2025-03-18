@@ -2,6 +2,19 @@ import { getUser as getAuthUser } from "/lib/xp/auth";
 import { Results } from "/admin/tools/part-finder/results";
 import { find, findIndex } from "/lib/part-finder/utils";
 import { LAYOUT_KEY } from "/admin/tools/part-finder/part-finder";
+import clone from "../../../../../../../node_modules/just-clone";
+
+import { logger } from "./postprocessors/logger";
+import { throwerror } from "./postprocessors/throwerror";
+
+// Available postprocessors:
+// key in this object:  processor label, available to refer to from URL parameter, eg: ...?postprocess=logger
+// value:               postprocessor function, must have the signature (contentItem -> contentItem)
+// TODO: typescript-ify this properly
+const POSTPROCESSORS = {
+  logger,
+  throwerror
+};
 
 // If a content has multiple usages of a component, and not all of those components are targeted for change here, then
 // the indexConfig of that component should be copied instead of renamed, in order to retain the
@@ -180,6 +193,7 @@ export const createEditorFunc = (
   targetComponentType: string,
   results: Results,
   componentPathsPerId: Record<string, string[] | null>,
+  usePostprocessors?: string[] | string,
 ) => {
   const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
   const newAppKeyDashed = newAppKey.replace(/\./g, "-");
@@ -301,14 +315,10 @@ export const createEditorFunc = (
       }
 
       lastTargetedComponentPath = null;
+
       // Deep-clone the current content item, inject the updated data into it
       // (overwriting existing keys), and return the clone:
-      const clonedContentItem = {
-        ...contentItem,
-        components: [...contentItem.components],
-        _indexConfig: { ...contentItem._indexConfig },
-      };
-
+      const clonedContentItem = clone(contentItem);
       if (newIndexConfigs.length) {
         clonedContentItem._indexConfig.configs = newIndexConfigs;
       }
@@ -319,6 +329,35 @@ export const createEditorFunc = (
         replaceChangedComponentsInClone(componentPath, changedComponents, clonedContentItem);
         results.reportSuccess(contentItem, componentPath);
       }
+
+      if (usePostprocessors) {
+        if (!Array.isArray(usePostprocessors)) {
+          usePostprocessors = [usePostprocessors];
+        }
+        const postProcessorFuncs = usePostprocessors.map((processorLabel) => {
+          const processorFunc = POSTPROCESSORS[processorLabel];
+          if (!processorFunc) {
+            throw Error(`Postprocessor not found: '${processorLabel}'`);
+          }
+
+          const processor = {
+            label: processorLabel,
+            func: processorFunc,
+          };
+          return processor;
+        });
+
+        const postProcessed = postProcessorFuncs.reduce((content, processor) => {
+          const { label, func } = processor;
+          const processed = func(content);
+          if (!processed || !processed._id || !processed.type) {
+            throw Error(
+              `Postprocessor '${label}' must return a processed version of the original contentItem or a processed version of it`,
+            );
+          }
+          return processed;
+        }, clonedContentItem);
+
 
       return clonedContentItem;
     } catch (e) {
