@@ -6,6 +6,7 @@ import clone from "../../../../../../../node_modules/just-clone";
 
 import { logger } from "./postprocessors/logger";
 import { throwerror } from "./postprocessors/throwerror";
+import { nonvideoFullwidthCard } from "./postprocessors/nonvideoFullwidthCard";
 
 // Available postprocessors:
 // key in this object:  processor names, available to refer to from URL parameter, eg: ...?postprocess=logger
@@ -14,6 +15,7 @@ import { throwerror } from "./postprocessors/throwerror";
 const POSTPROCESSORS = {
   logger,
   throwerror,
+  nonvideofullwidthcard: nonvideoFullwidthCard,
 };
 
 // If a content has multiple usages of a component, and not all of those components are targeted for change here, then
