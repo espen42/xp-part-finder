@@ -351,6 +351,8 @@ const parseComponentPathsPerId = (targetIds) => {
   return componentPathsPerId;
 };
 
+const trimString = (str) => ((str || "") + "").trim();
+
 export function post(req: XP.Request): XP.Response {
   if (!hasAuthRole("system.admin")) {
     return {
@@ -359,9 +361,13 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
-  const sourceKey = (req.params.key || "").trim();
-  const newKey = (req.params.new_part_ref || "").trim();
-  const componentType = ((req.params.type || "") + "").trim().toLowerCase();
+  const sourceKey = trimString(req.params.key);
+  const newKey = trimString(req.params.new_part_ref);
+  const componentType = trimString(req.params.type).toLowerCase();
+  const usePostprocessors = trimString(req.params.postprocessors)
+    .split(/\s*,\s*/g)
+    .filter((processorName) => processorName.trim())
+    .filter((processorName) => processorName !== "undefined");
 
   const targetBranch = "draft";
 
@@ -414,14 +420,6 @@ export function post(req: XP.Request): XP.Response {
       repoId: targetRepo,
       branch: targetBranch,
     });
-
-    const usePostprocessors = ((req.params.postprocess || "") + "")
-      .trim()
-      .split(/\s*,\s*/g)
-      .filter((processorName) => processorName.trim())
-      .filter((processorName) => processorName !== "undefined");
-
-    log.info("params: " + JSON.stringify({ params: req.params, usePostprocessors }, null, 2));
 
     runInContext(
       {

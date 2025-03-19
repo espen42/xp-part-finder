@@ -1,3 +1,3 @@
-export const throwerror = (contentItem) => {
-  throw Error("Testing in-postprocessor error handling")
+export const throwerror = () => {
+  throw Error("Testing in-postprocessor error handling");
 };

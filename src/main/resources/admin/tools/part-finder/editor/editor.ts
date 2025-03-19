@@ -8,12 +8,12 @@ import { logger } from "./postprocessors/logger";
 import { throwerror } from "./postprocessors/throwerror";
 
 // Available postprocessors:
-// key in this object:  processor label, available to refer to from URL parameter, eg: ...?postprocess=logger
+// key in this object:  processor names, available to refer to from URL parameter, eg: ...?postprocess=logger
 // value:               postprocessor function, must have the signature (contentItem -> contentItem)
 // TODO: typescript-ify this properly
 const POSTPROCESSORS = {
   logger,
-  throwerror
+  throwerror,
 };
 
 // If a content has multiple usages of a component, and not all of those components are targeted for change here, then
@@ -358,6 +358,7 @@ export const createEditorFunc = (
           return processed;
         }, clonedContentItem);
 
+      }
 
       return clonedContentItem;
     } catch (e) {

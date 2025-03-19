@@ -82,7 +82,7 @@ table.table {
   font-weight:bold;
   border:0;
   cursor:pointer;
-  margin-top: 15px;
+  margin-top: 30px;
 }
 .new-part-button:not(:disabled):hover {
   background-color: red;
