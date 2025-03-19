@@ -9,7 +9,7 @@ import { throwerror } from "./postprocessors/throwerror";
 
 // Available postprocessors:
 // key in this object:  processor names, available to refer to from URL parameter, eg: ...?postprocess=logger
-// value:               postprocessor function, must have the signature (contentItem -> contentItem)
+// value:               postprocessor function, must have the signature ((contentItem, changedComponentPaths?) -> contentItem)
 // TODO: typescript-ify this properly
 const POSTPROCESSORS = {
   logger,
@@ -323,11 +323,13 @@ export const createEditorFunc = (
         clonedContentItem._indexConfig.configs = newIndexConfigs;
       }
 
+      const changedComponentPaths: string[] = [];
       for (const componentPath in changedComponents) {
+        changedComponentPaths.push(componentPath);
         lastTargetedComponentPath = componentPath;
 
         replaceChangedComponentsInClone(componentPath, changedComponents, clonedContentItem);
-        results.reportSuccess(contentItem, componentPath);
+        results.reportSuccess(clonedContentItem, componentPath);
       }
 
       if (usePostprocessors) {
@@ -349,7 +351,7 @@ export const createEditorFunc = (
 
         const postProcessed = postProcessorFuncs.reduce((content, processor) => {
           const { label, func } = processor;
-          const processed = func(content);
+          const processed = func(content, changedComponentPaths);
           if (!processed || !processed._id || !processed.type) {
             throw Error(
               `Postprocessor '${label}' must return a processed version of the original contentItem or a processed version of it`,
