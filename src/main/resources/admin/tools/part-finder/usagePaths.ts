@@ -18,24 +18,26 @@ export function processMultiUsage(currentItem) {
   }
 }
 
-const makeFlatSearchable = (object, key = "", result = {}) => {
+const makeFlatSearchable = (object, getvalueParam, key = "", result = {}) => {
   if (object === null || typeof object === "string" || typeof object === "number" || typeof object === "boolean") {
     if (key === "") {
       return object;
     }
     result[key] = object;
+  } else if (key === getvalueParam) {
+    result[key] = object;
   } else if (Array.isArray(object)) {
     const prefix = key === "" ? key : key + ".";
     object.forEach((item, i) => {
-      makeFlatSearchable(item, `${prefix}${i}`, result);
+      makeFlatSearchable(item, getvalueParam, `${prefix}${i}`, result);
     });
   } else if (typeof object === "object") {
     const prefix = key === "" ? key : key + ".";
     Object.keys(object).forEach((key) => {
-      makeFlatSearchable(object[key], `${prefix}${key}`, result);
+      makeFlatSearchable(object[key], getvalueParam, `${prefix}${key}`, result);
     });
   } else if (object === undefined) {
-    // ignore undefiend
+    // ignore undefined
   } else {
     throw Error("Can't handle " + typeof object + " value below key '" + key + "': " + JSON.stringify(object));
   }
@@ -50,11 +52,18 @@ const pushUsagePath = (componentPath: string, usagePaths: UsagePathSubvalue[], c
         ? getvalueParam.slice(0, getvalueParam.indexOf("="))
         : getvalueParam;
 
-    const flatComponent = makeFlatSearchable(componentConfig);
-    usagePaths.push({
-      path: componentPath,
-      targetSubValue: flatComponent[subPathToSearch],
-    });
+    if (subPathToSearch === "*") {
+      usagePaths.push({
+        path: componentPath,
+        targetSubValue: componentConfig,
+      });
+    } else {
+      const flatComponent = makeFlatSearchable(componentConfig, getvalueParam);
+      usagePaths.push({
+        path: componentPath,
+        targetSubValue: flatComponent[subPathToSearch],
+      });
+    }
   } else {
     usagePaths.push({
       path: componentPath,
