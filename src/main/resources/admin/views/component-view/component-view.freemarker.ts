@@ -18,7 +18,7 @@ export type ComponentViewParams = {
   currentItem?: ComponentView;
   getvalue?: string;
   repoParam?: string;
-  displayReplacer?: boolean;
+  displayReplacer?: string;
   displaySummaryAndUndo?: boolean;
 };
 

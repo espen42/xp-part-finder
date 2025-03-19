@@ -30,7 +30,7 @@ export function getComponentUsagesInRepo(
   repositories: string[],
   sort: Partial<SortDsl>,
   getvalueParam: string | undefined,
-  replaceParam: boolean,
+  replaceParam: string,
   repoParam: string | undefined,
 ): ComponentView {
   const contents = queryAllRepos<Content>(repositories, {

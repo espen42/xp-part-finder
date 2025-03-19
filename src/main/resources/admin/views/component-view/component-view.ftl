@@ -4,7 +4,7 @@
 [#-- @ftlvariable name="currentItem.headings" type="java.util.ArrayList" --]
 [#-- @ftlvariable name="currentItem.contents" type="java.util.ArrayList" --]
 <turbo-frame id="content-view">
-  [#if displayReplacer || displaySummaryAndUndo]
+  [#if displayReplacer != '' || displaySummaryAndUndo]
     <form action="./part-finder?key=${currentItem.key}&type=${currentItem.type}" method="post">
   [/#if]
 
@@ -38,9 +38,9 @@
           </th>
         [/#list]
 
-        [#if displayReplacer || displaySummaryAndUndo]
+        [#if displayReplacer != '' || displaySummaryAndUndo]
           <th class="part-selectall-col" scope="col">
-            [#if displayReplacer]Replace ${currentItem.type}[#else]Undo[/#if]
+            [#if displayReplacer != '']Replace ${currentItem.type}[#else]Undo[/#if]
             <br/>
             <div class="select-all-container">
               <input type="checkbox"
@@ -120,13 +120,13 @@
           </td>
 
 
-          [#if displayReplacer || displaySummaryAndUndo]
+          [#if displayReplacer != '' || displaySummaryAndUndo]
 
           [#-- table column 4, multi-path option --]
             [#if content.hasMultiUsage]
               <td>
                 <div>
-                  [#if displayReplacer]
+                  [#if displayReplacer != '']
                     Usages:
                   [#else]
                     Undo:
@@ -186,13 +186,14 @@
   </table>
 
 
-      [#if displayReplacer]
+      [#if displayReplacer != '']
         <label for="new_part_ref" class="new-part-label inline-pre">Replace ${currentItem.type} <pre>${currentItem.key}</pre> with:</label>
         <input type="text"
                placeholder="Format: full.app.key:part-name" id="new_part_ref"
                name="new_part_ref"
                id="new_part_ref"
                class="new-part-textfield"
+               value=${displayReplacer?replace("^true$", "", "ir")}
         >
 
         <label for="postprocessors" class="new-part-label inline-pre">Run postprocessors (comma-separated, eg. <pre>logger,throwerror</pre>)<br/>Available names: see src/main/resources/admin/tools/part-finder/editor/editor.ts</label>
@@ -229,7 +230,7 @@
       [/#if]
 
 
-      [#if displayReplacer || displaySummaryAndUndo]
+      [#if displayReplacer != '' || displaySummaryAndUndo]
     </form>
 
   <script>
@@ -311,7 +312,7 @@
       pf.checkSelection();
     })
 
-    [#if displayReplacer]
+    [#if displayReplacer != '']
     pf.targetPartNameElem.addEventListener("keydown", function(event) {
       if (event.key==="Enter") {
         event.preventDefault();

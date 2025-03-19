@@ -70,7 +70,7 @@ const getValueRequest = (req): undefined | string => {
   return getValueParam === "undefined" || getValueParam === "false" || getValueParam === "" ? undefined : getValueParam;
 };
 const getDisplayReplacerParam = (req) =>
-  !!(req.params.replace + "")
+  (req.params.replace + "")
     .trim()
     .toLowerCase()
     .replace(/^undefined$/, "")
@@ -197,7 +197,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   if (req.headers["turbo-frame"] === "content-view") {
     const model: ComponentViewParams = {
       currentItem,
-      displayReplacer: displayReplacer && (currentItemType === PART_KEY || currentItemType === LAYOUT_KEY),
+      displayReplacer: currentItemType === PART_KEY || currentItemType === LAYOUT_KEY ? displayReplacer : "false",
       displaySummaryAndUndo: false,
     };
     if (getValueParam) {
@@ -234,7 +234,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
             type: firstComponent.type,
             repo: repoParam,
             getvalue: getValueParam || "",
-            replace: displayReplacer + "",
+            replace: displayReplacer,
           })
         : "",
     };
@@ -472,7 +472,7 @@ export function post(req: XP.Request): XP.Response {
     displayName: PAGE_TITLE,
     currentItemKey: newKey,
     currentAppKey: appKey,
-    displayReplacer: false,
+    displayReplacer: "",
     displaySummaryAndUndo: true,
     oldItemKey: `${sourceKey}`,
     newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true`,

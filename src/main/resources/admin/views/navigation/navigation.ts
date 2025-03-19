@@ -78,7 +78,7 @@ const handleUppercasedAndNoSchemaKeys = (aggregatedResult, currentAppKey, appFil
 export function getComponentNavLinkList(
   repoIds: string[],
   currentAppKey: string,
-  displayReplacer: boolean,
+  displayReplacer: string,
   getvalueParam: string | undefined,
   repoParam: string,
 ): {
@@ -132,7 +132,7 @@ export function getComponentNavLinkList(
     getvalue?: string;
   }): string => {
     if (displayReplacer) {
-      params.replace = "true";
+      params.replace = displayReplacer;
     }
     if (getvalueParam) {
       params.getvalue = getvalueParam;
