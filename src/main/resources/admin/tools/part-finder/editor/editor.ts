@@ -332,7 +332,9 @@ export const createEditorFunc = (
         results.reportSuccess(clonedContentItem, componentPath);
       }
 
-      if (usePostprocessors) {
+      if (!usePostprocessors) {
+        return clonedContentItem;
+      } else {
         if (!Array.isArray(usePostprocessors)) {
           usePostprocessors = [usePostprocessors];
         }
@@ -360,9 +362,8 @@ export const createEditorFunc = (
           return processed;
         }, clonedContentItem);
 
+        return postProcessed;
       }
-
-      return clonedContentItem;
     } catch (e) {
       results.markError(contentItem, lastTargetedComponentPath, e);
 

@@ -147,13 +147,13 @@ table.table {
   display: inline-block;
   padding-left: 33px;
 }
-.getvalue {
+.getconfig {
   font-family: monospace;
   background-color: #e6e6e6;
   font-size: 12px;
   font-style: normal;
 }
-.part-selectall-col .getvalue {
+.part-selectall-col .getconfig {
   display: block;
   font-weight: normal;
 }

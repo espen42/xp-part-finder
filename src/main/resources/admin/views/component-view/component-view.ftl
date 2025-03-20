@@ -53,9 +53,9 @@
                 Select all
               </label>
             </div>
-            [#if getvalue??]
-              <span class="getvalue">
-                  (${getvalue})
+            [#if getconfig??]
+              <span class="getconfig">
+                  (${getconfig})
                 </span>
             [/#if]
           </th>
@@ -152,7 +152,7 @@
                              class="part-select-check"
                       />
                     [/#if]
-                    <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]">${usage.path}[#if getvalue?? && usage.getvalue??] <span class="getvalue">(${usage.getvalue})</span>[/#if]</label>
+                    <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]">${usage.path}[#if getconfig?? && usage.getconfig??] <span class="getconfig">(${usage.getconfig})</span>[/#if]</label>
                     </li>
                   [/#list]
                 </ul>

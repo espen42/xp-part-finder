@@ -7,6 +7,6 @@ export type ComponentNavLink = {
   key: string;
   url: string;
   replace?: string;
-  getvalue?: string;
+  getconfig?: string;
   docCount: number;
 };

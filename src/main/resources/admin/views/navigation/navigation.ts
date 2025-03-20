@@ -79,7 +79,7 @@ export function getComponentNavLinkList(
   repoIds: string[],
   currentAppKey: string,
   displayReplacer: string,
-  getvalueParam: string | undefined,
+  getconfigParam: string | undefined,
   repoParam: string,
 ): {
   active: ComponentNavLinkList[];
@@ -129,13 +129,13 @@ export function getComponentNavLinkList(
     type: string;
     repo?: string;
     replace?: string;
-    getvalue?: string;
+    getconfig?: string;
   }): string => {
     if (displayReplacer) {
       params.replace = displayReplacer;
     }
-    if (getvalueParam) {
-      params.getvalue = getvalueParam;
+    if (getconfigParam) {
+      params.getconfig = getconfigParam;
     }
     if (repoParam) {
       params.repo = repoParam;

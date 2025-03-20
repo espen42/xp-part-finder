@@ -7,7 +7,7 @@ export function processMultiUsage(currentItem) {
         const relevantUsages = content?.usagePaths[currentItem.key] || [];
         content.multiUsage = relevantUsages.map((item) => ({
           ...item,
-          getvalue: JSON.stringify(item.targetSubValue),
+          getconfig: JSON.stringify(item.targetSubValue),
         }));
         if (relevantUsages.length > 0) {
           content.hasMultiUsage = true;
@@ -18,23 +18,23 @@ export function processMultiUsage(currentItem) {
   }
 }
 
-const makeFlatSearchable = (object, getvalueParam, key = "", result = {}) => {
+const makeFlatSearchable = (object, getconfigParam, key = "", result = {}) => {
   if (object === null || typeof object === "string" || typeof object === "number" || typeof object === "boolean") {
     if (key === "") {
       return object;
     }
     result[key] = object;
-  } else if (key === getvalueParam) {
+  } else if (key === getconfigParam) {
     result[key] = object;
   } else if (Array.isArray(object)) {
     const prefix = key === "" ? key : key + ".";
     object.forEach((item, i) => {
-      makeFlatSearchable(item, getvalueParam, `${prefix}${i}`, result);
+      makeFlatSearchable(item, getconfigParam, `${prefix}${i}`, result);
     });
   } else if (typeof object === "object") {
     const prefix = key === "" ? key : key + ".";
     Object.keys(object).forEach((key) => {
-      makeFlatSearchable(object[key], getvalueParam, `${prefix}${key}`, result);
+      makeFlatSearchable(object[key], getconfigParam, `${prefix}${key}`, result);
     });
   } else if (object === undefined) {
     // ignore undefined
@@ -45,12 +45,12 @@ const makeFlatSearchable = (object, getvalueParam, key = "", result = {}) => {
   return result;
 };
 
-const pushUsagePath = (componentPath: string, usagePaths: UsagePathSubvalue[], componentConfig, getvalueParam) => {
-  if (getvalueParam) {
+const pushUsagePath = (componentPath: string, usagePaths: UsagePathSubvalue[], componentConfig, getconfigParam) => {
+  if (getconfigParam) {
     const subPathToSearch =
-      typeof getvalueParam === "string" && getvalueParam.indexOf("=") !== -1
-        ? getvalueParam.slice(0, getvalueParam.indexOf("="))
-        : getvalueParam;
+      typeof getconfigParam === "string" && getconfigParam.indexOf("=") !== -1
+        ? getconfigParam.slice(0, getconfigParam.indexOf("="))
+        : getconfigParam;
 
     if (subPathToSearch === "*") {
       usagePaths.push({
@@ -58,7 +58,7 @@ const pushUsagePath = (componentPath: string, usagePaths: UsagePathSubvalue[], c
         targetSubValue: componentConfig,
       });
     } else {
-      const flatComponent = makeFlatSearchable(componentConfig, getvalueParam);
+      const flatComponent = makeFlatSearchable(componentConfig, getconfigParam);
       usagePaths.push({
         path: componentPath,
         targetSubValue: flatComponent[subPathToSearch],
@@ -75,7 +75,7 @@ export function getUsagePaths(
   content: { components?; _path: string },
   targetTypeUpperCase: string,
   targetDescriptor: string,
-  getvalueParam: string | undefined,
+  getconfigParam: string | undefined,
 ): UsagePathSubvalue[] | null {
   const usagePaths: UsagePathSubvalue[] = [];
   const targetType = targetTypeUpperCase.toLowerCase();
@@ -104,7 +104,7 @@ export function getUsagePaths(
       const configSubkeys = componentDescriptor.replace(/\./g, "-").split(":");
       const componentConfig = ((componentData.config || {})[configSubkeys[0]] || {})[configSubkeys[1]];
 
-      pushUsagePath(component.path, usagePaths, componentConfig, getvalueParam);
+      pushUsagePath(component.path, usagePaths, componentConfig, getconfigParam);
     }
   });
 

@@ -13,5 +13,5 @@ export const postprocessComponent = (contentItem, componentPath, postprocessorFu
   const descriptors = nestedComp.descriptor.replace(/\./g, "-").split(":");
   const config = nestedComp.config[descriptors[0]][descriptors[1]];
 
-  postprocessorFunc(component, config);
+  postprocessorFunc(component, config, nestedComp.descriptor);
 };

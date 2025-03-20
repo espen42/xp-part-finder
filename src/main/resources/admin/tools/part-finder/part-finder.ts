@@ -34,7 +34,7 @@ export type PartFinderQueryParams = {
   sort?: string;
   dir?: string;
   replace?: string;
-  getvalue?: string;
+  getconfig?: string;
   repo?: string;
 };
 
@@ -65,9 +65,11 @@ function parseComponentType(str: string = ""): ComponentDescriptorType | undefin
   return undefined;
 }
 
-const getValueRequest = (req): undefined | string => {
-  const getValueParam = (req.params.getvalue || "").trim();
-  return getValueParam === "undefined" || getValueParam === "false" || getValueParam === "" ? undefined : getValueParam;
+const getConfigRequest = (req): undefined | string => {
+  const getConfigParam = (req.params.getconfig || "").trim();
+  return getConfigParam === "undefined" || getConfigParam === "false" || getConfigParam === ""
+    ? undefined
+    : getConfigParam;
 };
 const getDisplayReplacerParam = (req) =>
   (req.params.replace + "")
@@ -81,10 +83,10 @@ const getRepoParam = (req) =>
     .toLowerCase()
     .replace(/^undefined$/, "");
 
-const parseTargetValue = (getValueString) => {
+const parseTargetConfig = (getConfigString) => {
   let targetValue;
   try {
-    targetValue = JSON.parse(getValueString.substring(getValueString.indexOf("=") + 1));
+    targetValue = JSON.parse(getConfigString.substring(getConfigString.indexOf("=") + 1));
   } catch (e1: unknown) {
     if (e1 instanceof Error) {
       log.info(e1.message);
@@ -93,11 +95,11 @@ const parseTargetValue = (getValueString) => {
     }
 
     try {
-      targetValue = getValueString.substring(getValueString.indexOf("=") + 1);
+      targetValue = getConfigString.substring(getConfigString.indexOf("=") + 1);
       if (targetValue === "undefined") {
         targetValue = undefined;
       }
-      log.info(`Fallback: handling URI parameter getvalue target as raw string instead of JSON: '${targetValue}'`);
+      log.info(`Fallback: handling URI parameter getconfig target as raw string instead of JSON: '${targetValue}'`);
     } catch (e2: unknown) {
       if (e2 instanceof Error) {
         log.warning(e2.message);
@@ -105,21 +107,21 @@ const parseTargetValue = (getValueString) => {
         log.warning(e1);
       }
 
-      throw Error(`Couldn't parse requested getvalue: '${getValueString}'`);
+      throw Error(`Couldn't parse requested getconfig: '${getConfigString}'`);
     }
   }
 
   return targetValue;
 };
 
-// The request parameter "getvalue" can be just a path to a value on the component data (eg. "config.layout._selected"),
+// The request parameter "getconfig" can be just a path to a value on the component data (eg. "config.layout._selected"),
 // but it can also have a "=" and a target value after (eg. 'config.layout._selected="two"'). If it does, this is used
 // to remove the checkbox selector on usage items (component paths) where the value does NOT match whatever comes after the "="
-// (eg. the URI parameter '...&getvalue=config.layout._selected="two"' will display all usages, but only a checkbox next to the
+// (eg. the URI parameter '...&getconfig=layout._selected="two"' will display all usages, but only a checkbox next to the
 // items whose values is the string "two".
-const filterSelectorsByMatchingGetvalue = (currentItem: ComponentItem | undefined, getValueString) => {
-  if (currentItem && getValueString && getValueString.indexOf("=") !== -1) {
-    const targetValue = parseTargetValue(getValueString);
+const filterSelectorsByMatchingGetConfig = (currentItem: ComponentItem | undefined, getConfigString) => {
+  if (currentItem && getConfigString && getConfigString.indexOf("=") !== -1) {
+    const targetValue = parseTargetConfig(getConfigString);
 
     currentItem.contents = currentItem.contents.map((contentItem) => ({
       ...contentItem,
@@ -159,7 +161,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     };
   }
 
-  const getValueParam = getValueRequest(req);
+  const getConfigParam = getConfigRequest(req);
   const displayReplacer = getDisplayReplacerParam(req);
   const repoParam = getRepoParam(req);
 
@@ -176,7 +178,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
           field: req.params.sort ?? "_path",
           direction: parseSortDirection(req.params.dir),
         },
-        getValueParam,
+        getConfigParam,
         displayReplacer,
         repoParam,
       )
@@ -191,7 +193,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
   processMultiUsage(currentItem);
 
-  filterSelectorsByMatchingGetvalue(currentItem as unknown as ComponentItem, getValueParam);
+  filterSelectorsByMatchingGetConfig(currentItem as unknown as ComponentItem, getConfigParam);
 
   // If in Turbo Frame, only render the component view
   if (req.headers["turbo-frame"] === "content-view") {
@@ -200,8 +202,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
       displayReplacer: currentItemType === PART_KEY || currentItemType === LAYOUT_KEY ? displayReplacer : "false",
       displaySummaryAndUndo: false,
     };
-    if (getValueParam) {
-      model.getvalue = getValueParam;
+    if (getConfigParam) {
+      model.getconfig = getConfigParam;
     }
     if (repoParam) {
       model.repoParam = repoParam;
@@ -219,7 +221,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     cmsRepoIds,
     currentAppKey,
     displayReplacer,
-    getValueParam,
+    getConfigParam,
     repoParam,
   );
 
@@ -233,7 +235,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
             key: firstComponent.key,
             type: firstComponent.type,
             repo: repoParam,
-            getvalue: getValueParam || "",
+            getconfig: getConfigParam || "",
             replace: displayReplacer,
           })
         : "",
@@ -254,8 +256,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     hasNoschema: Object.keys(noSchema || {}).length > 0,
   };
 
-  if (getValueParam) {
-    model.getvalue = getValueParam;
+  if (getConfigParam) {
+    model.getconfig = getConfigParam;
   }
   if (repoParam) {
     model.repoParam = repoParam;

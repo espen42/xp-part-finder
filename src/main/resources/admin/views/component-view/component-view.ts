@@ -29,7 +29,7 @@ export function getComponentUsagesInRepo(
   component: { key: string; type: string },
   repositories: string[],
   sort: Partial<SortDsl>,
-  getvalueParam: string | undefined,
+  getconfigParam: string | undefined,
   replaceParam: string,
   repoParam: string | undefined,
 ): ComponentView {
@@ -55,7 +55,7 @@ export function getComponentUsagesInRepo(
       repo,
       id: content._id,
       usagePaths: {
-        [component.key]: getUsagePaths(content, component.type, component.key, getvalueParam),
+        [component.key]: getUsagePaths(content, component.type, component.key, getconfigParam),
       },
       multiUsage: [],
       hasMultiUsage: false,
@@ -72,7 +72,7 @@ export function getComponentUsagesInRepo(
         key: component.key,
         type: component.type,
         replace: replaceParam + "",
-        getvalue: getvalueParam || "",
+        getconfig: getconfigParam || "",
         repoParam: repoParam || "",
         sort: heading.name,
         dir:
