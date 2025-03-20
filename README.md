@@ -100,23 +100,23 @@ red cross for an error. It's also possible to select single contents or usage in
 #### Data peeking and filtering
 
 Sometimes, picking which instances to move, depends on the part config of each part. To make bulk selection easier, add
-a `getvalue` parameter to the URL, where the value is the path to a single data field, relative to part's data root.
+a `getconfig` parameter to the URL, where the value is the path to a single data field, relative to part's config object.
 
 For example, use [Content Viewer](https://market.enonic.com/vendors/enonic/com.enonic.app.contentviewer) to look up a
-path `config.title`...
+path `title`...
 
 <img title="Content viewer and data path" src="./docs/media/contentviewer.png" width="450" style="border:1px solid
 #eaeaea">
 <br />
 <br />
 
-...and add `&getvalue=config.title` to part-finder's URL to display it in the replace-checkbox column:
+...and add `&getconfig=title` to part-finder's URL to display it in the replace-checkbox column:
 
 <img title="Content viewer and data path" src="./docs/media/peeking.png" width="600" style="border:1px solid #eaeaea">
 <br />
 <br />
 
-By adding a particular value to the parameter (eg. `&getvalue=config.title="This is a title"`), only usage items where
+By adding a particular value to the parameter (eg. `&getconfig=title="This is a title"`), only usage items where
 the value matches, will have a checkbox - allowing batch operations on only selected values.
 
 ### Caution!

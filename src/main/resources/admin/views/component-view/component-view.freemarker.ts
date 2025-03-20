@@ -16,7 +16,7 @@ export type Heading = {
 
 export type ComponentViewParams = {
   currentItem?: ComponentView;
-  getvalue?: string;
+  getconfig?: string;
   repoParam?: string;
   displayReplacer?: string;
   displaySummaryAndUndo?: boolean;

@@ -1,9 +1,21 @@
 import { postprocessComponent } from "./index";
 
-export const nonvideoFullwidthCard = (contentItem, changedPaths) => {
+export const cardFullwidth = (contentItem, changedPaths) => {
   changedPaths.forEach((path) => {
     postprocessComponent(contentItem, path, (component, config) => {
+      if (!component.descriptor.endsWith("banner-with-image-hw")) {
+        log.warning("Invalid component: " + JSON.stringify(component));
+        throw Error(
+          `Postprocessor 'cardFullwidth' is written for component(s) of type 'banner-with-image-hw'. Found: '${component.descriptor}'`,
+        );
+      }
+
       config = config || {};
+
+      if (config.video) {
+        log.warning("Invalid component: " + JSON.stringify(component));
+        throw Error(`Not implemented yet: postprocessor 'cardFullwidth' shouldn't be used with video`);
+      }
 
       config.linkOrButtons = config.linkOrButtons || {};
       const correctLinkOrButtons = config.linkOrButtons;
@@ -32,9 +44,9 @@ export const nonvideoFullwidthCard = (contentItem, changedPaths) => {
 
         // TODO: Keep this disabled until the undo functionality can reverse postprocessing, or the part-mover adds duplicates instead of rewriting existing instances:
         //
-        //delete config.linkType;
-        //delete config.linkText;
-        //delete config.newTab;
+        delete config.linkType;
+        delete config.linkText;
+        delete config.newTab;
       }
 
       config.highlightErrors = true;
