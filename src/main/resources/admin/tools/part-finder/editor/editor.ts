@@ -140,16 +140,18 @@ const cloneAndMarkForStorage = (
   // TODO: REMOVE THIS ARG WHEN layoutDefault MIGRATION IS DONE:
   migrateSelectedLayoutConfig,
 ) => {
+  const componentConfig = component[targetComponentType].config || {};
+  const componentConfigOldData = componentConfig[oldAppKeyDashed] || {};
   const componentClone = {
     ...component,
     [targetComponentType]: {
       ...component[targetComponentType],
       descriptor: `${newAppKey}:${newComponentKey}`,
       config: {
-        ...component[targetComponentType].config,
+        ...componentConfig,
         [newAppKeyDashed]: {
-          ...component[targetComponentType].config[oldAppKeyDashed],
-          [newComponentKey]: component[targetComponentType].config[oldAppKeyDashed][oldComponentKey],
+          ...componentConfigOldData,
+          [newComponentKey]: componentConfigOldData[oldComponentKey],
         },
       },
     },
