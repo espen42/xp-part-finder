@@ -32,7 +32,9 @@ export function getComponentUsagesInRepo(
   getconfigParam: string | undefined,
   replaceParam: string,
   repoParam: string | undefined,
+  archiveParam: string,
 ): ComponentView {
+  const displayArchive = !!archiveParam;
   const contents = queryAllRepos<Content>(repositories, {
     count: 1000,
     sort: {
@@ -45,22 +47,24 @@ export function getComponentUsagesInRepo(
         values: [component.key],
       },
     },
-  }).map((content) => {
-    const repo = content.repoId.replace(/^com\.enonic\.cms\./, "");
-    return {
-      url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${content._id}`,
-      displayName: content.displayName ?? content._name,
-      path: content._path.replace(/^\/content/, ""),
-      type: content.type,
-      repo,
-      id: content._id,
-      usagePaths: {
-        [component.key]: getUsagePaths(content, component.type, component.key, getconfigParam),
-      },
-      multiUsage: [],
-      hasMultiUsage: false,
-    };
-  });
+  })
+    .filter((content) => displayArchive || !content._path.startsWith("/archive/"))
+    .map((content) => {
+      const repo = content.repoId.replace(/^com\.enonic\.cms\./, "");
+      return {
+        url: `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repo}/edit/${content._id}`,
+        displayName: content.displayName ?? content._name,
+        path: content._path.replace(/^\/content/, ""),
+        type: content.type,
+        repo,
+        id: content._id,
+        usagePaths: {
+          [component.key]: getUsagePaths(content, component.type, component.key, getconfigParam),
+        },
+        multiUsage: [],
+        hasMultiUsage: false,
+      };
+    });
 
   return {
     key: component.key,
@@ -72,6 +76,7 @@ export function getComponentUsagesInRepo(
         key: component.key,
         type: component.type,
         replace: replaceParam + "",
+        archive: archiveParam + "",
         getconfig: getconfigParam || "",
         repoParam: repoParam || "",
         sort: heading.name,

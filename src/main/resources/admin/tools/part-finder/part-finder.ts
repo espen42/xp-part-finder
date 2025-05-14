@@ -82,6 +82,12 @@ const getRepoParam = (req) =>
     .trim()
     .toLowerCase()
     .replace(/^undefined$/, "");
+const getDisplayArchiveParam = (req) =>
+  (req.params.archive + "")
+    .trim()
+    .toLowerCase()
+    .replace(/^undefined$/, "")
+    .replace(/^false$/, "");
 
 const parseTargetConfig = (getConfigString) => {
   let targetValue;
@@ -164,6 +170,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const getConfigParam = getConfigRequest(req);
   const displayReplacer = getDisplayReplacerParam(req);
   const repoParam = getRepoParam(req);
+  const displayArchives = getDisplayArchiveParam(req);
 
   const currentAppKey = getAppKey(currentItemKey);
   const cmsRepoIds = getCMSRepoIds(repoParam);
@@ -181,6 +188,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
         getConfigParam,
         displayReplacer,
         repoParam,
+        displayArchives,
       )
     : undefined;
 
@@ -223,6 +231,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     displayReplacer,
     getConfigParam,
     repoParam,
+    displayArchives,
   );
 
   const filters = installedApps.map<Link>((app) => {
@@ -237,6 +246,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
             repo: repoParam,
             getconfig: getConfigParam || "",
             replace: displayReplacer,
+            archive: displayArchives,
           })
         : "",
     };
@@ -412,6 +422,7 @@ export function post(req: XP.Request): XP.Response {
   const results = new Results(sourceKey, newKey, componentType);
 
   const repoParam = getRepoParam(req);
+  const displayArchiveParam = getDisplayArchiveParam(req) ? "&archive=true" : "";
   const repoIds = getCMSRepoIds(repoParam);
 
   repoIds.forEach((targetRepo) => {
@@ -477,7 +488,7 @@ export function post(req: XP.Request): XP.Response {
     displayReplacer: "",
     displaySummaryAndUndo: true,
     oldItemKey: `${sourceKey}`,
-    newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true`,
+    newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${displayArchiveParam}`,
     currentItem: {
       url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
       key: newKey,

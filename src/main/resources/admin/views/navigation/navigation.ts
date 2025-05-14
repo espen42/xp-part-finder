@@ -81,6 +81,7 @@ export function getComponentNavLinkList(
   displayReplacer: string,
   getconfigParam: string | undefined,
   repoParam: string,
+  displayArchives: string,
 ): {
   active: ComponentNavLinkList[];
   noSchema: ComponentNavLinkList[];
@@ -130,9 +131,13 @@ export function getComponentNavLinkList(
     repo?: string;
     replace?: string;
     getconfig?: string;
+    archive?: string;
   }): string => {
     if (displayReplacer) {
       params.replace = displayReplacer;
+    }
+    if (displayArchives) {
+      params.archive = displayArchives;
     }
     if (getconfigParam) {
       params.getconfig = getconfigParam;
