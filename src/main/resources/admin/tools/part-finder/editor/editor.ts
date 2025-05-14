@@ -17,6 +17,7 @@ const POSTPROCESSORS = {
   throwerror,
   cardfullwidth: cardFullwidth,
   "card-fullwidth": cardFullwidth,
+  fullwidthcard: cardFullwidth,
 };
 
 // If a content has multiple usages of a component, and not all of those components are targeted for change here, then

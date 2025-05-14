@@ -187,7 +187,15 @@
 
 
       [#if displayReplacer != '']
-        <label for="new_part_ref" class="new-part-label inline-pre">Replace ${currentItem.type} <pre>${currentItem.key}</pre> with:</label>
+        <label for="new_part_ref"
+               class="new-part-label inline-pre"
+        >
+          Replace ${currentItem.type}
+          <pre style="cursor:pointer;display:inline"
+               onclick="document.getElementById('new_part_ref').value='${currentItem.key}'"
+          >${currentItem.key}</pre>
+           with:
+        </label>
         <input type="text"
                placeholder="Format: full.app.key:part-name" id="new_part_ref"
                name="new_part_ref"
@@ -196,7 +204,9 @@
                value=${displayReplacer?replace("^true$", "", "ir")}
         >
 
-        <label for="postprocessors" class="new-part-label inline-pre">Run postprocessors (comma-separated, eg. <pre>logger,throwerror</pre>)<br/>Available names: see src/main/resources/admin/tools/part-finder/editor/editor.ts</label>
+        <label for="postprocessors" class="new-part-label inline-pre">
+          Run postprocessors (comma-separated, eg. <pre>logger,throwerror</pre>)<br/>Available names: see src/main/resources/admin/tools/part-finder/editor/editor.ts
+        </label>
         <input type="text"
                placeholder="Postprocessor name(s)" id="postprocessors"
                name="postprocessors"
