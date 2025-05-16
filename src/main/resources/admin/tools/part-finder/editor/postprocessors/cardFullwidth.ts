@@ -1,19 +1,20 @@
-import { postprocessComponent } from "./index";
+import {ComponentConfig, ContentitemMutatingPostprocessorFunc, postprocessAndMutateComponent} from "./index";
 
-export const cardFullwidth = (contentItem, changedPaths) => {
+export const cardFullwidth: ContentitemMutatingPostprocessorFunc = (
+  contentItem,
+  changedPaths
+) => {
   changedPaths.forEach((path) => {
-    postprocessComponent(contentItem, path, (component, currentComponentConfig) => {
-      const config = currentComponentConfig || {};
-
-      if (config.video) {
+    postprocessAndMutateComponent(contentItem, path, (component, currentComponentConfig) => {
+      if (currentComponentConfig.video) {
         log.warning("Invalid component: " + JSON.stringify(component));
         throw Error(`Not implemented yet: postprocessor 'cardFullwidth' shouldn't be used with video`);
       }
 
-      config.linkOrButtons = config.linkOrButtons || {};
-      const correctLinkOrButtons = config.linkOrButtons;
+      currentComponentConfig.linkOrButtons = currentComponentConfig.linkOrButtons || {};
+      const correctLinkOrButtons = currentComponentConfig.linkOrButtons;
 
-      const oldLinkType = config?.linkType || {};
+      const oldLinkType = currentComponentConfig?.linkType || {};
       correctLinkOrButtons._selected = correctLinkOrButtons._selected || oldLinkType._selected;
 
       const correctButtonSelection = correctLinkOrButtons._selected;
@@ -32,8 +33,8 @@ export const cardFullwidth = (contentItem, changedPaths) => {
             correctButtonConfig.url = correctButtonConfig.url || oldLinkTypeConfig.externalLink;
             break;
         }
-        correctButtonConfig.text = correctButtonConfig.text || config.linkText;
-        correctButtonConfig.newTab = correctButtonConfig.newTab || config.newTab;
+        correctButtonConfig.text = correctButtonConfig.text || currentComponentConfig.linkText;
+        correctButtonConfig.newTab = correctButtonConfig.newTab || currentComponentConfig.newTab;
 
         // TODO: Keep this disabled until the undo functionality can reverse postprocessing, or the part-mover adds duplicates instead of rewriting existing instances:
         //
@@ -42,7 +43,7 @@ export const cardFullwidth = (contentItem, changedPaths) => {
         //delete config.newTab;
       }
 
-      config.highlightErrors = true;
+      currentComponentConfig.highlightErrors = true;
     });
   });
 

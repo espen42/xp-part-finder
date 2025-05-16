@@ -376,7 +376,7 @@ export function post(req: XP.Request): XP.Response {
   const sourceKey = trimString(req.params.key);
   const newKey = trimString(req.params.new_part_ref);
   const componentType = trimString(req.params.type).toLowerCase();
-  const usePostprocessors = trimString(req.params.postprocessors)
+  const requestedPostprocessors = trimString(req.params.postprocessors)
     .split(/\s*,\s*/g)
     .filter((processorName) => processorName.trim())
     .filter((processorName) => processorName !== "undefined");
@@ -451,7 +451,8 @@ export function post(req: XP.Request): XP.Response {
           componentType,
           results,
           componentPathsPerId,
-          usePostprocessors,
+          false,
+          requestedPostprocessors,
         );
 
         Object.keys(componentPathsPerId).forEach((id) => {

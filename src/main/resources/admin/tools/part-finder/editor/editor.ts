@@ -1,23 +1,41 @@
 import { getUser as getAuthUser } from "/lib/xp/auth";
 import { Results } from "/admin/tools/part-finder/results";
 import { find, findIndex } from "/lib/part-finder/utils";
-import { LAYOUT_KEY } from "/admin/tools/part-finder/part-finder";
 import clone from "../../../../../../../node_modules/just-clone";
 
 import { logger } from "./postprocessors/logger";
 import { throwerror } from "./postprocessors/throwerror";
 import { cardFullwidth } from "./postprocessors/cardFullwidth";
+import { layoutNColumns } from "./postprocessors/layout-n-columns";
+import {
+  ContentitemMutatingPostprocessorFunc,
+  ComponentConfig, ContentItem
+} from "/admin/tools/part-finder/editor/postprocessors";
+import {ModifiedNode} from "/lib/xp/node";
+import {type Node, NodeConfigEntry} from '@enonic-types/lib-node'
+
+
+type RequestedProcessor = {
+  label: string,
+  func: ContentitemMutatingPostprocessorFunc
+}
+
+type Editor = {
+  (contentItem: ContentItem): ContentItem;
+}
 
 // Available postprocessors:
 // key in this object:  processor names, available to refer to from URL parameter, eg: ...?postprocess=logger
 // value:               postprocessor function, must have the signature ((contentItem, changedComponentPaths?) -> contentItem)
-// TODO: typescript-ify this properly
-const POSTPROCESSORS = {
+const POSTPROCESSORS: {[callableName:string]: ContentitemMutatingPostprocessorFunc} = {
   logger,
   throwerror,
   cardfullwidth: cardFullwidth,
   "card-fullwidth": cardFullwidth,
   fullwidthcard: cardFullwidth,
+  layoutcolumns: layoutNColumns,
+  layoutncolumns: layoutNColumns,
+  "layout-n-columns": layoutNColumns,
 };
 
 // If a content has multiple usages of a component, and not all of those components are targeted for change here, then
@@ -136,10 +154,7 @@ const cloneAndMarkForStorage = (
   newAppKey,
   newAppKeyDashed,
   newComponentKey,
-  changedComponents,
-
-  // TODO: REMOVE THIS ARG WHEN layoutDefault MIGRATION IS DONE:
-  migrateSelectedLayoutConfig,
+  changedComponents
 ) => {
   const componentConfig = component[targetComponentType].config || {};
   const componentConfigOldData = componentConfig[oldAppKeyDashed] || {};
@@ -165,29 +180,6 @@ const cloneAndMarkForStorage = (
     delete componentClone[targetComponentType].config[newAppKeyDashed][oldComponentKey];
   }
 
-  // TODO: REMOVE WHEN layoutDefault MIGRATION IS DONE - FROM HERE...
-  const layoutConfig = {
-    ...(((componentClone[targetComponentType].config || {})[newAppKeyDashed] || {})[newComponentKey] || {}),
-  };
-  if (
-    migrateSelectedLayoutConfig &&
-    Object.keys(layoutConfig).length &&
-    layoutConfig.layout?._selected &&
-    layoutConfig.layout[layoutConfig.layout._selected]
-  ) {
-    log.info(
-      `    Also migrating ${targetComponentType}'s config.layout['${layoutConfig.layout._selected}'] down to .config`,
-    );
-    for (const key in layoutConfig.layout[layoutConfig.layout._selected]) {
-      layoutConfig[key] = layoutConfig.layout[layoutConfig.layout._selected][key];
-    }
-    delete layoutConfig.layout[layoutConfig.layout._selected];
-    delete layoutConfig.layout._selected;
-
-    componentClone[targetComponentType].config[newAppKeyDashed][newComponentKey] = layoutConfig;
-  }
-  // TODO: ...TO HERE.
-
   changedComponents[component.path] = componentClone;
 };
 
@@ -199,7 +191,8 @@ export const createEditorFunc = (
   targetComponentType: string,
   results: Results,
   componentPathsPerId: Record<string, string[] | null>,
-  usePostprocessors?: string[] | string,
+  duplicate: boolean,
+  requestedPostprocessors?: string[] | string,
 ) => {
   const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
   const newAppKeyDashed = newAppKey.replace(/\./g, "-");
@@ -233,7 +226,7 @@ export const createEditorFunc = (
   // 3. only when everything's completed successfully the intermediate objects/arrays overwrite data in contentItem.
   //
   // On errors, report the error and return the original contentItem unchanged.
-  const editor = (contentItem) => {
+  const editor: Editor = (contentItem) => {
     /*
     Example component structure in a content: {
     "type": "layout",
@@ -255,10 +248,10 @@ export const createEditorFunc = (
           } */
 
     const changedComponents: { [path: string]: { path: string } } = {};
-    const newIndexConfigs: object[] = [];
+    const newIndexConfigs: NodeConfigEntry[] = [];
     let lastTargetedComponentPath: string | null = null;
 
-    const id = contentItem?._id;
+    const id = contentItem?._id || "###MISSING###";
 
     try {
       // List either selected paths to target, or if none are specifically targeted: all available component paths
@@ -274,7 +267,7 @@ export const createEditorFunc = (
               )
               .filter((path) => !!path);
 
-      const preserveSomeComponentPaths = detectCompPathPreservation(
+      const preserveSomeComponentPaths = duplicate || detectCompPathPreservation(
         contentItem,
         oldDescriptor,
         targetComponentType,
@@ -294,8 +287,7 @@ export const createEditorFunc = (
               newAppKey,
               newAppKeyDashed,
               newComponentKey,
-              changedComponents,
-              component.type === LAYOUT_KEY.toLowerCase(),
+              changedComponents
             );
           }
 
@@ -338,37 +330,35 @@ export const createEditorFunc = (
         results.reportSuccess(clonedContentItem, componentPath);
       }
 
-      if (!usePostprocessors) {
+      if (!requestedPostprocessors) {
         return clonedContentItem;
       } else {
-        if (!Array.isArray(usePostprocessors)) {
-          usePostprocessors = [usePostprocessors];
+        if (!Array.isArray(requestedPostprocessors)) {
+          requestedPostprocessors = [requestedPostprocessors];
         }
-        const postProcessorFuncs = usePostprocessors.map((processorLabel) => {
+        const requestedPostProcessors: RequestedProcessor[] = requestedPostprocessors.map((processorLabel) => {
           const processorFunc = POSTPROCESSORS[processorLabel];
           if (!processorFunc) {
             throw Error(`Postprocessor not found: '${processorLabel}'`);
           }
 
-          const processor = {
+          return {
             label: processorLabel,
             func: processorFunc,
           };
-          return processor;
         });
 
-        const postProcessed = postProcessorFuncs.reduce((content, processor) => {
+        requestedPostProcessors.forEach(processor => {
           const { label, func } = processor;
-          const processed = func(content, changedComponentPaths);
-          if (!processed || !processed._id || !processed.type) {
-            throw Error(
-              `Postprocessor '${label}' must return a processed version of the original contentItem or a processed version of it`,
-            );
+          try {
+            func(clonedContentItem, changedComponentPaths, targetComponentType, newAppKeyDashed, newComponentKey)
+          } catch (e) {
+            log.warning(`Error while trying to apply postprocessor '${label}' to the following data/arguments: ${JSON.stringify({clonedContentItem, changedComponentPaths, targetComponentType, newAppKeyDashed, newComponentKey})}`);
+            throw e
           }
-          return processed;
-        }, clonedContentItem);
+        });
 
-        return postProcessed;
+        return clonedContentItem;
       }
     } catch (e) {
       results.markError(contentItem, lastTargetedComponentPath, e);
