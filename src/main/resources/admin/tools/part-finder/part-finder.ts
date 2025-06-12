@@ -455,22 +455,15 @@ export function post(req: XP.Request): XP.Response {
           requestedPostprocessors,
         );
 
-        Object.keys(componentPathsPerId).forEach((id) => {
+        Object.keys(componentPathsPerId).forEach((key) => {
           item = null;
-
           try {
-            item = getContent({
-              key: id,
-            });
-
+            item = getContent({key});
             if (item) {
-              repo.modify({
-                key: id,
-                editor: editor,
-              });
+              repo.modify({key, editor});
             }
           } catch (e) {
-            results.markError(item, null, e, id);
+            results.markError(item, null, e, key);
           }
         });
       },

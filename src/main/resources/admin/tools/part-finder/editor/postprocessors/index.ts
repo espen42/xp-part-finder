@@ -1,38 +1,33 @@
 import { findIndex } from "/lib/part-finder/utils";
-import { type CommonNodeProperties} from '@enonic-types/lib-node'
+import {NodeIndexConfig, NodePropertiesOnModify, NodePropertiesOnRead} from "/lib/xp/node";
+import {Content, Component} from "@enonic-types/core";
 
 
-export interface ComponentConfig {
-  path: string;
+/*export type ComponentConfig = {
   [propName: string]: any;
-}
+} & NodeIndexConfig
 export interface Component {
   type: string;   // specify type strings
   path: string;
 }
 export type ContentItem = {
-  _id: string;
-  type: string,
   components: Component[];
-  _indexConfig: {
-    configs: ComponentConfig[]
-  }
-} & CommonNodeProperties;
+} & NodePropertiesOnModify; */
 
 export interface ContentitemMutatingPostprocessorFunc {
   (
-    currentContentItem: ContentItem,
+    currentContentItem: Content,
     changedComponentPaths: string[],
     targetComponentType: string,
     newAppKeyDashed: string,
     newComponentKey: string
-  ): ContentItem
+  ): Content
 }
 
 export interface ComponentMutatingPostprocessorFunc {
   (
     component: Component,
-    currentComponentConfig: ComponentConfig,
+    currentComponentConfig: NodeIndexConfig,
     descriptor: string
   ): void;
 }
@@ -40,7 +35,7 @@ export interface ComponentMutatingPostprocessorFunc {
 
 
 export const postprocessAndMutateComponent = (
-  contentItem: ContentItem,
+  contentItem: Content,
   componentPath: string,
   postprocessorFunc: ComponentMutatingPostprocessorFunc
 ) => {

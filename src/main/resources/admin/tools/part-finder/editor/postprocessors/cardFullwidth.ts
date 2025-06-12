@@ -1,4 +1,4 @@
-import {ComponentConfig, ContentitemMutatingPostprocessorFunc, postprocessAndMutateComponent} from "./index";
+import {ContentitemMutatingPostprocessorFunc, postprocessAndMutateComponent} from "./index";
 
 export const cardFullwidth: ContentitemMutatingPostprocessorFunc = (
   contentItem,

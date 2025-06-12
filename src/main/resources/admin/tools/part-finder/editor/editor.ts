@@ -9,20 +9,24 @@ import { cardFullwidth } from "./postprocessors/cardFullwidth";
 import { layoutNColumns } from "./postprocessors/layout-n-columns";
 import {
   ContentitemMutatingPostprocessorFunc,
-  ComponentConfig, ContentItem
 } from "/admin/tools/part-finder/editor/postprocessors";
-import {ModifiedNode} from "/lib/xp/node";
+import {ModifiedNode, ModifyNodeParams} from "/lib/xp/node";
 import {type Node, NodeConfigEntry} from '@enonic-types/lib-node'
+import {Content, Component} from "/lib/xp/content";
 
+
+export type FlatComponents<D = any> = Content<D, any> & { components: Component[]; };
+//type PageNode<D = any> = Content<D, any>;
+//type FlatNode<D = any> = FlatComponents<D>;
+type Editor<D = any> = {
+  (contentItem: FlatComponents<D>): FlatComponents<D>;
+}
 
 type RequestedProcessor = {
   label: string,
   func: ContentitemMutatingPostprocessorFunc
 }
 
-type Editor = {
-  (contentItem: ContentItem): ContentItem;
-}
 
 // Available postprocessors:
 // key in this object:  processor names, available to refer to from URL parameter, eg: ...?postprocess=logger
@@ -183,7 +187,8 @@ const cloneAndMarkForStorage = (
   changedComponents[component.path] = componentClone;
 };
 
-export const createEditorFunc = (
+
+export function createEditorFunc<D = any>(
   oldAppKey: string,
   oldComponentKey: string,
   newAppKey: string,
@@ -193,7 +198,7 @@ export const createEditorFunc = (
   componentPathsPerId: Record<string, string[] | null>,
   duplicate: boolean,
   requestedPostprocessors?: string[] | string,
-) => {
+): Editor {
   const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
   const newAppKeyDashed = newAppKey.replace(/\./g, "-");
 
@@ -274,7 +279,7 @@ export const createEditorFunc = (
         targetComponentPaths,
       );
 
-      contentItem.components.forEach((component) => {
+      (contentItem.components || []).forEach((component) => {
         for (const targetComponentPath of targetComponentPaths) {
           lastTargetedComponentPath = verifyAndGetCompPath(component);
 
