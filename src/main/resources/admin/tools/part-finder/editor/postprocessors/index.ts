@@ -1,27 +1,17 @@
 import { findIndex } from "/lib/part-finder/utils";
-import {NodeIndexConfig, NodePropertiesOnModify, NodePropertiesOnRead} from "/lib/xp/node";
-import {Content, Component} from "@enonic-types/core";
+import {NodeIndexConfig} from "/lib/xp/node";
+import {Component} from "@enonic-types/lib-content";
+import {ContentItem} from "/admin/tools/part-finder/editor/editor";
 
-
-/*export type ComponentConfig = {
-  [propName: string]: any;
-} & NodeIndexConfig
-export interface Component {
-  type: string;   // specify type strings
-  path: string;
-}
-export type ContentItem = {
-  components: Component[];
-} & NodePropertiesOnModify; */
 
 export interface ContentitemMutatingPostprocessorFunc {
   (
-    currentContentItem: Content,
+    currentContentItem: ContentItem,
     changedComponentPaths: string[],
     targetComponentType: string,
     newAppKeyDashed: string,
     newComponentKey: string
-  ): Content
+  ): ContentItem
 }
 
 export interface ComponentMutatingPostprocessorFunc {
@@ -35,7 +25,7 @@ export interface ComponentMutatingPostprocessorFunc {
 
 
 export const postprocessAndMutateComponent = (
-  contentItem: Content,
+  contentItem: ContentItem,
   componentPath: string,
   postprocessorFunc: ComponentMutatingPostprocessorFunc
 ) => {

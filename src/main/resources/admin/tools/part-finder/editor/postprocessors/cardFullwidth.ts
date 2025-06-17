@@ -1,8 +1,9 @@
 import {ContentitemMutatingPostprocessorFunc, postprocessAndMutateComponent} from "./index";
+import {ContentItem} from "/admin/tools/part-finder/editor/editor";
 
 export const cardFullwidth: ContentitemMutatingPostprocessorFunc = (
-  contentItem,
-  changedPaths
+  contentItem: ContentItem,
+  changedPaths: string[],
 ) => {
   changedPaths.forEach((path) => {
     postprocessAndMutateComponent(contentItem, path, (component, currentComponentConfig) => {

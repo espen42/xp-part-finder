@@ -1,11 +1,12 @@
 import {ContentitemMutatingPostprocessorFunc, postprocessAndMutateComponent} from "./index";
+import {ContentItem} from "/admin/tools/part-finder/editor/editor";
 
 export const layoutNColumns: ContentitemMutatingPostprocessorFunc = (
-  contentItem,
-  changedPaths,
-  targetComponentType,
-  newAppKeyDashed:string,
-  newComponentKey:string
+  contentItem: ContentItem,
+  changedPaths: string[],
+  targetComponentType: string,
+  newAppKeyDashed: string,
+  newComponentKey: string
 ) => {
   changedPaths.forEach((path) => {
     postprocessAndMutateComponent(contentItem, path, (component, currentComponentConfig) => {

@@ -1,37 +1,42 @@
-import { getUser as getAuthUser } from "/lib/xp/auth";
-import { Results } from "/admin/tools/part-finder/results";
-import { find, findIndex } from "/lib/part-finder/utils";
+import {getUser as getAuthUser} from "/lib/xp/auth";
+import {Results} from "/admin/tools/part-finder/results";
+import {find, findIndex} from "/lib/part-finder/utils";
 import clone from "../../../../../../../node_modules/just-clone";
 
-import { logger } from "./postprocessors/logger";
-import { throwerror } from "./postprocessors/throwerror";
-import { cardFullwidth } from "./postprocessors/cardFullwidth";
-import { layoutNColumns } from "./postprocessors/layout-n-columns";
+import {logger} from "./postprocessors/logger";
+import {throwerror} from "./postprocessors/throwerror";
+import {cardFullwidth} from "./postprocessors/cardFullwidth";
+import {layoutNColumns} from "./postprocessors/layout-n-columns";
 import {
   ContentitemMutatingPostprocessorFunc,
 } from "/admin/tools/part-finder/editor/postprocessors";
-import {ModifiedNode, ModifyNodeParams} from "/lib/xp/node";
-import {type Node, NodeConfigEntry} from '@enonic-types/lib-node'
-import {Content, Component} from "/lib/xp/content";
 
+import {Node, ModifiedNode, NodeConfigEntry} from '@enonic-types/lib-node'
+import {Content, Component} from '@enonic-types/lib-content';
 
-export type FlatComponents<D = any> = Content<D, any> & { components: Component[]; };
-//type PageNode<D = any> = Content<D, any>;
-//type FlatNode<D = any> = FlatComponents<D>;
-type Editor<D = any> = {
-  (contentItem: FlatComponents<D>): FlatComponents<D>;
-}
 
 type RequestedProcessor = {
   label: string,
   func: ContentitemMutatingPostprocessorFunc
 }
 
+type IndexConfigEntry = {
+  path: string;
+  config: NodeConfigEntry
+}
+
+export type ContentItem = Content & {
+  components: Component[];
+  _indexConfig?: {
+    configs: IndexConfigEntry[];
+  };
+};
+
 
 // Available postprocessors:
 // key in this object:  processor names, available to refer to from URL parameter, eg: ...?postprocess=logger
 // value:               postprocessor function, must have the signature ((contentItem, changedComponentPaths?) -> contentItem)
-const POSTPROCESSORS: {[callableName:string]: ContentitemMutatingPostprocessorFunc} = {
+const POSTPROCESSORS: { [callableName: string]: ContentitemMutatingPostprocessorFunc } = {
   logger,
   throwerror,
   cardfullwidth: cardFullwidth,
@@ -50,18 +55,18 @@ const detectCompPathPreservation = (contentItem, targetKey, targetComponentType,
     !targetComponentPaths || !targetComponentPaths.length || !targetComponentPaths[0]
       ? []
       : contentItem.components
-          .map((component) => {
-            if (
-              component != null &&
-              component.type === targetComponentType &&
-              (component[targetComponentType] || {}).descriptor === targetKey &&
-              targetComponentPaths.indexOf(component.path) === -1
-            ) {
-              return component.path;
-            }
-            return null;
-          })
-          .filter((componentPath) => componentPath);
+        .map((component) => {
+          if (
+            component != null &&
+            component.type === targetComponentType &&
+            (component[targetComponentType] || {}).descriptor === targetKey &&
+            targetComponentPaths.indexOf(component.path) === -1
+          ) {
+            return component.path;
+          }
+          return null;
+        })
+        .filter((componentPath) => componentPath);
 
   log.info(
     untargetedPaths.length > 0
@@ -111,13 +116,13 @@ const replaceChangedComponentsInClone = (componentPath, changedComponents, clone
 };
 
 const changeOrCopyIndexConfig = (
-  currentOrigConfig,
-  newIndexConfigs,
-  origIndexConfigs,
-  preserveSomeComponentPaths,
-  configSearchPattern,
-  configReplacePattern,
-  configReplaceTarget,
+  currentOrigConfig: IndexConfigEntry,
+  newIndexConfigs: IndexConfigEntry[],
+  origIndexConfigs: IndexConfigEntry[],
+  preserveSomeComponentPaths: boolean,
+  configSearchPattern: RegExp,
+  configReplacePattern: RegExp,
+  configReplaceTarget: string,
 ) => {
   if ((currentOrigConfig?.path || "").match(configSearchPattern)) {
     const newPath = currentOrigConfig.path.replace(configReplacePattern, configReplaceTarget);
@@ -142,16 +147,22 @@ const changeOrCopyIndexConfig = (
   }
 };
 
-const componentMatchesTarget = (component, targetComponentType, oldDescriptor, targetComponentPath) =>
+const componentMatchesTarget = (
+  component: Component,
+  targetComponentType: string,
+  oldDescriptor: string,
+  targetComponentPath: string
+) => (
   component.type === targetComponentType &&
   (component[targetComponentType] || {}).descriptor === oldDescriptor &&
-  component.path === targetComponentPath;
+  component.path === targetComponentPath
+)
 
 // By now, established a match: component type, descriptor and path matches the target.
 // So deep-clone the component data to avoid mutation, and add the clone to the collection of data to store later,
 // with path as key
 const cloneAndMarkForStorage = (
-  component,
+  component: Component,
   targetComponentType,
   oldAppKeyDashed,
   oldComponentKey,
@@ -160,6 +171,10 @@ const cloneAndMarkForStorage = (
   newComponentKey,
   changedComponents
 ) => {
+  if (!component.path) {
+    throw Error("Component without path: " + JSON.stringify(component));
+  }
+
   const componentConfig = component[targetComponentType].config || {};
   const componentConfigOldData = componentConfig[oldAppKeyDashed] || {};
   const componentClone = {
@@ -183,10 +198,8 @@ const cloneAndMarkForStorage = (
   if (oldComponentKey !== newComponentKey) {
     delete componentClone[targetComponentType].config[newAppKeyDashed][oldComponentKey];
   }
-
   changedComponents[component.path] = componentClone;
 };
-
 
 export function createEditorFunc<D = any>(
   oldAppKey: string,
@@ -198,7 +211,7 @@ export function createEditorFunc<D = any>(
   componentPathsPerId: Record<string, string[] | null>,
   duplicate: boolean,
   requestedPostprocessors?: string[] | string,
-): Editor {
+): (contentItem: Node<ContentItem>) => ModifiedNode<ContentItem> {
   const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
   const newAppKeyDashed = newAppKey.replace(/\./g, "-");
 
@@ -231,7 +244,7 @@ export function createEditorFunc<D = any>(
   // 3. only when everything's completed successfully the intermediate objects/arrays overwrite data in contentItem.
   //
   // On errors, report the error and return the original contentItem unchanged.
-  const editor: Editor = (contentItem) => {
+  const editor = (contentItem: Node<ContentItem>): ModifiedNode<ContentItem> => {
     /*
     Example component structure in a content: {
     "type": "layout",
@@ -253,24 +266,26 @@ export function createEditorFunc<D = any>(
           } */
 
     const changedComponents: { [path: string]: { path: string } } = {};
-    const newIndexConfigs: NodeConfigEntry[] = [];
+    const newIndexConfigs: IndexConfigEntry[] = [];
     let lastTargetedComponentPath: string | null = null;
 
     const id = contentItem?._id || "###MISSING###";
 
     try {
+      const components = contentItem?.components || [];
+
       // List either selected paths to target, or if none are specifically targeted: all available component paths
-      const targetComponentPaths =
+      const targetComponentPaths: string[]  =
         componentPathsPerId[id] !== null
           ? componentPathsPerId[id]
-          : (contentItem?.components || [])
-              .map(
-                (component) =>
-                  component.type === targetComponentType &&
-                  (component[targetComponentType] || {}).descriptor === oldDescriptor &&
-                  component?.path,
-              )
-              .filter((path) => !!path);
+          : components
+            .map(
+              (component) =>
+                component.type === targetComponentType &&
+                (component[targetComponentType] || {}).descriptor === oldDescriptor &&
+                component?.path,
+            )
+            .filter((path) => !!path) as string[];
 
       const preserveSomeComponentPaths = duplicate || detectCompPathPreservation(
         contentItem,
@@ -279,7 +294,7 @@ export function createEditorFunc<D = any>(
         targetComponentPaths,
       );
 
-      (contentItem.components || []).forEach((component) => {
+      components.forEach((component: Component) => {
         for (const targetComponentPath of targetComponentPaths) {
           lastTargetedComponentPath = verifyAndGetCompPath(component);
 
@@ -302,12 +317,12 @@ export function createEditorFunc<D = any>(
 
       verifyAllChangesWereMade(changedComponents, componentPathsPerId[id]);
 
-      const origIndexConfigs = contentItem?._indexConfig?.configs || [];
-      for (const currentOrigConfig of origIndexConfigs) {
-        lastTargetedComponentPath = currentOrigConfig.path + " (config path)";
+      const origIndexConfigs: IndexConfigEntry[] = contentItem?._indexConfig?.configs || [];
+      for (const currentIndexConfig of origIndexConfigs) {
+        lastTargetedComponentPath = currentIndexConfig.path + " (config path)";
 
         changeOrCopyIndexConfig(
-          currentOrigConfig,
+          currentIndexConfig,
           newIndexConfigs,
           origIndexConfigs,
           preserveSomeComponentPaths,
@@ -354,11 +369,17 @@ export function createEditorFunc<D = any>(
         });
 
         requestedPostProcessors.forEach(processor => {
-          const { label, func } = processor;
+          const {label, func} = processor;
           try {
             func(clonedContentItem, changedComponentPaths, targetComponentType, newAppKeyDashed, newComponentKey)
           } catch (e) {
-            log.warning(`Error while trying to apply postprocessor '${label}' to the following data/arguments: ${JSON.stringify({clonedContentItem, changedComponentPaths, targetComponentType, newAppKeyDashed, newComponentKey})}`);
+            log.warning(`Error while trying to apply postprocessor '${label}' to the following data/arguments: ${JSON.stringify({
+              clonedContentItem,
+              changedComponentPaths,
+              targetComponentType,
+              newAppKeyDashed,
+              newComponentKey
+            })}`);
             throw e
           }
         });
