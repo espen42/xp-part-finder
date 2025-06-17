@@ -1,0 +1,23 @@
+{
+  "name": "xp-part-finder",
+  "platform": "Enonic XP 7",
+  "description": "Admin application for Enonic XP 7 that helps find and rename components across content repositories",
+  "technologies": ["typescript", "java", "javascript", "gradle", "npm", "freemarker"],
+  "features": {
+    "Component-finder": "Scans XP data repositories to identify which content items use specific codebase-defined components (parts, layouts, fragments) and displays this information in a navigable UI",
+    "Component-mover": "Provides interface to selectively rename components across content items with undo functionality and custom postprocessing capabilities"
+  },
+  "functionality": [
+    "Repository scanning and component usage analysis",
+    "Component usage visualization by path",
+    "Selective component instance renaming",
+    "Change history tracking with undo functionality",
+    "Custom postprocessor modules for modifying changed components",
+    "Atomic operations to ensure data integrity: if anything fails in the editor, no changes are made to the data"
+  ],
+  "unsolved": [
+    "Fix typescript issues around the editor in order to aid postprocessor building",
+    "Duplicate selected components (and add them right below the old one) instead of just renaming them",
+    "If duplication can't be solved, then how to undo: reverting components to their original state even after postprocessing"
+  ]
+}
