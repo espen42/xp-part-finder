@@ -458,9 +458,9 @@ export function post(req: XP.Request): XP.Response {
         Object.keys(componentPathsPerId).forEach((key) => {
           item = null;
           try {
-            item = getContent({key});
+            item = getContent({ key });
             if (item) {
-              repo.modify({key, editor});
+              repo.modify({ key, editor });
             }
           } catch (e) {
             results.markError(item, null, e, key);

@@ -1,29 +1,26 @@
-import {getUser as getAuthUser} from "/lib/xp/auth";
-import {Results} from "/admin/tools/part-finder/results";
-import {find, findIndex} from "/lib/part-finder/utils";
+import { getUser as getAuthUser } from "/lib/xp/auth";
+import { Results } from "/admin/tools/part-finder/results";
+import { find, findIndex } from "/lib/part-finder/utils";
 import clone from "../../../../../../../node_modules/just-clone";
 
-import {logger} from "./postprocessors/logger";
-import {throwerror} from "./postprocessors/throwerror";
-import {cardFullwidth} from "./postprocessors/cardFullwidth";
-import {layoutNColumns} from "./postprocessors/layout-n-columns";
-import {
-  ContentitemMutatingPostprocessorFunc,
-} from "/admin/tools/part-finder/editor/postprocessors";
+import { logger } from "./postprocessors/logger";
+import { throwerror } from "./postprocessors/throwerror";
+import { cardFullwidth } from "./postprocessors/cardFullwidth";
+import { layoutNColumns } from "./postprocessors/layout-n-columns";
+import { ContentitemMutatingPostprocessorFunc } from "/admin/tools/part-finder/editor/postprocessors";
 
-import {Node, ModifiedNode, NodeConfigEntry} from '@enonic-types/lib-node'
-import {Content, Component} from '@enonic-types/lib-content';
-
+import { Node, ModifiedNode, NodeConfigEntry } from "@enonic-types/lib-node";
+import { Content, Component } from "@enonic-types/lib-content";
 
 type RequestedProcessor = {
-  label: string,
-  func: ContentitemMutatingPostprocessorFunc
-}
+  label: string;
+  func: ContentitemMutatingPostprocessorFunc;
+};
 
 type IndexConfigEntry = {
   path: string;
-  config: NodeConfigEntry
-}
+  config: NodeConfigEntry;
+};
 
 export type ContentItem = Content & {
   components: Component[];
@@ -31,7 +28,6 @@ export type ContentItem = Content & {
     configs: IndexConfigEntry[];
   };
 };
-
 
 // Available postprocessors:
 // key in this object:  processor names, available to refer to from URL parameter, eg: ...?postprocess=logger
@@ -55,18 +51,18 @@ const detectCompPathPreservation = (contentItem, targetKey, targetComponentType,
     !targetComponentPaths || !targetComponentPaths.length || !targetComponentPaths[0]
       ? []
       : contentItem.components
-        .map((component) => {
-          if (
-            component != null &&
-            component.type === targetComponentType &&
-            (component[targetComponentType] || {}).descriptor === targetKey &&
-            targetComponentPaths.indexOf(component.path) === -1
-          ) {
-            return component.path;
-          }
-          return null;
-        })
-        .filter((componentPath) => componentPath);
+          .map((component) => {
+            if (
+              component != null &&
+              component.type === targetComponentType &&
+              (component[targetComponentType] || {}).descriptor === targetKey &&
+              targetComponentPaths.indexOf(component.path) === -1
+            ) {
+              return component.path;
+            }
+            return null;
+          })
+          .filter((componentPath) => componentPath);
 
   log.info(
     untargetedPaths.length > 0
@@ -151,12 +147,11 @@ const componentMatchesTarget = (
   component: Component,
   targetComponentType: string,
   oldDescriptor: string,
-  targetComponentPath: string
-) => (
+  targetComponentPath: string,
+) =>
   component.type === targetComponentType &&
   (component[targetComponentType] || {}).descriptor === oldDescriptor &&
-  component.path === targetComponentPath
-)
+  component.path === targetComponentPath;
 
 // By now, established a match: component type, descriptor and path matches the target.
 // So deep-clone the component data to avoid mutation, and add the clone to the collection of data to store later,
@@ -169,7 +164,7 @@ const cloneAndMarkForStorage = (
   newAppKey,
   newAppKeyDashed,
   newComponentKey,
-  changedComponents
+  changedComponents,
 ) => {
   if (!component.path) {
     throw Error("Component without path: " + JSON.stringify(component));
@@ -201,7 +196,7 @@ const cloneAndMarkForStorage = (
   changedComponents[component.path] = componentClone;
 };
 
-export function createEditorFunc<D = any>(
+export function createEditorFunc(
   oldAppKey: string,
   oldComponentKey: string,
   newAppKey: string,
@@ -275,24 +270,20 @@ export function createEditorFunc<D = any>(
       const components = contentItem?.components || [];
 
       // List either selected paths to target, or if none are specifically targeted: all available component paths
-      const targetComponentPaths: string[]  =
+      const targetComponentPaths: string[] =
         componentPathsPerId[id] !== null
           ? componentPathsPerId[id]
-          : components
-            .map(
-              (component) =>
-                component.type === targetComponentType &&
-                (component[targetComponentType] || {}).descriptor === oldDescriptor &&
-                component?.path,
-            )
-            .filter((path) => !!path) as string[];
+          : (components
+              .map(
+                (component) =>
+                  component.type === targetComponentType &&
+                  (component[targetComponentType] || {}).descriptor === oldDescriptor &&
+                  component?.path,
+              )
+              .filter((path) => !!path) as string[]);
 
-      const preserveSomeComponentPaths = duplicate || detectCompPathPreservation(
-        contentItem,
-        oldDescriptor,
-        targetComponentType,
-        targetComponentPaths,
-      );
+      const preserveSomeComponentPaths =
+        duplicate || detectCompPathPreservation(contentItem, oldDescriptor, targetComponentType, targetComponentPaths);
 
       components.forEach((component: Component) => {
         for (const targetComponentPath of targetComponentPaths) {
@@ -307,7 +298,7 @@ export function createEditorFunc<D = any>(
               newAppKey,
               newAppKeyDashed,
               newComponentKey,
-              changedComponents
+              changedComponents,
             );
           }
 
@@ -368,19 +359,21 @@ export function createEditorFunc<D = any>(
           };
         });
 
-        requestedPostProcessors.forEach(processor => {
-          const {label, func} = processor;
+        requestedPostProcessors.forEach((processor) => {
+          const { label, func } = processor;
           try {
-            func(clonedContentItem, changedComponentPaths, targetComponentType, newAppKeyDashed, newComponentKey)
+            func(clonedContentItem, changedComponentPaths, targetComponentType, newAppKeyDashed, newComponentKey);
           } catch (e) {
-            log.warning(`Error while trying to apply postprocessor '${label}' to the following data/arguments: ${JSON.stringify({
-              clonedContentItem,
-              changedComponentPaths,
-              targetComponentType,
-              newAppKeyDashed,
-              newComponentKey
-            })}`);
-            throw e
+            log.warning(
+              `Error while trying to apply postprocessor '${label}' to the following data/arguments: ${JSON.stringify({
+                clonedContentItem,
+                changedComponentPaths,
+                targetComponentType,
+                newAppKeyDashed,
+                newComponentKey,
+              })}`,
+            );
+            throw e;
           }
         });
 
@@ -394,4 +387,4 @@ export function createEditorFunc<D = any>(
   };
 
   return editor;
-};
+}

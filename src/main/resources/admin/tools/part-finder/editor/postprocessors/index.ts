@@ -1,8 +1,7 @@
 import { findIndex } from "/lib/part-finder/utils";
-import {NodeIndexConfig} from "/lib/xp/node";
-import {Component} from "@enonic-types/lib-content";
-import {ContentItem} from "/admin/tools/part-finder/editor/editor";
-
+import { NodeIndexConfig } from "/lib/xp/node";
+import { Component } from "@enonic-types/lib-content";
+import { ContentItem } from "/admin/tools/part-finder/editor/editor";
 
 export interface ContentitemMutatingPostprocessorFunc {
   (
@@ -10,24 +9,18 @@ export interface ContentitemMutatingPostprocessorFunc {
     changedComponentPaths: string[],
     targetComponentType: string,
     newAppKeyDashed: string,
-    newComponentKey: string
-  ): ContentItem
+    newComponentKey: string,
+  ): ContentItem;
 }
 
 export interface ComponentMutatingPostprocessorFunc {
-  (
-    component: Component,
-    currentComponentConfig: NodeIndexConfig,
-    descriptor: string
-  ): void;
+  (component: Component, currentComponentConfig: NodeIndexConfig, descriptor: string): void;
 }
-
-
 
 export const postprocessAndMutateComponent = (
   contentItem: ContentItem,
   componentPath: string,
-  postprocessorFunc: ComponentMutatingPostprocessorFunc
+  postprocessorFunc: ComponentMutatingPostprocessorFunc,
 ) => {
   const index = findIndex<Component>(contentItem.components || [], (comp) => comp.path === componentPath);
   if (index === -1) {
@@ -43,4 +36,3 @@ export const postprocessAndMutateComponent = (
 
   postprocessorFunc(component, config, nestedComp.descriptor);
 };
-
