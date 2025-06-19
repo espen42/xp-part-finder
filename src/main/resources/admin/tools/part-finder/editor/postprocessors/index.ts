@@ -61,5 +61,4 @@ export const replaceComponentConfig = (component: Component, newConfig: NodeInde
     .forEach((key) => {
       delete config[key];
     });
-
 };

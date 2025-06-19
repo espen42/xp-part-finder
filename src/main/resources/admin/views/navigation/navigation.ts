@@ -3,7 +3,18 @@ import { getPartFinderUrl, startsWith } from "/lib/part-finder/utils";
 import { listComponents } from "/lib/xp/schema";
 
 import type { ComponentNavLink, ComponentNavLinkList } from "./navigation.freemarker";
-import { LAYOUT_KEY, PAGE_KEY, PART_KEY } from "/admin/tools/part-finder/part-finder";
+import { LAYOUT_KEY, PAGE_KEY, PART_KEY, SORT_FUNCS } from "/admin/tools/part-finder/part-finder";
+
+type UriParams = {
+  key: string;
+  type: string;
+  repo?: string;
+  replace?: string;
+  getconfig?: string;
+  archive?: string;
+  sort?: keyof typeof SORT_FUNCS;
+  unused?: string;
+};
 
 const NOSCHEMA_PREFIX = "noschema::";
 const NOSCHEMA_TYPES = {
@@ -82,6 +93,8 @@ export function getComponentNavLinkList(
   getconfigParam: string | undefined,
   repoParam: string,
   displayArchives: string,
+  sortParam: keyof typeof SORT_FUNCS,
+  displayUnused: string,
 ): {
   active: ComponentNavLinkList[];
   noSchema: ComponentNavLinkList[];
@@ -125,14 +138,7 @@ export function getComponentNavLinkList(
 
   handleUppercasedAndNoSchemaKeys(res, currentAppKey, appFilter);
 
-  const getDecoratedUrl = (params: {
-    key: string;
-    type: string;
-    repo?: string;
-    replace?: string;
-    getconfig?: string;
-    archive?: string;
-  }): string => {
+  const getDecoratedUrl = (params: UriParams): string => {
     if (displayReplacer) {
       params.replace = displayReplacer;
     }
@@ -145,6 +151,12 @@ export function getComponentNavLinkList(
     if (repoParam) {
       params.repo = repoParam;
     }
+    if (sortParam && SORT_FUNCS[sortParam]) {
+      params.sort = sortParam;
+    }
+    if (displayUnused) {
+      params.unused = displayUnused;
+    }
 
     const url = getPartFinderUrl(params);
 
@@ -155,8 +167,8 @@ export function getComponentNavLinkList(
     title: "Parts" | "Layouts" | "Pages",
     aggregationKey: CompType | NoschemaType,
     compTypeKey: "PART" | "LAYOUT" | "PAGE",
-  ) => {
-    return {
+  ): ComponentNavLinkList => {
+    const itemList = {
       title,
       items: ((res.aggregations[aggregationKey] || {}).buckets || [])
         .filter(appFilter)
@@ -169,6 +181,11 @@ export function getComponentNavLinkList(
           }),
         })),
     };
+
+    if (SORT_FUNCS[sortParam]) {
+      itemList.items.sort(SORT_FUNCS[sortParam]);
+    }
+    return itemList;
   };
 
   const resultingItemLists = {
@@ -176,13 +193,18 @@ export function getComponentNavLinkList(
       getItemList("Parts", "part", PART_KEY),
       getItemList("Layouts", "layout", LAYOUT_KEY),
       getItemList("Pages", "page", PAGE_KEY),
-    ].filter((list) => list.items.length > 0),
+    ],
     noSchema: [
       getItemList("Parts", NOSCHEMA_TYPES.part, PART_KEY),
       getItemList("Layouts", NOSCHEMA_TYPES.layout, LAYOUT_KEY),
       getItemList("Pages", NOSCHEMA_TYPES.page, PAGE_KEY),
-    ].filter((list) => list.items.length > 0),
+    ],
   };
+
+  if (!displayUnused) {
+    resultingItemLists.active = resultingItemLists.active.filter((list) => list.items.length > 0);
+  }
+  resultingItemLists.noSchema = resultingItemLists.noSchema.filter((list) => list.items.length > 0);
 
   if (
     resultingItemLists.noSchema &&

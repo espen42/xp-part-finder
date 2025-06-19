@@ -27,6 +27,7 @@ import { createEditorFunc } from "/admin/tools/part-finder/editor/editor";
 import { Results } from "/admin/tools/part-finder/results";
 import { ComponentItem, ComponentList } from "/admin/tools/part-finder/part-finder.freemarker";
 import { processMultiUsage } from "/admin/tools/part-finder/usagePaths";
+import type { ComponentNavLink } from "/admin/views/navigation/navigation.freemarker";
 
 export type PartFinderQueryParams = {
   key: string;
@@ -46,6 +47,13 @@ const PAGE_TITLE = "Part finder";
 
 const VIEW = resolve("part-finder.ftl");
 const COMPONENT_VIEW = resolve("../../views/component-view/component-view.ftl");
+
+export const SORT_FUNCS: Record<string, (a: ComponentNavLink, b: ComponentNavLink) => number> = {
+  alphaasc: (a, b) => a.key.localeCompare(b.key),
+  alphadesc: (a, b) => b.key.localeCompare(a.key),
+  countasc: (a, b) => a.docCount - b.docCount,
+  countdesc: (a, b) => b.docCount - a.docCount,
+};
 
 export function getAppKey(key: string): string {
   return key.split(":")[0];
@@ -71,23 +79,26 @@ const getConfigRequest = (req): undefined | string => {
     ? undefined
     : getConfigParam;
 };
-const getDisplayReplacerParam = (req) =>
-  (req.params.replace + "")
-    .trim()
-    .toLowerCase()
-    .replace(/^undefined$/, "")
-    .replace(/^false$/, "");
-const getRepoParam = (req) =>
-  (req.params.repo + "")
+
+const getParamString = (req, paramName: string): string =>
+  (req.params[paramName] + "")
     .trim()
     .toLowerCase()
     .replace(/^undefined$/, "");
-const getDisplayArchiveParam = (req) =>
-  (req.params.archive + "")
-    .trim()
-    .toLowerCase()
-    .replace(/^undefined$/, "")
-    .replace(/^false$/, "");
+
+const getParamBool = (req, paramName: string): string => getParamString(req, paramName).replace(/^false$/, "");
+
+const getDisplayReplacerParam = (req) => getParamBool(req, "replace");
+
+const getRepoParam = (req) => getParamString(req, "repo");
+
+const getDisplayArchiveParam = (req) => getParamBool(req, "archive");
+
+const getSortParam = (req): keyof typeof SORT_FUNCS => {
+  const paramValue = getParamBool(req, "sort");
+  return Object.keys(SORT_FUNCS).indexOf(paramValue) > -1 ? paramValue : "";
+};
+const getDisplayUnusedParam = (req) => getParamBool(req, "unused");
 
 const parseTargetConfig = (getConfigString) => {
   let targetValue;
@@ -171,6 +182,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   const displayReplacer = getDisplayReplacerParam(req);
   const repoParam = getRepoParam(req);
   const displayArchives = getDisplayArchiveParam(req);
+  const sortParam = getSortParam(req);
+  const displayUnused = getDisplayUnusedParam(req);
 
   const currentAppKey = getAppKey(currentItemKey);
   const cmsRepoIds = getCMSRepoIds(repoParam);
@@ -232,6 +245,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     getConfigParam,
     repoParam,
     displayArchives,
+    sortParam,
+    displayUnused,
   );
 
   const filters = installedApps.map<Link>((app) => {
@@ -247,6 +262,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
             getconfig: getConfigParam || "",
             replace: displayReplacer,
             archive: displayArchives,
+            sort: sortParam,
+            unused: displayUnused,
           })
         : "",
     };
@@ -422,7 +439,10 @@ export function post(req: XP.Request): XP.Response {
   const results = new Results(sourceKey, newKey, componentType);
 
   const repoParam = getRepoParam(req);
+  const sort = getSortParam(req);
+  const sortParam = sort ? `&sort=${req.params.sort}` : "";
   const displayArchiveParam = getDisplayArchiveParam(req) ? "&archive=true" : "";
+  const displayUnusedParam = getDisplayUnusedParam(req) ? "&unused=true" : "";
   const repoIds = getCMSRepoIds(repoParam);
 
   repoIds.forEach((targetRepo) => {
@@ -482,7 +502,7 @@ export function post(req: XP.Request): XP.Response {
     displayReplacer: "",
     displaySummaryAndUndo: true,
     oldItemKey: `${sourceKey}`,
-    newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${displayArchiveParam}`,
+    newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${sortParam}${displayArchiveParam}${displayUnusedParam}`,
     currentItem: {
       url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
       key: newKey,

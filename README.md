@@ -71,17 +71,17 @@ For example, this makes it possible to replace the part `com.enonic.app.superher
 the `com.enonic.app.superhero` app) with the part `my.new.app:featured` (same part but now from another app), and only
 on the 4th and 5th usage instance of the part, in one particular content - in one operation.
 
-### Using the part mover
-
 Don't miss the <a href="#caution"><span style="color:red">"Caution"</span></a> section after the overview!
 
-#### Enabling the GUI
+### Optional URI Parameters
 
-The part mover GUI is hidden by design, for safety. To see it, add a `replace` parameter to the URL - in practice:
+#### Activate the part mover GUI
+
+- `replace`: The part mover GUI is hidden by design, for safety. To see it, add a `replace` parameter and a not-falsy value to the URL - in practice:
 `&replace=true`. This only works for parts and layouts currently (pages may be added later, it just hasn't been tested
 enough).
 
-#### Moving parts (or layouts)
+#### Move parts (or layouts)
 
 The GUI adds a third right column for the displayed parts, where each usage of that part in each content is marked -
 with the _path_ of where the part is used in that content. There's also a checkbox for each usage (and a "select all"
@@ -116,8 +116,32 @@ path `title`...
 <br />
 <br />
 
-By adding a particular value to the parameter (eg. `&getconfig=title="This is a title"`), only usage items where
-the value matches, will have a checkbox - allowing batch operations on only selected values.
+Use dotted paths to access nested objects, for example: `&getconfig=image.id` or `&getconfig=link.url`.
+
+Use an asterisk `*` to peek at all config data, for example: `&getconfig=*`. This will display the entire config object.
+
+By adding a particular value to the parameter (eg. `&getconfig=title="This is a title"`), all components are still displayed, but only components where
+the value matches, will have a checkbox for renaming the part - allowing batch operations on only selected values with suitable config data.
+
+#### Sorting the component lists
+
+Add a `sort` parameter to the URL to sort the component links on the left. Four values are supported: 
+- `alphaasc` (or, alphabetical ascending) - default, sorts the components alphabetically by their name.
+- `alphadesc` (alphabetical descending) - sorts the components in reverse alphabetical order.
+- `countasc` (usage count, ascending) - sorts the components by the number of usages, from least used to most.
+- `countdesc` (usage count descending) - sorts the components in descending order from most to least used.
+
+#### Focusing on a single data repo
+
+Add a `repo` parameter to the URL, with the name of the data repo you want to focus on. Will only look in content items in that project repo for component usage. For example, to focus on the `bring` project (`cms.enonic.bring`), add `&repo=bring` to the URL. 
+
+#### Displaying archived content items
+
+Add a `archive` parameter with a truthy value to the URL, to include archived content items in the list of usages, eg `&archive=true`.
+
+#### Listing components that are not used
+
+To list components that are not used in any content, add an `unused` parameter with a truthy value to the URL, for example: `&unused=true`. Components that are not used in any content will be listed in the left column, with a count of 0 usages. This can be useful for cleaning up unused components. 
 
 ### Caution!
 

@@ -164,7 +164,6 @@ export const cardFullwidth: ContentitemMutatingPostprocessorFunc = (
       delete cardFullWidthConfig.linkType;
       delete cardFullWidthConfig.newTab;
 
-
       replaceComponentConfig(component, cardFullWidthConfig);
     });
   });
