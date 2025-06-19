@@ -17,10 +17,20 @@ export interface ComponentMutatingPostprocessorFunc {
   (component: Component, currentComponentConfig: NodeIndexConfig, descriptor: string): void;
 }
 
+const getConfigAndDescriptor = (component: Component): { config: NodeIndexConfig; descriptor: string } => {
+  const nestedComp = component[component.type];
+  const descriptors = nestedComp.descriptor.replace(/\./g, "-").split(":");
+  const config = nestedComp.config[descriptors[0]][descriptors[1]];
+  return {
+    config: config || {},
+    descriptor: nestedComp.descriptor,
+  };
+};
+
 export const postprocessAndMutateComponent = (
   contentItem: ContentItem,
   componentPath: string,
-  postprocessorFunc: ComponentMutatingPostprocessorFunc,
+  mutateComponent: ComponentMutatingPostprocessorFunc,
 ) => {
   const index = findIndex<Component>(contentItem.components || [], (comp) => comp.path === componentPath);
   if (index === -1) {
@@ -30,9 +40,26 @@ export const postprocessAndMutateComponent = (
   }
 
   const component = contentItem.components[index];
-  const nestedComp = component[component.type];
-  const descriptors = nestedComp.descriptor.replace(/\./g, "-").split(":");
-  const config = nestedComp.config[descriptors[0]][descriptors[1]];
+  const { config, descriptor } = getConfigAndDescriptor(contentItem.components[index]);
 
-  postprocessorFunc(component, config, nestedComp.descriptor);
+  // Do the postprocessing with the function provided by the caller (see the postprocessor modules: cardFullwidth.ts, logger.ts, etc.):
+  mutateComponent(component, config, descriptor);
+};
+
+// Offer a utility function to the postprocessor modules, to inject a modified configuration object into the component, mutating it
+export const replaceComponentConfig = (component: Component, newConfig: NodeIndexConfig) => {
+  const { config } = getConfigAndDescriptor(component);
+
+  const originalKeys = Object.keys(config);
+  const processedKeys = Object.keys(newConfig);
+
+  processedKeys.forEach((key) => {
+    config[key] = newConfig[key];
+  });
+  originalKeys
+    .filter((key) => processedKeys.indexOf(key) === -1)
+    .forEach((key) => {
+      delete config[key];
+    });
+
 };

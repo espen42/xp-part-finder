@@ -3,7 +3,7 @@
  * DESTRUCTIVE: won't undo properly! Use with care!
  */
 
-import { ContentitemMutatingPostprocessorFunc, postprocessAndMutateComponent } from "./index";
+import { ContentitemMutatingPostprocessorFunc, postprocessAndMutateComponent, replaceComponentConfig } from "./index";
 import { ContentItem } from "/admin/tools/part-finder/editor/editor";
 import { NodeIndexConfig } from "/lib/xp/node";
 
@@ -165,7 +165,7 @@ export const cardFullwidth: ContentitemMutatingPostprocessorFunc = (
       delete cardFullWidthConfig.newTab;
 
 
-      return cardFullWidthConfig;
+      replaceComponentConfig(component, cardFullWidthConfig);
     });
   });
 
