@@ -149,9 +149,10 @@ table.table {
 }
 .getconfig {
   font-family: monospace;
-  background-color: #e6e6e6;
+  background-color: rgba(210, 210, 210, 0.5);
   font-size: 12px;
   font-style: normal;
+  color: #000;
 }
 .part-selectall-col .getconfig {
   display: block;

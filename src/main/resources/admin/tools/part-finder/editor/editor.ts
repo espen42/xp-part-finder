@@ -30,7 +30,7 @@ export type ContentItem = Content & {
 };
 
 // Available postprocessors:
-// key in this object:  processor names, available to refer to from URL parameter, eg: ...?postprocess=logger
+// key in this object:  processor names, available to refer to from URL parameter on POST when changing/replacing component names. Eg: ...?postprocess=logger
 // value:               postprocessor function, must have the signature ((contentItem, changedComponentPaths?) -> contentItem)
 const POSTPROCESSORS: { [callableName: string]: ContentitemMutatingPostprocessorFunc } = {
   logger,
@@ -347,17 +347,19 @@ export function createEditorFunc(
         if (!Array.isArray(requestedPostprocessors)) {
           requestedPostprocessors = [requestedPostprocessors];
         }
-        const requestedPostProcessors: RequestedProcessor[] = requestedPostprocessors.map((processorLabel) => {
-          const processorFunc = POSTPROCESSORS[processorLabel];
-          if (!processorFunc) {
-            throw Error(`Postprocessor not found: '${processorLabel}'`);
-          }
+        const requestedPostProcessors: RequestedProcessor[] = requestedPostprocessors.map(
+          (processorLabel): RequestedProcessor => {
+            const processorFunc: ContentitemMutatingPostprocessorFunc = POSTPROCESSORS[processorLabel];
+            if (!processorFunc) {
+              throw Error(`Postprocessor not found: '${processorLabel}'`);
+            }
 
-          return {
-            label: processorLabel,
-            func: processorFunc,
-          };
-        });
+            return {
+              label: processorLabel,
+              func: processorFunc,
+            };
+          },
+        );
 
         requestedPostProcessors.forEach((processor) => {
           const { label, func } = processor;
@@ -365,17 +367,21 @@ export function createEditorFunc(
             func(clonedContentItem, changedComponentPaths, targetComponentType, newAppKeyDashed, newComponentKey);
           } catch (e) {
             log.warning(
-              `Error while trying to apply postprocessor '${label}' to the following data/arguments: ${JSON.stringify({
-                clonedContentItem,
-                changedComponentPaths,
-                targetComponentType,
-                newAppKeyDashed,
-                newComponentKey,
-              })}`,
+              `Error while trying to apply postprocessor function '${label}' to the following data/arguments: ${JSON.stringify(
+                {
+                  clonedContentItem,
+                  changedComponentPaths,
+                  targetComponentType,
+                  newAppKeyDashed,
+                  newComponentKey,
+                },
+              )}`,
             );
             throw e;
           }
         });
+
+        clonedContentItem.modifier = `user:${user.key} (${app.name})`;
 
         return clonedContentItem;
       }

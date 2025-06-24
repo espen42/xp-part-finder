@@ -156,7 +156,6 @@ const handleUppercasedAndNoSchemaKeys = (
   let resultKey;
 
   Object.keys(aggregatedResultFromData.aggregations).forEach((componentType: string) => {
-
     processedResultKeys[componentType] = {};
 
     aggregatedResultFromData.aggregations[componentType].buckets = aggregatedResultFromData.aggregations[
