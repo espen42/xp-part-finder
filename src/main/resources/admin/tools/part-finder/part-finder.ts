@@ -48,7 +48,10 @@ const PAGE_TITLE = "Part finder";
 const VIEW = resolve("part-finder.ftl");
 const COMPONENT_VIEW = resolve("../../views/component-view/component-view.ftl");
 
-export const SORT_FUNCS: Record<string, (a: ComponentNavLink, b: ComponentNavLink) => number> = {
+export const SORT_FUNCS: Record<
+  "alphaasc" | "alphadesc" | "countasc" | "countdesc",
+  (a: ComponentNavLink, b: ComponentNavLink) => number
+> = {
   alphaasc: (a, b) => a.key.localeCompare(b.key),
   alphadesc: (a, b) => b.key.localeCompare(a.key),
   countasc: (a, b) => a.docCount - b.docCount,
@@ -94,9 +97,9 @@ const getRepoParam = (req) => getParamString(req, "repo");
 
 const getDisplayArchiveParam = (req) => getParamBool(req, "archive");
 
-const getSortParam = (req): keyof typeof SORT_FUNCS => {
+const getSortParam = (req): keyof typeof SORT_FUNCS | "" => {
   const paramValue = getParamBool(req, "sort");
-  return Object.keys(SORT_FUNCS).indexOf(paramValue) > -1 ? paramValue : "";
+  return SORT_FUNCS[paramValue] ? (paramValue as keyof typeof SORT_FUNCS) : "";
 };
 const getDisplayUnusedParam = (req) => getParamBool(req, "unused");
 

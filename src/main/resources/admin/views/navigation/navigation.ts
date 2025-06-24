@@ -217,7 +217,7 @@ export function getComponentNavLinkList(
   getconfigParam: string | undefined,
   repoParam: string,
   displayArchives: string,
-  sortParam: keyof typeof SORT_FUNCS,
+  sortParam: keyof typeof SORT_FUNCS | "",
   displayUnused: string,
 ): ComponentNavLinkLists {
   const connection = multiRepoConnect({
@@ -282,9 +282,8 @@ export function getComponentNavLinkList(
         })),
     };
 
-    if (SORT_FUNCS[sortParam]) {
-      itemList.items.sort(SORT_FUNCS[sortParam]);
-    }
+    itemList.items.sort(SORT_FUNCS[sortParam] || SORT_FUNCS.alphaasc);
+
     return itemList;
   };
 
