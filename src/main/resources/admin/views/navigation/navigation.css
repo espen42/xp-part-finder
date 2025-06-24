@@ -4,10 +4,13 @@
   gap: var(--spacing-8);
   padding-right: var(--spacing-32);
 
+  .label-big {
+    margin-top: var(--spacing-32);
+  }
+
   nav {
     display: flex;
     flex-direction: column;
-    margin-bottom: var(--spacing-32);
   }
 
   a {
@@ -45,6 +48,22 @@
 
     p {
       margin: 1em 0 2.5em;
+    }
+  }
+
+  .unused {
+    color: #9f9f9f;
+    margin-top: 42px;
+
+    p {
+
+      &[aria-current] {
+        background-color: #676767
+      }
+    }
+
+    pre {
+      display: inline-block;
     }
   }
 }

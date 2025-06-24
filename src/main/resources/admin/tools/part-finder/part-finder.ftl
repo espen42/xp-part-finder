@@ -4,6 +4,8 @@
 [#-- @ftlvariable name="itemLists" type="java.util.ArrayList" --]
 [#-- @ftlvariable name="noSchemaItems" type="java.util.ArrayList" --]
 [#-- @ftlvariable name="hasNoschema" type="boolean" --]
+[#-- @ftlvariable name="unusedItems" type="java.util.ArrayList" --]
+[#-- @ftlvariable name="hasUnused" type="boolean" --]
 [#-- @ftlvariable name="currentItemKey" type="String" --]
 [#-- @ftlvariable name="currentItem" type="Object" --]
 [#import "../../views/navigation/navigation.ftl" as Navigation]
@@ -31,7 +33,7 @@
       </div>
 
       <div class="layout--nav">
-        [@Navigation.render itemLists=itemLists hasNoschema=hasNoschema noSchemaItems=noSchemaItems currentItemKey=currentItemKey/]
+        [@Navigation.render itemLists=itemLists hasNoschema=hasNoschema noSchemaItems=noSchemaItems currentItemKey=currentItemKey unusedItems=unusedItems hasUnused=hasUnused/]
       </div>
 
       <div class="layout--content">

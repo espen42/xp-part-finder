@@ -238,7 +238,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     };
   }
 
-  const { active, noSchema } = getComponentNavLinkList(
+  const { active, noSchema, unused } = getComponentNavLinkList(
     cmsRepoIds,
     currentAppKey,
     displayReplacer,
@@ -280,7 +280,9 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     displaySummaryAndUndo: false,
     itemLists: active,
     noSchemaItems: noSchema,
-    hasNoschema: Object.keys(noSchema || {}).length > 0,
+    hasNoschema: (noSchema || []).length > 0,
+    unusedItems: unused,
+    hasUnused: unused.length > 0,
   };
 
   if (getConfigParam) {

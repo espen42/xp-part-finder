@@ -208,7 +208,7 @@ const handleUppercasedAndNoSchemaKeys = (
 type ComponentNavLinkLists = {
   active: ComponentNavLinkList[];
   noSchema: ComponentNavLinkList[];
-  unused?: ComponentNavLinkList[];
+  unused: ComponentNavLinkList[];
 };
 
 export function getComponentNavLinkList(
@@ -300,19 +300,18 @@ export function getComponentNavLinkList(
       getItemList("Layouts", NOSCHEMA_TYPES.layout, LAYOUT_KEY),
       getItemList("Pages", NOSCHEMA_TYPES.page, PAGE_KEY),
     ],
+    unused: displayUnused
+      ? [
+          getItemList("Parts", UNUSED_TYPES.part, PART_KEY),
+          getItemList("Layouts", UNUSED_TYPES.layout, LAYOUT_KEY),
+          getItemList("Pages", UNUSED_TYPES.page, PAGE_KEY),
+        ]
+      : [],
   };
 
-  if (displayUnused) {
-    resultingItemLists.unused = [
-      getItemList("Parts", UNUSED_TYPES.part, PART_KEY),
-      getItemList("Layouts", UNUSED_TYPES.layout, LAYOUT_KEY),
-      getItemList("Pages", UNUSED_TYPES.page, PAGE_KEY),
-    ];
-  }
-  if (!displayUnused) {
-    resultingItemLists.active = resultingItemLists.active.filter((list) => list.items.length > 0);
-  }
+  resultingItemLists.active = resultingItemLists.active.filter((list) => list.items.length > 0);
   resultingItemLists.noSchema = resultingItemLists.noSchema.filter((list) => list.items.length > 0);
+  resultingItemLists.unused = resultingItemLists.unused.filter((list) => list.items.length > 0);
 
   if (
     resultingItemLists.noSchema &&
