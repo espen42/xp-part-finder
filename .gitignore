@@ -107,7 +107,7 @@ crashlytics-build.properties
 *storybook.log
 .env
 
-# Ignore the Enonic CLI config file
+# Ignore some local working directories
 _src-react-app
 _src-postenbring
 _src-posten
@@ -117,3 +117,4 @@ _src-hds-examples
 _src-hds-css
 _src-bring
 _src-hds-react
+_asides
