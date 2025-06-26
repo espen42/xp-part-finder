@@ -8,11 +8,10 @@ export const layoutNColumns: ContentitemMutatingPostprocessorFunc = (
   newAppKeyDashed: string,
   newComponentKey: string,
 ) => {
-  postprocessAndMutateChangedComponents(contentItem, changedPaths, (component, currentComponentConfig) => {
+  postprocessAndMutateChangedComponents(contentItem, changedPaths, (component) => {
     const layoutConfig = {
       ...(((component[targetComponentType].config || {})[newAppKeyDashed] || {})[newComponentKey] || {}),
     };
-
 
     if (
       Object.keys(layoutConfig).length &&

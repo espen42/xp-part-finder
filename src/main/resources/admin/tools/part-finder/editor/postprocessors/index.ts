@@ -8,7 +8,6 @@ import { throwerror } from "/admin/tools/part-finder/editor/postprocessors/throw
 import { logContent } from "/admin/tools/part-finder/editor/postprocessors/logContent";
 import { logConfig } from "/admin/tools/part-finder/editor/postprocessors/logConfig";
 import { logComponent } from "/admin/tools/part-finder/editor/postprocessors/logComponent";
-import { duplicator } from "/admin/tools/part-finder/editor/postprocessors/duplicator";
 
 // Available postprocessors:
 // key in this object:  processor names, available to refer to from URL parameter on POST when changing/replacing component names. Eg: ...?postprocess=logger
@@ -25,8 +24,6 @@ export const POSTPROCESSORS: { [callableName: string]: ContentitemMutatingPostpr
   "log-config": logConfig,
   logconfig: logConfig,
   throwerror,
-  duplicator,
-  duplicate: duplicator,
   //---- Component-specific postprocessors ----
   cardfullwidth: cardFullwidth,
   "card-fullwidth": cardFullwidth,
