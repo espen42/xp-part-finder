@@ -2,12 +2,7 @@ import { getUser as getAuthUser } from "/lib/xp/auth";
 import { Results } from "/admin/tools/part-finder/results";
 import { find, findIndex } from "/lib/part-finder/utils";
 import clone from "../../../../../../../node_modules/just-clone";
-
-import { logger } from "./postprocessors/logger";
-import { throwerror } from "./postprocessors/throwerror";
-import { cardFullwidth } from "./postprocessors/cardFullwidth";
-import { layoutNColumns } from "./postprocessors/layout-n-columns";
-import { ContentitemMutatingPostprocessorFunc } from "/admin/tools/part-finder/editor/postprocessors";
+import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/admin/tools/part-finder/editor/postprocessors";
 
 import { Node, ModifiedNode, NodeConfigEntry } from "@enonic-types/lib-node";
 import { Content, Component } from "@enonic-types/lib-content";
@@ -27,20 +22,6 @@ export type ContentItem = Content & {
   _indexConfig?: {
     configs: IndexConfigEntry[];
   };
-};
-
-// Available postprocessors:
-// key in this object:  processor names, available to refer to from URL parameter on POST when changing/replacing component names. Eg: ...?postprocess=logger
-// value:               postprocessor function, must have the signature ((contentItem, changedComponentPaths?) -> contentItem)
-const POSTPROCESSORS: { [callableName: string]: ContentitemMutatingPostprocessorFunc } = {
-  logger,
-  throwerror,
-  cardfullwidth: cardFullwidth,
-  "card-fullwidth": cardFullwidth,
-  fullwidthcard: cardFullwidth,
-  layoutcolumns: layoutNColumns,
-  layoutncolumns: layoutNColumns,
-  "layout-n-columns": layoutNColumns,
 };
 
 // If a content has multiple usages of a component, and not all of those components are targeted for change here, then

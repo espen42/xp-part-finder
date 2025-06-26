@@ -2,6 +2,39 @@ import { findIndex } from "/lib/part-finder/utils";
 import { NodeIndexConfig } from "/lib/xp/node";
 import { Component } from "@enonic-types/lib-content";
 import { ContentItem } from "/admin/tools/part-finder/editor/editor";
+import { cardFullwidth } from "/admin/tools/part-finder/editor/postprocessors/cardFullwidth";
+import { layoutNColumns } from "/admin/tools/part-finder/editor/postprocessors/layout-n-columns";
+import { throwerror } from "/admin/tools/part-finder/editor/postprocessors/throwerror";
+import { logContent } from "/admin/tools/part-finder/editor/postprocessors/logContent";
+import { logConfig } from "/admin/tools/part-finder/editor/postprocessors/logConfig";
+import { logComponent } from "/admin/tools/part-finder/editor/postprocessors/logComponent";
+import { duplicator } from "/admin/tools/part-finder/editor/postprocessors/duplicator";
+
+// Available postprocessors:
+// key in this object:  processor names, available to refer to from URL parameter on POST when changing/replacing component names. Eg: ...?postprocess=logger
+// value:               postprocessor function, must have the signature ((contentItem, changedComponentPaths?) -> contentItem)
+export const POSTPROCESSORS: { [callableName: string]: ContentitemMutatingPostprocessorFunc } = {
+  // Utilities
+  logContent,
+  "log-content": logContent,
+  logcontent: logContent,
+  logComponent,
+  "log-component": logComponent,
+  logcomponent: logComponent,
+  logConfig,
+  "log-config": logConfig,
+  logconfig: logConfig,
+  throwerror,
+  duplicator,
+  duplicate: duplicator,
+  //---- Component-specific postprocessors ----
+  cardfullwidth: cardFullwidth,
+  "card-fullwidth": cardFullwidth,
+  fullwidthcard: cardFullwidth,
+  layoutcolumns: layoutNColumns,
+  layoutncolumns: layoutNColumns,
+  "layout-n-columns": layoutNColumns,
+};
 
 export interface ContentitemMutatingPostprocessorFunc {
   (

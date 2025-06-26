@@ -205,7 +205,7 @@
         >
 
         <label for="postprocessors" class="new-part-label inline-pre">
-          Run postprocessors (comma-separated, eg. <pre>logger,throwerror</pre>)<br/>Available names: see src/main/resources/admin/tools/part-finder/editor/editor.ts
+          Run postprocessors (comma-separated, eg. <pre>logconfig,throwerror</pre>)<br/>Available names: see src/main/resources/admin/tools/part-finder/editor/postprocessors/index.ts
         </label>
         <input type="text"
                placeholder="Postprocessor name(s)" id="postprocessors"
