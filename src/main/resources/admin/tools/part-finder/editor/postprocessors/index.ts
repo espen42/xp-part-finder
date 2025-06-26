@@ -30,7 +30,7 @@ const getConfigAndDescriptor = (component: Component): { config: NodeIndexConfig
 export const postprocessAndMutateComponent = (
   contentItem: ContentItem,
   componentPath: string,
-  mutateComponent: ComponentMutatingPostprocessorFunc,
+  mutateComponentFunc: ComponentMutatingPostprocessorFunc,
 ) => {
   const index = findIndex<Component>(contentItem.components || [], (comp) => comp.path === componentPath);
   if (index === -1) {
@@ -43,7 +43,15 @@ export const postprocessAndMutateComponent = (
   const { config, descriptor } = getConfigAndDescriptor(contentItem.components[index]);
 
   // Do the postprocessing with the function provided by the caller (see the postprocessor modules: cardFullwidth.ts, logger.ts, etc.):
-  mutateComponent(component, config, descriptor);
+  mutateComponentFunc(component, config, descriptor);
+};
+
+export const postprocessAndMutateChangedComponents = (
+  contentItem: ContentItem,
+  changedPaths: string[],
+  mutateComponentFunc: ComponentMutatingPostprocessorFunc,
+) => {
+  changedPaths.forEach((path) => postprocessAndMutateComponent(contentItem, path, mutateComponentFunc));
 };
 
 // Offer a utility function to the postprocessor modules, to inject a modified configuration object into the component, mutating it

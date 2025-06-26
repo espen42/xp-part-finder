@@ -3,7 +3,11 @@
  * DESTRUCTIVE: won't undo properly! Use with care!
  */
 
-import { ContentitemMutatingPostprocessorFunc, postprocessAndMutateComponent, replaceComponentConfig } from "./index";
+import {
+  ContentitemMutatingPostprocessorFunc,
+  postprocessAndMutateChangedComponents,
+  replaceComponentConfig,
+} from "./index";
 import { ContentItem } from "/admin/tools/part-finder/editor/editor";
 import { NodeIndexConfig } from "/lib/xp/node";
 
@@ -126,46 +130,44 @@ export const cardFullwidth: ContentitemMutatingPostprocessorFunc = (
   contentItem: ContentItem,
   changedPaths: string[],
 ) => {
-  changedPaths.forEach((path) => {
-    postprocessAndMutateComponent(contentItem, path, (component, currentComponentConfig) => {
-      const bannerWithImageHwConfig: BannerWithImageHwConfig = currentComponentConfig as BannerWithImageHwConfig;
+  postprocessAndMutateChangedComponents(contentItem, changedPaths, (component, currentComponentConfig) => {
+    const bannerWithImageHwConfig: BannerWithImageHwConfig = currentComponentConfig as BannerWithImageHwConfig;
 
-      if (bannerWithImageHwConfig.video) {
-        log.warning("Invalid component: " + JSON.stringify(component));
-        throw Error(`Can't convert 'banner-with-image-hw': 'cardFullwidth' can't be used with video`);
-      }
-      if (
-        bannerWithImageHwConfig.backgroundColor === "p-ctabox__item--bg-darker" ||
-        bannerWithImageHwConfig.backgroundColor === "p-ctabox__item--bg-dark"
-      ) {
-        log.warning("Invalid component: " + JSON.stringify(component));
-        throw Error(
-          `Can't convert 'banner-with-image-hw': 'cardFullwidth' can't use 'p-ctabox__item--bg-dark' or 'p-ctabox__item--bg-darker' as backgroundcolor: signifies that a different card type should be used.`,
-        );
-      }
+    if (bannerWithImageHwConfig.video) {
+      log.warning("Invalid component: " + JSON.stringify(component));
+      throw Error(`Can't convert 'banner-with-image-hw': 'cardFullwidth' can't be used with video`);
+    }
+    if (
+      bannerWithImageHwConfig.backgroundColor === "p-ctabox__item--bg-darker" ||
+      bannerWithImageHwConfig.backgroundColor === "p-ctabox__item--bg-dark"
+    ) {
+      log.warning("Invalid component: " + JSON.stringify(component));
+      throw Error(
+        `Can't convert 'banner-with-image-hw': 'cardFullwidth' can't use 'p-ctabox__item--bg-dark' or 'p-ctabox__item--bg-darker' as backgroundcolor: signifies that a different card type should be used.`,
+      );
+    }
 
-      const cardFullWidthConfig: CardFullwidthConfig = {
-        ...bannerWithImageHwConfig,
-        backgroundColor: bannerWithImageHwConfig.backgroundColor,
-        linkOrButtons: convertLinks(
-          bannerWithImageHwConfig?.linkType,
-          bannerWithImageHwConfig?.linkText,
-          bannerWithImageHwConfig?.newTab,
-        ),
+    const cardFullWidthConfig: CardFullwidthConfig = {
+      ...bannerWithImageHwConfig,
+      backgroundColor: bannerWithImageHwConfig.backgroundColor,
+      linkOrButtons: convertLinks(
+        bannerWithImageHwConfig?.linkType,
+        bannerWithImageHwConfig?.linkText,
+        bannerWithImageHwConfig?.newTab,
+      ),
 
-        isIllustration: false,
-        highlightErrors: true,
+      isIllustration: false,
+      highlightErrors: true,
 
-        linkText: undefined,
-        linkType: undefined,
-        newTab: undefined,
-      };
-      delete cardFullWidthConfig.linkText;
-      delete cardFullWidthConfig.linkType;
-      delete cardFullWidthConfig.newTab;
+      linkText: undefined,
+      linkType: undefined,
+      newTab: undefined,
+    };
+    delete cardFullWidthConfig.linkText;
+    delete cardFullWidthConfig.linkType;
+    delete cardFullWidthConfig.newTab;
 
-      replaceComponentConfig(component, cardFullWidthConfig);
-    });
+    replaceComponentConfig(component, cardFullWidthConfig);
   });
 
   return contentItem;
