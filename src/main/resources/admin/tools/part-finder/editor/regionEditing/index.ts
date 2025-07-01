@@ -51,13 +51,13 @@ const verifyInputs = (contentItem, newComponent) => {
 
 
 
-export const algo = (a, b) => {
-  if (a.path === b.path) {
+export const sortComponentPathsDescending = (pathA: string, pathB: string): number => {
+  if (pathA === pathB) {
     return 0
   }
 
-  const splitPathA = (a.path || "").replace(/^\//, "").split("/");
-  const splitPathB = (b.path || "").replace(/^\//, "").split("/");
+  const splitPathA: string[] = (pathA).replace(/^\//, "").split("/");
+  const splitPathB: string[] = (pathB).replace(/^\//, "").split("/");
 
   for (let i = 0; i<Math.min(splitPathA.length, splitPathB.length); i+=2) {
     const regionA = splitPathA[i];
@@ -70,10 +70,10 @@ export const algo = (a, b) => {
     const indexB = parseInt(splitPathB[i + 1], 10);
 
     if (indexA == null || isNaN(indexA)) {
-      throw Error("Invalid path: " + a.path);
+      throw Error("Invalid path: " + pathA);
     }
     if (indexB == null || isNaN(indexB)) {
-      throw Error("Invalid path: " + b.path);
+      throw Error("Invalid path: " + pathB);
     }
     if (indexA !== indexB) {
       return indexB - indexA;
@@ -86,7 +86,7 @@ export const algo = (a, b) => {
   }
 
   // If we reach here, the paths should have been equal - but we've checked and they're not. Throw an error to indicate that something is wrong.
-  throw new Error(`Unexpected state, can't sort paths - component paths appear equal, but aren't: ${JSON.stringify(a.path)} vs ${b.path}`);
+  throw new Error(`Unexpected state, can't sort paths - component paths appear equal, but aren't: ${JSON.stringify(pathA)} vs ${pathB}`);
 }
 
 export const contentRegionMutators = {
