@@ -60,13 +60,14 @@ export const contentRegionMutators = {
 
     verifyInputs(contentItem, newComponent);
 
-    const [regionPath, pathTargetIndex] = getRootAndIndex(newComponent.path || "");
+    // eslint-disable-next-line prefer-const
+    let [regionPath, pathTargetIndex] = getRootAndIndex(newComponent.path || "");
 
     if (regionPath === "/") {
       throw new Error("Cannot add a component at the root path '/'. Please specify a region path.");
     }
 
-    const inSameRegionPattern = new RegExp(`^${regionPath}\\d+`);
+    const inTargetRegionPattern = new RegExp(`^(${regionPath})(\\d+)`);
 
     let hasAdded = false
     let highestPathIndexSeen = -1
@@ -82,8 +83,8 @@ export const contentRegionMutators = {
         break;
 
       } else {
-        const isInSameRegion = (currentComponent.path || "").match(inSameRegionPattern);
-        if (isInSameRegion) {
+        const isInTargetRegion = (currentComponent.path || "").match(inTargetRegionPattern);
+        if (isInTargetRegion) {
           const [, pathIndex] = getRootAndIndex(currentComponent.path || "");
           if (pathIndex!==null && pathIndex > highestPathIndexSeen) {
 
@@ -100,7 +101,9 @@ export const contentRegionMutators = {
       if (highestPathIndexSeen >= 0) {
         highestPathIndexSeen++
         newComponentIndex++;
-        newComponent.path = `${regionPath}${highestPathIndexSeen}`;
+        newComponent.path = `${regionPath}${highestPathIndexSeen + 1}`;
+        pathTargetIndex = highestPathIndexSeen + 1
+
         contentItem.components.splice(newComponentIndex, 0, newComponent);
         hasAdded=true
       } else {
@@ -114,15 +117,17 @@ export const contentRegionMutators = {
       for (let i = 0; i < (contentItem.components || []).length; i++) {
         const currentComponent = contentItem.components[i];
 
-        const isInSameRegion = (currentComponent.path || "").match(inSameRegionPattern);
-        if (isInSameRegion) {
-          const [path, pathIndex] = getRootAndIndex(currentComponent.path || "");
-          if (pathIndex !== null && pathTargetIndex!==null && pathIndex >= pathTargetIndex && i !== newComponentIndex) {
-            currentComponent.path = `${path}${pathIndex + 1}`;
+        // Use the group in the inSameRegionPattern to not only check if the component is in the same region, but also to get the path index
+        const targetRegionMatch = (currentComponent.path || "").match(inTargetRegionPattern);
+        if (targetRegionMatch) {
+          const path = targetRegionMatch[1];
+          const currentPathIndex = parseInt(targetRegionMatch[2], 10)
+
+          if (currentPathIndex != null && pathTargetIndex !== null && currentPathIndex >= pathTargetIndex && i !== newComponentIndex) {
+            currentComponent.path = (currentComponent.path || "").replace(`${path}${currentPathIndex}`, `${path}${currentPathIndex + 1}`);
           }
         }
       }
     }
-
   },
 };
