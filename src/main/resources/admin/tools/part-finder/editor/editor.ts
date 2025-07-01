@@ -6,6 +6,7 @@ import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/admin/too
 
 import { Node, ModifiedNode, NodeConfigEntry } from "@enonic-types/lib-node";
 import { Content, Component } from "@enonic-types/lib-content";
+import { sortComponentPathsDescending, contentRegionMutators } from "/admin/tools/part-finder/editor/regionEditing";
 
 type RequestedProcessor = {
   label: string;
@@ -265,7 +266,7 @@ export function createEditorFunc(
       const preserveSomeComponentPaths =
         duplicate || detectCompPathPreservation(contentItem, oldDescriptor, targetComponentType, targetComponentPaths);
 
-      const changedComponents: { [path: string]: { path: string } } = {};
+      const changedComponents: { [path: string]: Component } = {};
       components.forEach((component: Component) => {
         for (const targetComponentPath of targetComponentPaths) {
           lastTargetedComponentPath = verifyAndGetCompPath(component);
@@ -313,14 +314,19 @@ export function createEditorFunc(
         clonedContentItem._indexConfig.configs = newIndexConfigs;
       }
 
+      const pathsSortedDesc = Object.keys(changedComponents);
+      pathsSortedDesc.sort(sortComponentPathsDescending);
+
       const changedComponentPaths: string[] = [];
-      for (const componentPath in changedComponents) {
+      pathsSortedDesc.forEach((componentPath) => {
         changedComponentPaths.push(componentPath);
         lastTargetedComponentPath = componentPath;
 
+        contentRegionMutators.addComponent(clonedContentItem, changedComponents[componentPath])
         replaceChangedComponentsInClone(componentPath, changedComponents, clonedContentItem);
+
         results.reportSuccess(clonedContentItem, componentPath);
-      }
+      });
 
       if (!requestedPostprocessors) {
         return clonedContentItem;
