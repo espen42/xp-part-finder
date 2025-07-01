@@ -143,7 +143,11 @@ Add a `archive` parameter with a truthy value to the URL, to include archived co
 
 To list components that are not used in any content, add an `unused` parameter with a truthy value to the URL, for example: `&unused=true`. Components that are not used in any content will be listed in the left column, with a count of 0 usages. This can be useful for cleaning up unused components. 
 
-### Caution!
+## Change signature
+
+Running the part mover will incur a change version on the content items that are changed. These versions will be signed with the current logged-in user. To mark the changes as special Partmover batch-related changes, manually create a user on the system IDprovider, with the same displayname as the current logged-in user, in parenthesis - and with "`Partmover `" in front, including the case and space. For example, "Partmover (myUsualUserDisplayname)" - if that exists, the app will pick it up and sign with that instead.  
+
+## Caution!
 
 Some notes to move parts more safely:
 
