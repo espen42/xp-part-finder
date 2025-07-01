@@ -49,6 +49,46 @@ const verifyInputs = (contentItem, newComponent) => {
   }
 }
 
+
+
+export const algo = (a, b) => {
+  if (a.path === b.path) {
+    return 0
+  }
+
+  const splitPathA = (a.path || "").replace(/^\//, "").split("/");
+  const splitPathB = (b.path || "").replace(/^\//, "").split("/");
+
+  for (let i = 0; i<Math.min(splitPathA.length, splitPathB.length); i+=2) {
+    const regionA = splitPathA[i];
+    const regionB = splitPathB[i];
+    if (regionA !== regionB) {
+      return regionB.localeCompare(regionA);
+    }
+
+    const indexA = parseInt(splitPathA[i + 1], 10);
+    const indexB = parseInt(splitPathB[i + 1], 10);
+
+    if (indexA == null || isNaN(indexA)) {
+      throw Error("Invalid path: " + a.path);
+    }
+    if (indexB == null || isNaN(indexB)) {
+      throw Error("Invalid path: " + b.path);
+    }
+    if (indexA !== indexB) {
+      return indexB - indexA;
+    }
+  }
+
+  // If we reach here, the paths are equal up to the length of the shorter path. Then the longer path is considered a component inside the component with the shorter path, and should be sorted after it.
+  if (splitPathA.length !== splitPathB.length) {
+    return splitPathB.length - splitPathA.length;
+  }
+
+  // If we reach here, the paths should have been equal - but we've checked and they're not. Throw an error to indicate that something is wrong.
+  throw new Error(`Unexpected state, can't sort paths - component paths appear equal, but aren't: ${JSON.stringify(a.path)} vs ${b.path}`);
+}
+
 export const contentRegionMutators = {
   addComponent: (contentItem: ContentItem, componentToAdd: Component, overrideAddAtPath?: string) => {
     // contentItem will be mutated, but in order to enable easy component duplication (just pass the old component object

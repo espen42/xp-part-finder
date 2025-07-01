@@ -241,7 +241,6 @@ export function createEditorFunc(
             "marginBottom": false
           } */
 
-    const changedComponents: { [path: string]: { path: string } } = {};
     const newIndexConfigs: IndexConfigEntry[] = [];
     let lastTargetedComponentPath: string | null = null;
 
@@ -266,6 +265,7 @@ export function createEditorFunc(
       const preserveSomeComponentPaths =
         duplicate || detectCompPathPreservation(contentItem, oldDescriptor, targetComponentType, targetComponentPaths);
 
+      const changedComponents: { [path: string]: { path: string } } = {};
       components.forEach((component: Component) => {
         for (const targetComponentPath of targetComponentPaths) {
           lastTargetedComponentPath = verifyAndGetCompPath(component);
