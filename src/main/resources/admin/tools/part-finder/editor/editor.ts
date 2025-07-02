@@ -69,7 +69,6 @@ const getAliasOrUserKey = (): `user:${string}:${string}` => {
     );
 
     return user.key;
-
   } catch (e) {
     log.warning(
       `Error trying to find Partmover alias-user (looked for ${JSON.stringify(query)} in system-repo/master/root/identity). `,
@@ -444,7 +443,6 @@ export function createEditorFunc(
       // Sign the change and return the CLONED and changed content item. This writes the changes.
       clonedContentItem.modifier = userKey;
       return clonedContentItem;
-
     } catch (e) {
       // Mark and log any error on this content item, and return the original one. This keeps the original and wipes any changes.
       results.markError(contentItem, lastTargetedComponentPath, e);
