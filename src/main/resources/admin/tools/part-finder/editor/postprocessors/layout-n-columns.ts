@@ -1,14 +1,13 @@
-import { ContentitemMutatingPostprocessorFunc, postprocessAndMutateChangedComponents } from "./index";
-import { ContentItem } from "/admin/tools/part-finder/editor/editor";
+import { ContentitemMutatingPostprocessorFunc, postprocessAndMutateComponent } from "./index";
 
 export const layoutNColumns: ContentitemMutatingPostprocessorFunc = (
-  contentItem: ContentItem,
-  changedPaths: string[],
-  targetComponentType: string,
-  newAppKeyDashed: string,
-  newComponentKey: string,
+  contentItem,
+  changedPath,
+  targetComponentType,
+  newAppKeyDashed,
+  newComponentKey,
 ) => {
-  postprocessAndMutateChangedComponents(contentItem, changedPaths, (component) => {
+  postprocessAndMutateComponent(contentItem, changedPath, (component) => {
     const layoutConfig = {
       ...(((component[targetComponentType].config || {})[newAppKeyDashed] || {})[newComponentKey] || {}),
     };
@@ -72,6 +71,4 @@ export const layoutNColumns: ContentitemMutatingPostprocessorFunc = (
 
    config.highlightErrors = true; */
   });
-
-  return contentItem;
 };

@@ -8,7 +8,7 @@ import { Node, ModifiedNode, NodeConfigEntry } from "@enonic-types/lib-node";
 import { Content, Component } from "@enonic-types/lib-content";
 import { sortComponentPathsDescending, contentRegionMutators } from "/admin/tools/part-finder/editor/regionEditing";
 
-type RequestedProcessor = {
+type ComponentPostProcessor = {
   label: string;
   func: ContentitemMutatingPostprocessorFunc;
 };
@@ -80,7 +80,7 @@ const verifyAndGetCompPath = (component): string => {
   return component?.path;
 };
 
-const replaceChangedComponentsInClone = (componentPath, changedComponents, clonedContentItem) => {
+const replaceChangedComponentsInClone = (clonedContentItem, componentPath, changedComponents) => {
   const newComponent = changedComponents[componentPath];
 
   const index = findIndex<{ path: string }>(clonedContentItem.components || [], (comp) => comp.path === componentPath);
@@ -134,6 +134,56 @@ const componentMatchesTarget = (
   component.type === targetComponentType &&
   (component[targetComponentType] || {}).descriptor === oldDescriptor &&
   component.path === targetComponentPath;
+
+const preparePostprocessors = (requestedPostprocessors): ComponentPostProcessor[] => {
+  let postProcessors: ComponentPostProcessor[] = [];
+  if (requestedPostprocessors) {
+    if (!Array.isArray(requestedPostprocessors)) {
+      requestedPostprocessors = [requestedPostprocessors];
+    }
+    postProcessors = requestedPostprocessors.map((processorLabel): ComponentPostProcessor => {
+      const processorFunc: ContentitemMutatingPostprocessorFunc = POSTPROCESSORS[processorLabel];
+      if (!processorFunc) {
+        throw Error(`Postprocessor not found: '${processorLabel}'`);
+      }
+
+      return {
+        label: processorLabel,
+        func: processorFunc,
+      };
+    });
+  }
+  return postProcessors;
+};
+
+const runPostprocessors = (
+  clonedContentItem: ContentItem,
+  postProcessors: ComponentPostProcessor[],
+  targetComponentPath: string,
+  targetComponentType: string,
+  newAppKeyDashed: string,
+  newComponentKey: string,
+) => {
+  postProcessors.forEach((processor) => {
+    const { label, func } = processor;
+    try {
+      func(clonedContentItem, targetComponentPath, targetComponentType, newAppKeyDashed, newComponentKey);
+    } catch (e) {
+      log.warning(
+        `Error while trying to apply postprocessor function '${label}' to the following data/arguments: ${JSON.stringify(
+          {
+            clonedContentItem,
+            targetComponentPath,
+            targetComponentType,
+            newAppKeyDashed,
+            newComponentKey,
+          },
+        )}`,
+      );
+      throw e;
+    }
+  });
+};
 
 // By now, established a match: component type, descriptor and path matches the target.
 // So deep-clone the component data to avoid mutation, and add the clone to the collection of data to store later,
@@ -307,74 +357,46 @@ export function createEditorFunc(
 
       lastTargetedComponentPath = null;
 
-      // Deep-clone the current content item, inject the updated data into it
+      // Preparation: Deep-clone the current content item, inject the updated data into it
       // (overwriting existing keys), and return the clone:
       const clonedContentItem = clone(contentItem);
       if (newIndexConfigs.length) {
         clonedContentItem._indexConfig.configs = newIndexConfigs;
       }
 
+      const postProcessors = preparePostprocessors(requestedPostprocessors);
+
       const pathsSortedDesc = Object.keys(changedComponents);
       pathsSortedDesc.sort(sortComponentPathsDescending);
 
-      const changedComponentPaths: string[] = [];
-      pathsSortedDesc.forEach((componentPath) => {
-        changedComponentPaths.push(componentPath);
-        lastTargetedComponentPath = componentPath;
+      // Let the actual processing begin: one component after another (in reverse order), by target path:
+      pathsSortedDesc.forEach((targetComponentPath) => {
+        lastTargetedComponentPath = targetComponentPath;
 
-        contentRegionMutators.addComponent(clonedContentItem, changedComponents[componentPath])
-        replaceChangedComponentsInClone(componentPath, changedComponents, clonedContentItem);
+        // Duplicate the component for safer undo: make a clone of the original before replacing it:
+        contentRegionMutators.addComponent(clonedContentItem, changedComponents[targetComponentPath]);
 
-        results.reportSuccess(clonedContentItem, componentPath);
-      });
+        // Replace the original with the changed one
+        replaceChangedComponentsInClone(clonedContentItem, targetComponentPath, changedComponents);
 
-      if (!requestedPostprocessors) {
-        return clonedContentItem;
-      } else {
-        if (!Array.isArray(requestedPostprocessors)) {
-          requestedPostprocessors = [requestedPostprocessors];
-        }
-        const requestedPostProcessors: RequestedProcessor[] = requestedPostprocessors.map(
-          (processorLabel): RequestedProcessor => {
-            const processorFunc: ContentitemMutatingPostprocessorFunc = POSTPROCESSORS[processorLabel];
-            if (!processorFunc) {
-              throw Error(`Postprocessor not found: '${processorLabel}'`);
-            }
-
-            return {
-              label: processorLabel,
-              func: processorFunc,
-            };
-          },
+        runPostprocessors(
+          clonedContentItem,
+          postProcessors,
+          targetComponentPath,
+          targetComponentType,
+          newAppKeyDashed,
+          newComponentKey,
         );
 
-        requestedPostProcessors.forEach((processor) => {
-          const { label, func } = processor;
-          try {
-            func(clonedContentItem, changedComponentPaths, targetComponentType, newAppKeyDashed, newComponentKey);
-          } catch (e) {
-            log.warning(
-              `Error while trying to apply postprocessor function '${label}' to the following data/arguments: ${JSON.stringify(
-                {
-                  clonedContentItem,
-                  changedComponentPaths,
-                  targetComponentType,
-                  newAppKeyDashed,
-                  newComponentKey,
-                },
-              )}`,
-            );
-            throw e;
-          }
-        });
+        results.reportSuccess(clonedContentItem, targetComponentPath);
+      });
 
-        clonedContentItem.modifier = `user:${user.key} (${app.name})`;
-
-        return clonedContentItem;
-      }
+      // Sign the change and return the CLONED and changed content item. This writes the changes.
+      clonedContentItem.modifier = `user:${user.key} (${app.name})`;
+      return clonedContentItem;
     } catch (e) {
+      // Mark and log any error on this content item, and return the original one. This keeps the original and wipes any changes.
       results.markError(contentItem, lastTargetedComponentPath, e);
-
       return contentItem;
     }
   };

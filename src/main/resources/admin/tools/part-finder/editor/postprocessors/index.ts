@@ -17,17 +17,22 @@ export const POSTPROCESSORS: { [callableName: string]: ContentitemMutatingPostpr
   logContent,
   "log-content": logContent,
   logcontent: logContent,
+
   logComponent,
   "log-component": logComponent,
   logcomponent: logComponent,
+
   logConfig,
   "log-config": logConfig,
   logconfig: logConfig,
+
   throwerror,
+
   //---- Component-specific postprocessors ----
   cardfullwidth: cardFullwidth,
   "card-fullwidth": cardFullwidth,
   fullwidthcard: cardFullwidth,
+
   layoutcolumns: layoutNColumns,
   layoutncolumns: layoutNColumns,
   "layout-n-columns": layoutNColumns,
@@ -36,11 +41,11 @@ export const POSTPROCESSORS: { [callableName: string]: ContentitemMutatingPostpr
 export interface ContentitemMutatingPostprocessorFunc {
   (
     currentContentItem: ContentItem,
-    changedComponentPaths: string[],
+    changedComponentPath: string,
     targetComponentType: string,
     newAppKeyDashed: string,
     newComponentKey: string,
-  ): ContentItem;
+  ): void;
 }
 
 export interface ComponentMutatingPostprocessorFunc {
