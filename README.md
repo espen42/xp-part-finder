@@ -145,7 +145,7 @@ To list components that are not used in any content, add an `unused` parameter w
 
 ## Change signature
 
-Running the part mover will incur a change version on the content items that are changed. These versions will be signed with the current logged-in user. To mark the changes as special Partmover batch-related changes, manually create a user on the system IDprovider, with the same displayname as the current logged-in user, in parenthesis - and with "`Partmover `" in front, including the case and space. For example, "Partmover (myUsualUserDisplayname)" - if that exists, the app will pick it up and sign with that instead.  
+Running the part mover will incur a change version on the content items that are changed. These versions will be signed with the current logged-in user. To mark the changes as special Partmover batch-related changes, manually create a user on the system IDprovider, with the same displayname as the current logged-in user, in parenthesis - and with "`Partmover `" in front, including the case and space. For example, "Partmover (My Usual User Displayname)" - if that exists, the app will pick it up and sign with that instead.  
 
 ## Caution!
 
