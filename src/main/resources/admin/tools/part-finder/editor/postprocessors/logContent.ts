@@ -1,7 +1,5 @@
-import { ContentItem } from "/admin/tools/part-finder/editor/editor";
+import { ContentitemMutatingPostprocessorFunc } from "/admin/tools/part-finder/editor/postprocessors/index";
 
-export const logContent = (contentItem: ContentItem) => {
+export const logContent: ContentitemMutatingPostprocessorFunc = (contentItem) => {
   log.info("\n\n\n##############################\n\ncontentItem logger: " + JSON.stringify(contentItem) + "\n\n\n");
-
-  return contentItem;
 };

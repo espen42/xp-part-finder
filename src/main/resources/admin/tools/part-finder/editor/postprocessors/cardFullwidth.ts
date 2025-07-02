@@ -3,12 +3,7 @@
  * DESTRUCTIVE: won't undo properly! Use with care!
  */
 
-import {
-  ContentitemMutatingPostprocessorFunc,
-  postprocessAndMutateChangedComponents,
-  replaceComponentConfig,
-} from "./index";
-import { ContentItem } from "/admin/tools/part-finder/editor/editor";
+import { ContentitemMutatingPostprocessorFunc, postprocessAndMutateComponent, replaceComponentConfig } from "./index";
 import { NodeIndexConfig } from "/lib/xp/node";
 
 type CommonConfig = {
@@ -126,11 +121,8 @@ const convertLinks = (
   return output;
 };
 
-export const cardFullwidth: ContentitemMutatingPostprocessorFunc = (
-  contentItem: ContentItem,
-  changedPaths: string[],
-) => {
-  postprocessAndMutateChangedComponents(contentItem, changedPaths, (component, currentComponentConfig) => {
+export const cardFullwidth: ContentitemMutatingPostprocessorFunc = (contentItem, changedPath) => {
+  postprocessAndMutateComponent(contentItem, changedPath, (component, currentComponentConfig) => {
     const bannerWithImageHwConfig: BannerWithImageHwConfig = currentComponentConfig as BannerWithImageHwConfig;
 
     if (bannerWithImageHwConfig.video) {
@@ -169,6 +161,4 @@ export const cardFullwidth: ContentitemMutatingPostprocessorFunc = (
 
     replaceComponentConfig(component, cardFullWidthConfig);
   });
-
-  return contentItem;
 };

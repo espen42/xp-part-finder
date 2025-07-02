@@ -49,6 +49,46 @@ const verifyInputs = (contentItem, newComponent) => {
   }
 }
 
+
+
+export const sortComponentPathsDescending = (pathA: string, pathB: string): number => {
+  if (pathA === pathB) {
+    return 0
+  }
+
+  const splitPathA: string[] = (pathA).replace(/^\//, "").split("/");
+  const splitPathB: string[] = (pathB).replace(/^\//, "").split("/");
+
+  for (let i = 0; i<Math.min(splitPathA.length, splitPathB.length); i+=2) {
+    const regionA = splitPathA[i];
+    const regionB = splitPathB[i];
+    if (regionA !== regionB) {
+      return regionB.localeCompare(regionA);
+    }
+
+    const indexA = parseInt(splitPathA[i + 1], 10);
+    const indexB = parseInt(splitPathB[i + 1], 10);
+
+    if (indexA == null || isNaN(indexA)) {
+      throw Error("Invalid path: " + pathA);
+    }
+    if (indexB == null || isNaN(indexB)) {
+      throw Error("Invalid path: " + pathB);
+    }
+    if (indexA !== indexB) {
+      return indexB - indexA;
+    }
+  }
+
+  // If we reach here, the paths are equal up to the length of the shorter path. Then the longer path is considered a component inside the component with the shorter path, and should be sorted after it.
+  if (splitPathA.length !== splitPathB.length) {
+    return splitPathB.length - splitPathA.length;
+  }
+
+  // If we reach here, the paths should have been equal - but we've checked and they're not. Throw an error to indicate that something is wrong.
+  throw new Error(`Unexpected state, can't sort paths - component paths appear equal, but aren't: ${JSON.stringify(pathA)} vs ${pathB}`);
+}
+
 export const contentRegionMutators = {
   addComponent: (contentItem: ContentItem, componentToAdd: Component, overrideAddAtPath?: string) => {
     // contentItem will be mutated, but in order to enable easy component duplication (just pass the old component object
@@ -60,13 +100,14 @@ export const contentRegionMutators = {
 
     verifyInputs(contentItem, newComponent);
 
-    const [regionPath, pathTargetIndex] = getRootAndIndex(newComponent.path || "");
+    // eslint-disable-next-line prefer-const
+    let [regionPath, pathTargetIndex] = getRootAndIndex(newComponent.path || "");
 
     if (regionPath === "/") {
       throw new Error("Cannot add a component at the root path '/'. Please specify a region path.");
     }
 
-    const inSameRegionPattern = new RegExp(`^${regionPath}\\d+`);
+    const inTargetRegionPattern = new RegExp(`^(${regionPath})(\\d+)`);
 
     let hasAdded = false
     let highestPathIndexSeen = -1
@@ -82,8 +123,8 @@ export const contentRegionMutators = {
         break;
 
       } else {
-        const isInSameRegion = (currentComponent.path || "").match(inSameRegionPattern);
-        if (isInSameRegion) {
+        const isInTargetRegion = (currentComponent.path || "").match(inTargetRegionPattern);
+        if (isInTargetRegion) {
           const [, pathIndex] = getRootAndIndex(currentComponent.path || "");
           if (pathIndex!==null && pathIndex > highestPathIndexSeen) {
 
@@ -100,7 +141,9 @@ export const contentRegionMutators = {
       if (highestPathIndexSeen >= 0) {
         highestPathIndexSeen++
         newComponentIndex++;
-        newComponent.path = `${regionPath}${highestPathIndexSeen}`;
+        newComponent.path = `${regionPath}${highestPathIndexSeen + 1}`;
+        pathTargetIndex = highestPathIndexSeen + 1
+
         contentItem.components.splice(newComponentIndex, 0, newComponent);
         hasAdded=true
       } else {
@@ -114,15 +157,17 @@ export const contentRegionMutators = {
       for (let i = 0; i < (contentItem.components || []).length; i++) {
         const currentComponent = contentItem.components[i];
 
-        const isInSameRegion = (currentComponent.path || "").match(inSameRegionPattern);
-        if (isInSameRegion) {
-          const [path, pathIndex] = getRootAndIndex(currentComponent.path || "");
-          if (pathIndex !== null && pathTargetIndex!==null && pathIndex >= pathTargetIndex && i !== newComponentIndex) {
-            currentComponent.path = `${path}${pathIndex + 1}`;
+        // Use the group in the inSameRegionPattern to not only check if the component is in the same region, but also to get the path index
+        const targetRegionMatch = (currentComponent.path || "").match(inTargetRegionPattern);
+        if (targetRegionMatch) {
+          const path = targetRegionMatch[1];
+          const currentPathIndex = parseInt(targetRegionMatch[2], 10)
+
+          if (currentPathIndex != null && pathTargetIndex !== null && currentPathIndex >= pathTargetIndex && i !== newComponentIndex) {
+            currentComponent.path = (currentComponent.path || "").replace(`${path}${currentPathIndex}`, `${path}${currentPathIndex + 1}`);
           }
         }
       }
     }
-
   },
 };
