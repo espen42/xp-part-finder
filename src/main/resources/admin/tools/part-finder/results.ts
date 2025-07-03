@@ -87,6 +87,8 @@ export class Results {
   newKey: string;
   repoName: string;
   targetComponentType: string;
+  // If components are added or deleted, other components' paths will change. This maps originalPath -> newPath of changed components:
+  pathChanges: Record<string, string>;
 
   constructor(sourceKey: string, newKey: string, targetComponentType: string) {
     this.results = [];
@@ -94,6 +96,7 @@ export class Results {
     this.sourceKey = sourceKey;
     this.newKey = newKey;
     this.targetComponentType = targetComponentType;
+    this.pathChanges = {};
   }
 
   setRepoContext(repoName: string) {

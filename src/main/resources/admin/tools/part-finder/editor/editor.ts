@@ -310,7 +310,11 @@ export function createEditorFunc(
         lastAttemptedComponentPath = targetComponentPath;
 
         // Duplicate for safer undo: inject the new/changed component before the original
-        contentRegionMutators.addComponent(clonedContentItem, changedComponents[targetComponentPath]);
+        contentRegionMutators.addComponent(
+          clonedContentItem,
+          changedComponents[targetComponentPath],
+          results.pathChanges,
+        );
 
         runPostprocessors(
           clonedContentItem,

@@ -50,7 +50,6 @@ const verifyInputs = (contentItem, newComponent) => {
 }
 
 
-
 export const sortComponentPathsDescending = (pathA: string, pathB: string): number => {
   if (pathA === pathB) {
     return 0
@@ -59,7 +58,7 @@ export const sortComponentPathsDescending = (pathA: string, pathB: string): numb
   const splitPathA: string[] = (pathA).replace(/^\//, "").split("/");
   const splitPathB: string[] = (pathB).replace(/^\//, "").split("/");
 
-  for (let i = 0; i<Math.min(splitPathA.length, splitPathB.length); i+=2) {
+  for (let i = 0; i < Math.min(splitPathA.length, splitPathB.length); i += 2) {
     const regionA = splitPathA[i];
     const regionB = splitPathB[i];
     if (regionA !== regionB) {
@@ -89,8 +88,20 @@ export const sortComponentPathsDescending = (pathA: string, pathB: string): numb
   throw new Error(`Unexpected state, can't sort paths - component paths appear equal, but aren't: ${JSON.stringify(pathA)} vs ${pathB}`);
 }
 
+// As paths of components are bumped inside a region, we need to track what their new paths have become in relation to their original path. Used for user feedback at the end of the batch, as well as undo and batch-accept functionality:
+// Invariant: THIS DEPENDS ON checking in reverse order!
+const trackPathChange = (pathChanges: Record<string, string>, currentPath, newPath) => {
+  const originalPathsPreviouslyUpdated = Object.keys(pathChanges).filter(originalPath => pathChanges[originalPath] === currentPath);
+  if (originalPathsPreviouslyUpdated.length > 1) throw Error(`Unexpected state - it seems more than one component has been updated to path ${JSON.stringify(currentPath)}. Those components has these original paths: ${JSON.stringify(originalPathsPreviouslyUpdated)}`)
+  if (originalPathsPreviouslyUpdated.length) {
+    pathChanges[originalPathsPreviouslyUpdated[0]] = newPath
+  } else {
+    pathChanges[currentPath] = newPath
+  }
+}
+
 export const contentRegionMutators = {
-  addComponent: (contentItem: ContentItem, componentToAdd: Component, overrideAddAtPath?: string) => {
+  addComponent: (contentItem: ContentItem, componentToAdd: Component, pathChanges: Record<string, string>, overrideAddAtPath?: string) => {
     // contentItem will be mutated, but in order to enable easy component duplication (just pass the old component object
     // as componentToAdd), componentToAdd shouldn't be mutated. So spread to avoid mutating:
     const newComponent: Component = {
@@ -127,7 +138,7 @@ export const contentRegionMutators = {
         const isInTargetRegion = (currentComponent.path || "").match(inTargetRegionPattern);
         if (isInTargetRegion) {
           const [, pathIndex] = getRootAndIndex(currentComponent.path || "");
-          if (pathIndex!==null && pathIndex > highestPathIndexSeen) {
+          if (pathIndex !== null && pathIndex > highestPathIndexSeen) {
 
             highestPathIndexSeen = pathIndex;
             newComponentIndex = i;
@@ -147,7 +158,7 @@ export const contentRegionMutators = {
 
         log.info(`Injecting a new component into contentitem ${JSON.stringify(contentItem._path)}, at component path ${newComponent.path}`)
         contentItem.components.splice(newComponentIndex, 0, newComponent);
-        hasAdded=true
+        hasAdded = true
       } else {
         throw new Error(`No matching region found for path: ${newComponent.path}`);
         // TODO: or just add the component at the end of the components array? What happens if a component is in data, but doesn't match any existing region path from the schema?
@@ -156,17 +167,26 @@ export const contentRegionMutators = {
 
     // If the component was added, we need to update the paths of all components in the same region that have a path index greater than the new component's index.
     if (hasAdded) {
-      for (let i = 0; i < (contentItem.components || []).length; i++) {
+      // Reverse order: see below
+      for (let i = (contentItem.components || []).length - 1; i >= 0; i--) {
         const currentComponent = contentItem.components[i];
+        if (!currentComponent.path) {
+          log.warning(`A component in a contentitem is missing a path: ${JSON.stringify(contentItem)}`);
+          throw Error(`Unexpected state - .components[${i}] in contentitem ${contentItem._path}) is missing a path.`)
+        }
 
         // Uses the two regex groups in the inSameRegionPattern to not only check if the component is in the same region, but also to get the region's path and the component's index within the region
-        const targetRegionMatch = (currentComponent.path || "").match(inTargetRegionPattern);
+        const targetRegionMatch = currentComponent.path.match(inTargetRegionPattern);
         if (targetRegionMatch) {
-          const path = targetRegionMatch[1];
+          const regionPath = targetRegionMatch[1];
           const currentPathIndex = parseInt(targetRegionMatch[2], 10)
 
           if (currentPathIndex != null && pathTargetIndex !== null && currentPathIndex >= pathTargetIndex && i !== newComponentIndex) {
-            currentComponent.path = (currentComponent.path || "").replace(`${path}${currentPathIndex}`, `${path}${currentPathIndex + 1}`);
+            const newPath = currentComponent.path.replace(`${regionPath}${currentPathIndex}`, `${regionPath}${currentPathIndex + 1}`)
+
+            trackPathChange(pathChanges, currentComponent.path, newPath)
+
+            currentComponent.path = newPath;
           }
         }
       }
