@@ -117,6 +117,7 @@ export const contentRegionMutators = {
     for (let i = 0; i < (contentItem.components || []).length; i++) {
       const currentComponent = contentItem.components[i];
       if (currentComponent.path === newComponent.path) {
+        log.info(`Injecting a new component into contentitem ${JSON.stringify(contentItem._path)}, at component path ${newComponent.path}`)
         contentItem.components.splice(i, 0, newComponent) // Insert the new component (that already has the specified path
         hasAdded = true;
         newComponentIndex = i;
@@ -144,6 +145,7 @@ export const contentRegionMutators = {
         newComponent.path = `${regionPath}${highestPathIndexSeen + 1}`;
         pathTargetIndex = highestPathIndexSeen + 1
 
+        log.info(`Injecting a new component into contentitem ${JSON.stringify(contentItem._path)}, at component path ${newComponent.path}`)
         contentItem.components.splice(newComponentIndex, 0, newComponent);
         hasAdded=true
       } else {
@@ -157,7 +159,7 @@ export const contentRegionMutators = {
       for (let i = 0; i < (contentItem.components || []).length; i++) {
         const currentComponent = contentItem.components[i];
 
-        // Use the group in the inSameRegionPattern to not only check if the component is in the same region, but also to get the path index
+        // Uses the two regex groups in the inSameRegionPattern to not only check if the component is in the same region, but also to get the region's path and the component's index within the region
         const targetRegionMatch = (currentComponent.path || "").match(inTargetRegionPattern);
         if (targetRegionMatch) {
           const path = targetRegionMatch[1];
