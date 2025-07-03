@@ -405,8 +405,6 @@ export function post(req: XP.Request): XP.Response {
 
   const targetBranch = "draft";
 
-  // const undo: boolean = !!req.params.undo;
-
   const targetIds: string[] = Object.keys(req.params)
     .filter((k) => k.startsWith("select-item--"))
     .map((k) => req.params[k] || "");
@@ -476,7 +474,6 @@ export function post(req: XP.Request): XP.Response {
           componentType,
           results,
           componentPathsPerId,
-          false,
           requestedPostprocessors,
         );
 
