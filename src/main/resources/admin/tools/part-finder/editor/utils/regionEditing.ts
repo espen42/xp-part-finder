@@ -1,5 +1,6 @@
-import {Component} from "@enonic-types/lib-content";
-import {ContentItem} from "/admin/tools/part-finder/editor/editor";
+import { Component } from "@enonic-types/lib-content";
+import { ContentItem } from "/admin/tools/part-finder/editor/editor";
+import { PathChangeTracker } from "/admin/tools/part-finder/editor/utils/pathChangeTracker";
 
 const getRootAndIndex = (path: string): [string, number | null] => {
   const splitPath = path.replace(/^\//, "").split("/");
@@ -10,17 +11,10 @@ const getRootAndIndex = (path: string): [string, number | null] => {
   } catch (e) {
     log.warning(`Failed to parse a numeral last index from path: ${path}: ${e}`);
   }
-  return [
-    `/${parentPath}/`.replace(/\/+/g, '/'),
-    (undefined === index || isNaN(index)
-        ? null
-        : index
-    )
-  ];
+  return [`/${parentPath}/`.replace(/\/+/g, "/"), undefined === index || isNaN(index) ? null : index];
 };
 
 const verifyInputs = (contentItem, newComponent) => {
-
   // Verify that the content item has a components array and that it contains a page component at the root path.
   if (!contentItem.components || !Array.isArray(contentItem.components) || contentItem.components.length === 0) {
     throw new Error("Content item does not have a components array");
@@ -33,30 +27,31 @@ const verifyInputs = (contentItem, newComponent) => {
   }
 
   // Verify that the component to be added is of a valid type and has a path and a descriptor.
-  if (!(
-    ['part', 'layout', 'page'].indexOf(newComponent?.type) > -1 &&
-    newComponent.path &&
-    newComponent[newComponent.type]?.descriptor)
+  if (
+    !(
+      ["part", "layout", "page"].indexOf(newComponent?.type) > -1 &&
+      newComponent.path &&
+      newComponent[newComponent.type]?.descriptor
+    )
   ) {
-    throw new Error(
-      `Invalid component to add: ${JSON.stringify(newComponent)} (${typeof newComponent})`,
-    );
+    throw new Error(`Invalid component to add: ${JSON.stringify(newComponent)} (${typeof newComponent})`);
   }
 
   // Verify that `addAtPath` is a valid component path (if missing, get it from component path). Expected form: eg. `/main/1`, `/main/2/myRegion/3`, etc.
   if (!newComponent.path.match(/^(\/\w+\/\d+){1,2}$/)) {
-    throw new Error(`Invalid path value for adding new component: ${JSON.stringify(newComponent.path)} (${typeof newComponent.path})`);
+    throw new Error(
+      `Invalid path value for adding new component: ${JSON.stringify(newComponent.path)} (${typeof newComponent.path})`,
+    );
   }
-}
-
+};
 
 export const sortComponentPathsDescending = (pathA: string, pathB: string): number => {
   if (pathA === pathB) {
-    return 0
+    return 0;
   }
 
-  const splitPathA: string[] = (pathA).replace(/^\//, "").split("/");
-  const splitPathB: string[] = (pathB).replace(/^\//, "").split("/");
+  const splitPathA: string[] = pathA.replace(/^\//, "").split("/");
+  const splitPathB: string[] = pathB.replace(/^\//, "").split("/");
 
   for (let i = 0; i < Math.min(splitPathA.length, splitPathB.length); i += 2) {
     const regionA = splitPathA[i];
@@ -85,29 +80,24 @@ export const sortComponentPathsDescending = (pathA: string, pathB: string): numb
   }
 
   // If we reach here, the paths should have been equal - but we've checked and they're not. Throw an error to indicate that something is wrong.
-  throw new Error(`Unexpected state, can't sort paths - component paths appear equal, but aren't: ${JSON.stringify(pathA)} vs ${pathB}`);
-}
-
-// As paths of components are bumped inside a region, we need to track what their new paths have become in relation to their original path. Used for user feedback at the end of the batch, as well as undo and batch-accept functionality:
-// Invariant: THIS DEPENDS ON checking in reverse order!
-const trackPathChange = (pathChanges: Record<string, string>, currentPath, newPath) => {
-  const originalPathsPreviouslyUpdated = Object.keys(pathChanges).filter(originalPath => pathChanges[originalPath] === currentPath);
-  if (originalPathsPreviouslyUpdated.length > 1) throw Error(`Unexpected state - it seems more than one component has been updated to path ${JSON.stringify(currentPath)}. Those components has these original paths: ${JSON.stringify(originalPathsPreviouslyUpdated)}`)
-  if (originalPathsPreviouslyUpdated.length) {
-    pathChanges[originalPathsPreviouslyUpdated[0]] = newPath
-  } else {
-    pathChanges[currentPath] = newPath
-  }
-}
+  throw new Error(
+    `Unexpected state, can't sort paths - component paths appear equal, but aren't: ${JSON.stringify(pathA)} vs ${pathB}`,
+  );
+};
 
 export const contentRegionMutators = {
-  addComponent: (contentItem: ContentItem, componentToAdd: Component, pathChanges: Record<string, string>, overrideAddAtPath?: string) => {
+  addComponent: (
+    contentItem: ContentItem,
+    componentToAdd: Component,
+    pathTracker: PathChangeTracker,
+    overrideAddAtPath?: string,
+  ) => {
     // contentItem will be mutated, but in order to enable easy component duplication (just pass the old component object
     // as componentToAdd), componentToAdd shouldn't be mutated. So spread to avoid mutating:
     const newComponent: Component = {
       ...componentToAdd,
-      path: (overrideAddAtPath || componentToAdd.path)
-    } as Component
+      path: overrideAddAtPath || componentToAdd.path,
+    } as Component;
 
     verifyInputs(contentItem, newComponent);
 
@@ -120,26 +110,23 @@ export const contentRegionMutators = {
 
     const inTargetRegionPattern = new RegExp(`^(${regionPath})(\\d+)`);
 
-    let hasAdded = false
-    let highestPathIndexSeen = -1
-    let newComponentIndex = -1
+    let hasAdded = false;
+    let highestPathIndexSeen = -1;
+    let newComponentIndex = -1;
 
     // Iterate through components to find the insertion point, as defined by `addAtPath`.
     for (let i = 0; i < (contentItem.components || []).length; i++) {
       const currentComponent = contentItem.components[i];
       if (currentComponent.path === newComponent.path) {
-        log.info(`Injecting a new component into contentitem ${JSON.stringify(contentItem._path)}, at component path ${newComponent.path}`)
-        contentItem.components.splice(i, 0, newComponent) // Insert the new component (that already has the specified path
+        contentItem.components.splice(i, 0, newComponent); // Insert the new component (that already has the specified path)
         hasAdded = true;
         newComponentIndex = i;
         break;
-
       } else {
         const isInTargetRegion = (currentComponent.path || "").match(inTargetRegionPattern);
         if (isInTargetRegion) {
           const [, pathIndex] = getRootAndIndex(currentComponent.path || "");
           if (pathIndex !== null && pathIndex > highestPathIndexSeen) {
-
             highestPathIndexSeen = pathIndex;
             newComponentIndex = i;
           }
@@ -151,14 +138,13 @@ export const contentRegionMutators = {
     // If highestPathIndexSeen is above -1, then the same path as the target path has at least been seen, so we can insert the new component at the end of the region.
     if (!hasAdded) {
       if (highestPathIndexSeen >= 0) {
-        highestPathIndexSeen++
+        highestPathIndexSeen++;
         newComponentIndex++;
         newComponent.path = `${regionPath}${highestPathIndexSeen + 1}`;
-        pathTargetIndex = highestPathIndexSeen + 1
+        pathTargetIndex = highestPathIndexSeen + 1;
 
-        log.info(`Injecting a new component into contentitem ${JSON.stringify(contentItem._path)}, at component path ${newComponent.path}`)
         contentItem.components.splice(newComponentIndex, 0, newComponent);
-        hasAdded = true
+        hasAdded = true;
       } else {
         throw new Error(`No matching region found for path: ${newComponent.path}`);
         // TODO: or just add the component at the end of the components array? What happens if a component is in data, but doesn't match any existing region path from the schema?
@@ -167,26 +153,29 @@ export const contentRegionMutators = {
 
     // If the component was added, we need to update the paths of all components in the same region that have a path index greater than the new component's index.
     if (hasAdded) {
-      // Reverse order: see below
+
+      // THIS APPROACH DEPENDS ON INSERTIONS HAPPENING IN REVERSE COMPONENT ORDER: bottom -> up
       for (let i = (contentItem.components || []).length - 1; i >= 0; i--) {
-        const currentComponent = contentItem.components[i];
-        if (!currentComponent.path) {
-          log.warning(`A component in a contentitem is missing a path: ${JSON.stringify(contentItem)}`);
-          throw Error(`Unexpected state - .components[${i}] in contentitem ${contentItem._path}) is missing a path.`)
-        }
+        const currentComponent = contentItem.components[i] as { path: string };
 
         // Uses the two regex groups in the inSameRegionPattern to not only check if the component is in the same region, but also to get the region's path and the component's index within the region
         const targetRegionMatch = currentComponent.path.match(inTargetRegionPattern);
         if (targetRegionMatch) {
           const regionPath = targetRegionMatch[1];
-          const currentPathIndex = parseInt(targetRegionMatch[2], 10)
+          const currentPathIndex = parseInt(targetRegionMatch[2], 10);
 
-          if (currentPathIndex != null && pathTargetIndex !== null && currentPathIndex >= pathTargetIndex && i !== newComponentIndex) {
-            const newPath = currentComponent.path.replace(`${regionPath}${currentPathIndex}`, `${regionPath}${currentPathIndex + 1}`)
+          if (currentPathIndex != null && pathTargetIndex !== null && currentPathIndex >= pathTargetIndex) {
+            if (i === newComponentIndex) {
+              pathTracker.trackInsertion(currentComponent.path, currentComponent.path);
 
-            trackPathChange(pathChanges, currentComponent.path, newPath)
-
-            currentComponent.path = newPath;
+            } else {
+              const newPath = currentComponent.path.replace(
+                `${regionPath}${currentPathIndex}`,
+                `${regionPath}${currentPathIndex + 1}`,
+              );
+              pathTracker.trackInsertion(currentComponent.path, newPath);
+              currentComponent.path = newPath;
+            }
           }
         }
       }

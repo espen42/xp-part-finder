@@ -1,12 +1,15 @@
 import { getUser as getAuthUser } from "/lib/xp/auth";
-import { Results } from "/admin/tools/part-finder/results";
+import { Results } from "/admin/tools/part-finder/editor/utils/results";
 import { find } from "/lib/part-finder/utils";
 import clone from "../../../../../../../node_modules/just-clone";
 import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/admin/tools/part-finder/editor/postprocessors";
 
 import { Node, ModifiedNode, NodeConfigEntry } from "@enonic-types/lib-node";
 import { Content, Component } from "@enonic-types/lib-content";
-import { sortComponentPathsDescending, contentRegionMutators } from "/admin/tools/part-finder/editor/regionEditing";
+import {
+  sortComponentPathsDescending,
+  contentRegionMutators,
+} from "/admin/tools/part-finder/editor/utils/regionEditing";
 
 type ComponentPostProcessor = {
   label: string;
@@ -25,8 +28,8 @@ export type ContentItem = Content & {
   };
 };
 
-const verifyAllChangesWereMade = (changedComponents, requestedComponentPaths) => {
-  const changesMade = Object.keys(changedComponents).length;
+const verifyAllChangesWereMade = (newComponents, requestedComponentPaths) => {
+  const changesMade = Object.keys(newComponents).length;
 
   if (
     !changesMade ||
@@ -35,7 +38,7 @@ const verifyAllChangesWereMade = (changedComponents, requestedComponentPaths) =>
   ) {
     log.warning(
       `Missing change request(s): ${JSON.stringify(
-        (requestedComponentPaths || []).filter((path) => !!changedComponents[path]),
+        (requestedComponentPaths || []).filter((path) => !!newComponents[path]),
       )}`,
     );
     throw Error("Not all requested changes were made.");
@@ -231,6 +234,7 @@ export function createEditorFunc(
     const contentId = contentItem?._id || "###MISSING###";
 
     try {
+      results.initPathChangeTracker(contentItem);
       const components = contentItem?.components || [];
 
       // List either selected paths to target, or if none are specifically targeted: all available component paths
@@ -246,7 +250,7 @@ export function createEditorFunc(
               )
               .filter((path) => !!path) as string[]);
 
-      const changedComponents: { [path: string]: Component } = {};
+      const newComponents: { [path: string]: Component } = {};
       components.forEach((component: Component) => {
         for (const targetComponentPath of targetComponentPaths) {
           lastAttemptedComponentPath = verifyAndGetCompPath(component);
@@ -268,14 +272,14 @@ export function createEditorFunc(
               newAppKeyDashed,
               newComponentKey,
             );
-            changedComponents[componentClone.path as string] = componentClone;
+            newComponents[componentClone.path as string] = componentClone;
           }
 
           lastAttemptedComponentPath = null;
         }
       });
 
-      verifyAllChangesWereMade(changedComponents, componentPathsPerId[contentId]);
+      verifyAllChangesWereMade(newComponents, componentPathsPerId[contentId]);
 
       const origIndexConfigs: IndexConfigEntry[] = contentItem?._indexConfig?.configs || [];
       for (const currentIndexConfig of origIndexConfigs) {
@@ -302,7 +306,7 @@ export function createEditorFunc(
 
       const postProcessors = preparePostprocessors(requestedPostprocessors);
 
-      const pathsSortedDesc = Object.keys(changedComponents);
+      const pathsSortedDesc = Object.keys(newComponents);
       pathsSortedDesc.sort(sortComponentPathsDescending);
 
       // Let the actual processing begin: one component after another (in reverse order), by target path:
@@ -312,8 +316,8 @@ export function createEditorFunc(
         // Duplicate for safer undo: inject the new/changed component before the original
         contentRegionMutators.addComponent(
           clonedContentItem,
-          changedComponents[targetComponentPath],
-          results.pathChanges,
+          newComponents[targetComponentPath],
+          results.pathTrackers[contentItem._path],
         );
 
         runPostprocessors(

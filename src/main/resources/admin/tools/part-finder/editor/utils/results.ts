@@ -1,5 +1,7 @@
 import type { ContentUsage, MultiUsageInstance } from "/admin/tools/part-finder/part-finder.freemarker";
 import { getToolUrl } from "/lib/xp/admin";
+import { PathChangeTracker } from "/admin/tools/part-finder/editor/utils/pathChangeTracker";
+import { ContentItem } from "/admin/tools/part-finder/editor/editor";
 
 type EditorResult = {
   id: string;
@@ -87,8 +89,10 @@ export class Results {
   newKey: string;
   repoName: string;
   targetComponentType: string;
-  // If components are added or deleted, other components' paths will change. This maps originalPath -> newPath of changed components:
-  pathChanges: Record<string, string>;
+
+  // If a component is added or deleted, other components in the same region will be pushed up or down, so their paths will change.
+  // his keeps track of that throughout the batch: for each contentItem (the toplevel key) by mapping originalPath -> newPath of changed components:
+  pathTrackers: Record<string, PathChangeTracker>;
 
   constructor(sourceKey: string, newKey: string, targetComponentType: string) {
     this.results = [];
@@ -96,11 +100,15 @@ export class Results {
     this.sourceKey = sourceKey;
     this.newKey = newKey;
     this.targetComponentType = targetComponentType;
-    this.pathChanges = {};
+    this.pathTrackers = {};
   }
 
   setRepoContext(repoName: string) {
     this.repoName = repoName;
+  }
+
+  initPathChangeTracker(contentItem: ContentItem) {
+    this.pathTrackers[contentItem._path] = new PathChangeTracker(contentItem);
   }
 
   reportSuccess(contentItem, componentPath) {
