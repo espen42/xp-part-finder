@@ -378,7 +378,7 @@ export function createEditorFunc(
           newComponentKey,
         );
 
-        results.reportSuccess(clonedContentItem, targetComponentPath);
+        results.reportSuccess(clonedContentItem, targetComponentPath, "ADD");
       });
 
       // Sign the change and return the CLONED and changed content item. This writes the changes.
@@ -386,7 +386,7 @@ export function createEditorFunc(
       return clonedContentItem;
     } catch (e) {
       // Mark and log any error on this content item, and return the original one. This keeps the original and wipes any changes.
-      results.markError(contentItem, lastAttemptedComponentPath, e);
+      results.markError(contentItem, lastAttemptedComponentPath, "ADD", e);
       return contentItem;
     }
   };

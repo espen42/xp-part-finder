@@ -1,4 +1,4 @@
-import type { ContentUsage, MultiUsageInstance } from "/admin/tools/part-finder/part-finder.freemarker";
+import type { ContentUsage, MultiUsageInstance, Operation } from "/admin/tools/part-finder/part-finder.freemarker";
 import { getToolUrl } from "/lib/xp/admin";
 import { PathChangeTracker } from "/admin/tools/part-finder/editor/utils/pathChangeTracker";
 import { ContentItem } from "/admin/tools/part-finder/editor/editor";
@@ -10,29 +10,38 @@ class EditorResult {
   type: string;
   path: string;
   repo: string;
+  operation: Operation;
+  componentPath: string[] | string | null;
   // Absence of error value signifies a successful operation:
   error?: string;
-  componentPath: string[] | string | null;
 
-  constructor(repoName: string, contentId: string, contentItem: ContentItem, componentPath?: string[] | string | null, error?: string) {
-      this.id = contentId;
-      this.url = contentItem
-        ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${contentItem?._id}`
-        : "";
-      this.displayName = contentItem?.displayName || "";
-      this.type = contentItem.type;
-      this.repo = repoName;
-      this.path = contentItem?._path || "";
-      this.componentPath = componentPath || null;
-      this.error = error;
+  constructor(
+    repoName: string,
+    contentId: string,
+    contentItem: ContentItem,
+    operation: Operation,
+    componentPath?: string[] | string | null,
+    error?: string,
+  ) {
+    this.id = contentId;
+    this.url = contentItem
+      ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${contentItem?._id}`
+      : "";
+    this.displayName = contentItem?.displayName || "";
+    this.type = contentItem.type;
+    this.repo = repoName;
+    this.path = contentItem?._path || "";
+    this.componentPath = componentPath || null;
+    this.error = error;
+    this.operation = operation;
   }
 
   toString(): string {
     return this.error
-      ? `Error (${this.error}): ${JSON.stringify({path: this.path, componentPath: this.componentPath})}`
-      : `Success: ${JSON.stringify({path: this.path, componentPath: this.componentPath})}`
+      ? `Error:\n\t\t${this.error}\n\t\t${JSON.stringify({ ...JSON.parse(JSON.stringify(this)), error: undefined })}`
+      : `Success:\n\t\t${JSON.stringify(this)}`;
   }
-};
+}
 
 const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
   if (currentContent.hasMultiUsage === !wantedValue) {
@@ -49,7 +58,11 @@ const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
   currentContent.hasMultiUsage = wantedValue;
 };
 
-const insertAndGetSummaryContent = (contents: ContentUsage[], result: EditorResult): ContentUsage => {
+const addContentUsageSummary = (
+  contents: ContentUsage[],
+  result: EditorResult,
+  pathTracker: PathChangeTracker,
+): void => {
   let currentContent: ContentUsage = contents.filter((content) => content.id === result.id)[0];
 
   if (!currentContent) {
@@ -65,29 +78,37 @@ const insertAndGetSummaryContent = (contents: ContentUsage[], result: EditorResu
     contents.push(currentContent);
   }
 
-  return currentContent;
+  setMultiUsageAddition(currentContent, result, pathTracker);
 };
 
-const setMultiUsage = (currentContent: ContentUsage, result: EditorResult) => {
+const getUsage = (componentPath: string, error?: string): MultiUsageInstance => {
+  const usage: MultiUsageInstance = {
+    path: componentPath,
+  };
+  if (error) {
+    usage.error = error;
+  }
+  return usage;
+};
+
+const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracker): void => {
+  if (!usage.error) {
+    usage.oldPath = pathTracker.paths[usage.path];            // Tracked path of the original component, kept unchanged
+    usage.newPath = pathTracker.paths[`new::${usage.path}`];  // Tracked path of the changed component
+  }
+};
+
+const setMultiUsageAddition = (currentContent: ContentUsage, result: EditorResult, pathTracker: PathChangeTracker) => {
   if ("string" === typeof result.componentPath) {
-    const usage: MultiUsageInstance = {
-      path: result.componentPath,
-    };
-    if (result.error) {
-      usage.error = result.error;
-    }
+    const usage: MultiUsageInstance = getUsage(result.componentPath, result.error);
+    trackAddedPath(usage, pathTracker);
 
     currentContent.multiUsage.push(usage);
-
     setHasMultiUsage(currentContent, true);
   } else if (Array.isArray(result.componentPath)) {
-    const usages: MultiUsageInstance[] = result.componentPath.map((usagePath) => {
-      const usage: { path: string; error?: string } = {
-        path: usagePath,
-      };
-      if (result.error) {
-        usage.error = result.error;
-      }
+    const usages: MultiUsageInstance[] = result.componentPath.map((componentPath) => {
+      const usage = getUsage(componentPath, result.error);
+      trackAddedPath(usage, pathTracker);
       return usage;
     });
 
@@ -130,13 +151,11 @@ export class Results {
     this.pathTrackers[contentItem._path] = new PathChangeTracker(contentItem);
   }
 
-  reportSuccess(contentItem, componentPath) {
-    this.results.push(
-      new EditorResult(this.repoName, contentItem?._id, contentItem, componentPath)
-    )
+  reportSuccess(contentItem, componentPath, operation: Operation) {
+    this.results.push(new EditorResult(this.repoName, contentItem?._id, contentItem, operation, componentPath));
 
     log.info(
-      `OK: Adding ${this.targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+      `OK: ${operation} operation succeeded ${this.targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
         componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
       }), from '${this.sourceKey}' to '${this.newKey}'`,
     );
@@ -144,13 +163,23 @@ export class Results {
 
   // On errors, log them, and since nothing should be changed in the data for that contentItem (atomic change: the original contentitem should
   // be returned), overwrite previous success results for that contentItem.
-  markError(contentItem, componentPath: string | null, error: unknown, knownId?: string) {
-    const newError = error instanceof Error ? error.message : "string" === typeof error ? error : "Unknown error, see log"
-    this.results = this.results.filter( result => result.id !== contentItem._id )
-    this.results.push(new EditorResult(this.repoName, contentItem?._id || knownId || "", contentItem, componentPath, newError))
+  markError(contentItem, componentPath: string | null, operation: Operation, error: unknown, knownId?: string) {
+    const newError =
+      error instanceof Error ? error.message : "string" === typeof error ? error : "Unknown error, see log";
+    this.results = this.results.filter((result) => result.id !== contentItem._id);
+    this.results.push(
+      new EditorResult(
+        this.repoName,
+        contentItem?._id || knownId || "",
+        contentItem,
+        operation,
+        componentPath,
+        newError,
+      ),
+    );
 
     log.warning(
-      `Error trying to add ${this.targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+      `Failed: ${operation} operation ${this.targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
         componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
       }), from '${this.sourceKey}}' to '${this.newKey}':`,
     );
@@ -162,8 +191,7 @@ export class Results {
     const contents: ContentUsage[] = [];
 
     this.results.forEach((result) => {
-      const currentContent = insertAndGetSummaryContent(contents, result);
-      setMultiUsage(currentContent, result);
+      addContentUsageSummary(contents, result, this.pathTrackers[result.path]);
     });
 
     contents.forEach((currentContent) => {
@@ -184,7 +212,9 @@ export class Results {
     TargetComponentType: ${this.targetComponentType}
     SourceKey: ${this.sourceKey}
     NewKey: ${this.newKey}
-    Results:\n\t${this.results.map(res => `${res}`).join("\n\t")}
-    pathTrackers:\n\t${Object.keys(this.pathTrackers).map(contentItemPath => `${contentItemPath}:\n\t\t${this.pathTrackers[contentItemPath]}`).join("\n\t")}`
+    Results:\n\t${this.results.map((res) => `${res}`).join("\n\t")}
+    pathTrackers:\n\t${Object.keys(this.pathTrackers)
+      .map((contentItemPath) => `${contentItemPath}:\n\t\t${this.pathTrackers[contentItemPath]}`)
+      .join("\n\t")}`;
   }
 }

@@ -37,11 +37,15 @@ export type ContentUsage = {
   multiUsage: MultiUsageInstance[];
 };
 
+export type Operation = "ADD" | "DELETE";
+
 export type MultiUsageInstance = {
   path: string;
   error?: string;
   targetSubValue?: SubValue;
   hideSelector?: boolean;
+  oldPath?: string;
+  newPath?: string;
 };
 
 type UsagePaths = Record<string, UsagePathSubvalue[] | null>;

@@ -51,5 +51,6 @@ export class PathChangeTracker {
   toString = () =>
     Object.keys(this.paths)
       .filter((path) => this.paths[path] !== path)
-      .map((path) => `${path} --> ${this.paths[path]}`).join("\n\t\t")
+      .map((path) => `${path} --> ${this.paths[path]}`)
+      .join("\n\t\t");
 }

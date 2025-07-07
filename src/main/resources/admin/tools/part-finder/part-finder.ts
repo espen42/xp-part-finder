@@ -485,7 +485,7 @@ export function post(req: XP.Request): XP.Response {
               repo.modify({ key, editor });
             }
           } catch (e) {
-            results.markError(item, null, e, key);
+            results.markError(item, null, "ADD", e, key);
           }
         });
       },
