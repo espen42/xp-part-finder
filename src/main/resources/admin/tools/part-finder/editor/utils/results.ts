@@ -3,7 +3,7 @@ import { getToolUrl } from "/lib/xp/admin";
 import { PathChangeTracker } from "/admin/tools/part-finder/editor/utils/pathChangeTracker";
 import { ContentItem } from "/admin/tools/part-finder/editor/editor";
 
-type EditorResult = {
+class EditorResult {
   id: string;
   url: string;
   displayName: string;
@@ -13,6 +13,25 @@ type EditorResult = {
   // Absence of error value signifies a successful operation:
   error?: string;
   componentPath: string[] | string | null;
+
+  constructor(repoName: string, contentId: string, contentItem: ContentItem, componentPath?: string[] | string | null, error?: string) {
+      this.id = contentId;
+      this.url = contentItem
+        ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${repoName}/edit/${contentItem?._id}`
+        : "";
+      this.displayName = contentItem?.displayName || "";
+      this.type = contentItem.type;
+      this.repo = repoName;
+      this.path = contentItem?._path || "";
+      this.componentPath = componentPath || null;
+      this.error = error;
+  }
+
+  toString(): string {
+    return this.error
+      ? `Error (${this.error}): ${JSON.stringify({path: this.path, componentPath: this.componentPath})}`
+      : `Success: ${JSON.stringify({path: this.path, componentPath: this.componentPath})}`
+  }
 };
 
 const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
@@ -112,45 +131,26 @@ export class Results {
   }
 
   reportSuccess(contentItem, componentPath) {
-    this.results.push({
-      id: contentItem?._id,
-      url: contentItem
-        ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${this.repoName}/edit/${contentItem?._id}`
-        : "",
-      displayName: contentItem?.displayName || "",
-      type: contentItem.type,
-      repo: this.repoName,
-      path: contentItem?._path || "",
-      componentPath: componentPath || null,
-    });
+    this.results.push(
+      new EditorResult(this.repoName, contentItem?._id, contentItem, componentPath)
+    )
 
     log.info(
-      `OK: Replacing ${this.targetComponentType} key on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+      `OK: Adding ${this.targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
         componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
       }), from '${this.sourceKey}' to '${this.newKey}'`,
     );
   }
 
-  // On errors, log them, and since nothing should be changed in the data (atomic change: the original contentitem should
-  // be returned), overwrite previous success results.
+  // On errors, log them, and since nothing should be changed in the data for that contentItem (atomic change: the original contentitem should
+  // be returned), overwrite previous success results for that contentItem.
   markError(contentItem, componentPath: string | null, error: unknown, knownId?: string) {
-    this.results = [
-      {
-        id: contentItem?._id || knownId || "",
-        url: contentItem
-          ? `${getToolUrl("com.enonic.app.contentstudio", "main")}/${this.repoName}/edit/${contentItem?._id}`
-          : "",
-        displayName: contentItem?.displayName || "",
-        type: contentItem.type,
-        repo: this.repoName,
-        path: contentItem?._path || "",
-        componentPath: componentPath,
-        error: error instanceof Error ? error.message : "string" === typeof error ? error : "Unknown error, see log",
-      },
-    ];
+    const newError = error instanceof Error ? error.message : "string" === typeof error ? error : "Unknown error, see log"
+    this.results = this.results.filter( result => result.id !== contentItem._id )
+    this.results.push(new EditorResult(this.repoName, contentItem?._id || knownId || "", contentItem, componentPath, newError))
 
     log.warning(
-      `Error trying to replace ${this.targetComponentType} key on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+      `Error trying to add ${this.targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
         componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
       }), from '${this.sourceKey}}' to '${this.newKey}':`,
     );
@@ -177,5 +177,14 @@ export class Results {
     });
 
     return contents;
+  }
+
+  toString(): string {
+    return `
+    TargetComponentType: ${this.targetComponentType}
+    SourceKey: ${this.sourceKey}
+    NewKey: ${this.newKey}
+    Results:\n\t${this.results.map(res => `${res}`).join("\n\t")}
+    pathTrackers:\n\t${Object.keys(this.pathTrackers).map(contentItemPath => `${contentItemPath}:\n\t\t${this.pathTrackers[contentItemPath]}`).join("\n\t")}`
   }
 }

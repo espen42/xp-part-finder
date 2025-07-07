@@ -16,8 +16,6 @@ export const init = (contentItem: ContentItem): Record<string, string> => {
  * As paths of components are bumped inside a region, we need to track what their new paths have become in relation to their original path. Used for user feedback at the end of the batch, as well as undo and batch-accept functionality.
  */
 export class PathChangeTracker {
-  addedCounter = 0;
-
   // Maps original path -> updated path
   paths: Record<string, string> = {};
 
@@ -49,4 +47,9 @@ export class PathChangeTracker {
     Object.keys(this.paths)
       .filter((path) => this.paths[path] !== path)
       .map((path) => [path, this.paths[path]]);
+
+  toString = () =>
+    Object.keys(this.paths)
+      .filter((path) => this.paths[path] !== path)
+      .map((path) => `${path} --> ${this.paths[path]}`).join("\n\t\t")
 }
