@@ -153,7 +153,6 @@ export const contentRegionMutators = {
 
     // If the component was added, we need to update the paths of all components in the same region that have a path index greater than the new component's index.
     if (hasAdded) {
-
       // THIS APPROACH DEPENDS ON INSERTIONS HAPPENING IN REVERSE COMPONENT ORDER: bottom -> up
       for (let i = (contentItem.components || []).length - 1; i >= 0; i--) {
         const currentComponent = contentItem.components[i] as { path: string };
@@ -167,7 +166,6 @@ export const contentRegionMutators = {
           if (currentPathIndex != null && pathTargetIndex !== null && currentPathIndex >= pathTargetIndex) {
             if (i === newComponentIndex) {
               pathTracker.trackInsertion(currentComponent.path, currentComponent.path);
-
             } else {
               const newPath = currentComponent.path.replace(
                 `${regionPath}${currentPathIndex}`,
