@@ -1,13 +1,16 @@
 import { getUser as getAuthUser, User } from "/lib/xp/auth";
 import { connect } from "/lib/xp/node";
-import { Results } from "/admin/tools/part-finder/results";
-import { find, findIndex } from "/lib/part-finder/utils";
+import { Results } from "/admin/tools/part-finder/editor/utils/results";
+import { find } from "/lib/part-finder/utils";
 import clone from "../../../../../../../node_modules/just-clone";
 import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/admin/tools/part-finder/editor/postprocessors";
 
 import { Node, ModifiedNode, NodeConfigEntry } from "@enonic-types/lib-node";
 import { Content, Component } from "@enonic-types/lib-content";
-import { sortComponentPathsDescending, contentRegionMutators } from "/admin/tools/part-finder/editor/regionEditing";
+import {
+  sortComponentPathsDescending,
+  contentRegionMutators,
+} from "/admin/tools/part-finder/editor/utils/regionEditing";
 
 type ComponentPostProcessor = {
   label: string;
@@ -77,38 +80,8 @@ const getAliasOrUserKey = (): `user:${string}:${string}` => {
   }
 };
 
-// If a content has multiple usages of a component, and not all of those components are targeted for change here, then
-// the indexConfig of that component should be copied instead of renamed, in order to retain the
-// information for the component instances that still use the old one.
-const detectCompPathPreservation = (contentItem, targetKey, targetComponentType, targetComponentPaths) => {
-  const untargetedPaths =
-    !targetComponentPaths || !targetComponentPaths.length || !targetComponentPaths[0]
-      ? []
-      : contentItem.components
-          .map((component) => {
-            if (
-              component != null &&
-              component.type === targetComponentType &&
-              (component[targetComponentType] || {}).descriptor === targetKey &&
-              targetComponentPaths.indexOf(component.path) === -1
-            ) {
-              return component.path;
-            }
-            return null;
-          })
-          .filter((componentPath) => componentPath);
-
-  log.info(
-    untargetedPaths.length > 0
-      ? `Changing ${targetComponentType}(s) ('${targetKey}') on content ${contentItem._path} but leaving it unchanged on path(s): ${JSON.stringify(untargetedPaths)}`
-      : `Changing all ${targetComponentType}(s) ('${targetKey}') on content ${contentItem._path}`,
-  );
-
-  return untargetedPaths.length > 0;
-};
-
-const verifyAllChangesWereMade = (changedComponents, requestedComponentPaths) => {
-  const changesMade = Object.keys(changedComponents).length;
+const verifyAllChangesWereMade = (newComponents, requestedComponentPaths) => {
+  const changesMade = Object.keys(newComponents).length;
 
   if (
     !changesMade ||
@@ -117,7 +90,7 @@ const verifyAllChangesWereMade = (changedComponents, requestedComponentPaths) =>
   ) {
     log.warning(
       `Missing change request(s): ${JSON.stringify(
-        (requestedComponentPaths || []).filter((path) => !!changedComponents[path]),
+        (requestedComponentPaths || []).filter((path) => !!newComponents[path]),
       )}`,
     );
     throw Error("Not all requested changes were made.");
@@ -132,47 +105,25 @@ const verifyAndGetCompPath = (component): string => {
   return component?.path;
 };
 
-const replaceChangedComponentsInClone = (clonedContentItem, componentPath, changedComponents) => {
-  const newComponent = changedComponents[componentPath];
-
-  const index = findIndex<{ path: string }>(clonedContentItem.components || [], (comp) => comp.path === componentPath);
-  if (index === -1) {
-    throw Error(
-      `Replacement component with path '${componentPath}', but no matching path was found in the cloned content item`,
-    );
-  }
-  // Replace component in the same place
-  clonedContentItem.components[index] = newComponent;
-};
-
-const changeOrCopyIndexConfig = (
+const addIndexConfig = (
   currentOrigConfig: IndexConfigEntry,
   newIndexConfigs: IndexConfigEntry[],
   origIndexConfigs: IndexConfigEntry[],
-  preserveSomeComponentPaths: boolean,
   configSearchPattern: RegExp,
   configReplacePattern: RegExp,
   configReplaceTarget: string,
 ) => {
   if ((currentOrigConfig?.path || "").match(configSearchPattern)) {
     const newPath = currentOrigConfig.path.replace(configReplacePattern, configReplaceTarget);
-
     const alreadyPresent = find<{ path: string }>(origIndexConfigs, (config) => config.path === newPath);
     if (!alreadyPresent) {
-      // Spread avoids mutation
-      const newConfig = {
-        ...currentOrigConfig,
-        path: newPath,
-      };
+      // avoid mutation
+      const newConfig = clone(currentOrigConfig);
+      newConfig.path = newPath;
       newIndexConfigs.push(newConfig);
     }
 
-    if (preserveSomeComponentPaths) {
-      // To preserve (copy, not overwrite), keep the original
-      newIndexConfigs.push(currentOrigConfig);
-    }
-  } else {
-    // If no match, keep the original:
+    // Duplicating, so keep the original either way
     newIndexConfigs.push(currentOrigConfig);
   }
 };
@@ -237,38 +188,22 @@ const runPostprocessors = (
   });
 };
 
-// By now, established a match: component type, descriptor and path matches the target.
-// So deep-clone the component data to avoid mutation, and add the clone to the collection of data to store later,
-// with path as key
-const cloneAndMarkForStorage = (
-  component: Component,
+const replaceComponentDescriptor = (
+  componentClone: Component,
   targetComponentType,
   oldAppKeyDashed,
   oldComponentKey,
   newAppKey,
   newAppKeyDashed,
   newComponentKey,
-  changedComponents,
 ) => {
-  if (!component.path) {
-    throw Error("Component without path: " + JSON.stringify(component));
-  }
-
-  const componentConfig = component[targetComponentType].config || {};
+  const componentConfig = componentClone[targetComponentType].config || {};
   const componentConfigOldData = componentConfig[oldAppKeyDashed] || {};
-  const componentClone = {
-    ...component,
-    [targetComponentType]: {
-      ...component[targetComponentType],
-      descriptor: `${newAppKey}:${newComponentKey}`,
-      config: {
-        ...componentConfig,
-        [newAppKeyDashed]: {
-          ...componentConfigOldData,
-          [newComponentKey]: componentConfigOldData[oldComponentKey],
-        },
-      },
-    },
+
+  componentClone[targetComponentType].descriptor = `${newAppKey}:${newComponentKey}`;
+  componentClone[targetComponentType].config[newAppKeyDashed] = {
+    ...componentConfigOldData,
+    [newComponentKey]: componentConfigOldData[oldComponentKey],
   };
 
   if (oldAppKeyDashed !== newAppKeyDashed) {
@@ -277,7 +212,6 @@ const cloneAndMarkForStorage = (
   if (oldComponentKey !== newComponentKey) {
     delete componentClone[targetComponentType].config[newAppKeyDashed][oldComponentKey];
   }
-  changedComponents[component.path] = componentClone;
 };
 
 export function createEditorFunc(
@@ -288,7 +222,6 @@ export function createEditorFunc(
   targetComponentType: string,
   results: Results,
   componentPathsPerId: Record<string, string[] | null>,
-  duplicate: boolean,
   requestedPostprocessors?: string[] | string,
 ): (contentItem: Node<ContentItem>) => ModifiedNode<ContentItem> {
   const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
@@ -313,7 +246,8 @@ export function createEditorFunc(
   //
   // The goal is an atomic data update so we avoid storing half-baked data: the updated data
   // is not inserted into contentItem until right before it's returned at the end, so that all operations are successful
-  // before any data is actually changed - .
+  // before any data is actually changed - or vise versa, no data is changed in the contentItem if anything goes wrong.
+  // (But the batch will keep running for other content items - results are gathered and presented at the end)
   //
   // 1. Read out data from below contentItem,
   // 2. write to / perform operations on new and intermediate objects/arrays,
@@ -342,17 +276,20 @@ export function createEditorFunc(
           } */
 
     const newIndexConfigs: IndexConfigEntry[] = [];
-    let lastTargetedComponentPath: string | null = null;
 
-    const id = contentItem?._id || "###MISSING###";
+    // For tracing and reporting errors
+    let lastAttemptedComponentPath: string | null = null;
+
+    const contentId = contentItem?._id || "###MISSING###";
 
     try {
+      results.initPathChangeTracker(contentItem);
       const components = contentItem?.components || [];
 
       // List either selected paths to target, or if none are specifically targeted: all available component paths
       const targetComponentPaths: string[] =
-        componentPathsPerId[id] !== null
-          ? componentPathsPerId[id]
+        componentPathsPerId[contentId] !== null
+          ? componentPathsPerId[contentId]
           : (components
               .map(
                 (component) =>
@@ -362,49 +299,52 @@ export function createEditorFunc(
               )
               .filter((path) => !!path) as string[]);
 
-      const preserveSomeComponentPaths =
-        duplicate || detectCompPathPreservation(contentItem, oldDescriptor, targetComponentType, targetComponentPaths);
-
-      const changedComponents: { [path: string]: Component } = {};
+      const newComponents: { [path: string]: Component } = {};
       components.forEach((component: Component) => {
         for (const targetComponentPath of targetComponentPaths) {
-          lastTargetedComponentPath = verifyAndGetCompPath(component);
+          lastAttemptedComponentPath = verifyAndGetCompPath(component);
 
           if (componentMatchesTarget(component, targetComponentType, oldDescriptor, targetComponentPath)) {
-            cloneAndMarkForStorage(
-              component,
+            if (!component.path) {
+              throw Error("Component without path: " + JSON.stringify(component));
+            }
+
+            // By now, established a match: type, descriptor and path of the current component matches the target. Deep-clone
+            // the component data to avoid mutation, and add the clone to the collection of data to store later, with path as key
+            const componentClone = clone(component);
+            replaceComponentDescriptor(
+              componentClone,
               targetComponentType,
               oldAppKeyDashed,
               oldComponentKey,
               newAppKey,
               newAppKeyDashed,
               newComponentKey,
-              changedComponents,
             );
+            newComponents[componentClone.path as string] = componentClone;
           }
 
-          lastTargetedComponentPath = null;
+          lastAttemptedComponentPath = null;
         }
       });
 
-      verifyAllChangesWereMade(changedComponents, componentPathsPerId[id]);
+      verifyAllChangesWereMade(newComponents, componentPathsPerId[contentId]);
 
       const origIndexConfigs: IndexConfigEntry[] = contentItem?._indexConfig?.configs || [];
       for (const currentIndexConfig of origIndexConfigs) {
-        lastTargetedComponentPath = currentIndexConfig.path + " (config path)";
+        lastAttemptedComponentPath = currentIndexConfig.path + " (config path)";
 
-        changeOrCopyIndexConfig(
+        addIndexConfig(
           currentIndexConfig,
           newIndexConfigs,
           origIndexConfigs,
-          preserveSomeComponentPaths,
           configSearchPattern,
           configReplacePattern,
           configReplaceTarget,
         );
       }
 
-      lastTargetedComponentPath = null;
+      lastAttemptedComponentPath = null;
 
       // Preparation: Deep-clone the current content item, inject the updated data into it
       // (overwriting existing keys), and return the clone:
@@ -415,18 +355,19 @@ export function createEditorFunc(
 
       const postProcessors = preparePostprocessors(requestedPostprocessors);
 
-      const pathsSortedDesc = Object.keys(changedComponents);
+      const pathsSortedDesc = Object.keys(newComponents);
       pathsSortedDesc.sort(sortComponentPathsDescending);
 
       // Let the actual processing begin: one component after another (in reverse order), by target path:
       pathsSortedDesc.forEach((targetComponentPath) => {
-        lastTargetedComponentPath = targetComponentPath;
+        lastAttemptedComponentPath = targetComponentPath;
 
-        // Duplicate the component for safer undo: make a clone of the original before replacing it:
-        contentRegionMutators.addComponent(clonedContentItem, changedComponents[targetComponentPath]);
-
-        // Replace the original with the changed one
-        replaceChangedComponentsInClone(clonedContentItem, targetComponentPath, changedComponents);
+        // Duplicate for safer undo: inject the new/changed component before the original
+        contentRegionMutators.addComponent(
+          clonedContentItem,
+          newComponents[targetComponentPath],
+          results.pathTrackers[contentItem._path],
+        );
 
         runPostprocessors(
           clonedContentItem,
@@ -445,7 +386,7 @@ export function createEditorFunc(
       return clonedContentItem;
     } catch (e) {
       // Mark and log any error on this content item, and return the original one. This keeps the original and wipes any changes.
-      results.markError(contentItem, lastTargetedComponentPath, e);
+      results.markError(contentItem, lastAttemptedComponentPath, e);
       return contentItem;
     }
   };

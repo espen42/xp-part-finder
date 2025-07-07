@@ -24,7 +24,7 @@ import type { Header, Link } from "../../views/header/header.freemarker";
 import type { SortDirection } from "@enonic-types/core";
 import { createEditorFunc } from "/admin/tools/part-finder/editor/editor";
 
-import { Results } from "/admin/tools/part-finder/results";
+import { Results } from "/admin/tools/part-finder/editor/utils/results";
 import { ComponentItem, ComponentList } from "/admin/tools/part-finder/part-finder.freemarker";
 import { processMultiUsage } from "/admin/tools/part-finder/usagePaths";
 import type { ComponentNavLink } from "/admin/views/navigation/navigation.freemarker";
@@ -405,8 +405,6 @@ export function post(req: XP.Request): XP.Response {
 
   const targetBranch = "draft";
 
-  // const undo: boolean = !!req.params.undo;
-
   const targetIds: string[] = Object.keys(req.params)
     .filter((k) => k.startsWith("select-item--"))
     .map((k) => req.params[k] || "");
@@ -476,7 +474,6 @@ export function post(req: XP.Request): XP.Response {
           componentType,
           results,
           componentPathsPerId,
-          false,
           requestedPostprocessors,
         );
 
