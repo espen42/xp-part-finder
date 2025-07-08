@@ -45,7 +45,7 @@ const verifyInputs = (contentItem, newComponent) => {
   }
 };
 
-export const sortComponentPathsDescending = (pathA: string, pathB: string): number => {
+export const sortComponentPaths = (pathA: string, pathB: string, descending: boolean = true): number => {
   if (pathA === pathB) {
     return 0;
   }
@@ -57,7 +57,9 @@ export const sortComponentPathsDescending = (pathA: string, pathB: string): numb
     const regionA = splitPathA[i];
     const regionB = splitPathB[i];
     if (regionA !== regionB) {
-      return regionB.localeCompare(regionA);
+      return descending
+        ? regionB.localeCompare(regionA)
+        : regionA.localeCompare(regionB);;
     }
 
     const indexA = parseInt(splitPathA[i + 1], 10);
@@ -70,13 +72,17 @@ export const sortComponentPathsDescending = (pathA: string, pathB: string): numb
       throw Error("Invalid path: " + pathB);
     }
     if (indexA !== indexB) {
-      return indexB - indexA;
+      return descending
+        ? indexB - indexA
+        : indexA - indexB;
     }
   }
 
   // If we reach here, the paths are equal up to the length of the shorter path. Then the longer path is considered a component inside the component with the shorter path, and should be sorted after it.
   if (splitPathA.length !== splitPathB.length) {
-    return splitPathB.length - splitPathA.length;
+    return descending
+      ? splitPathB.length - splitPathA.length
+      : splitPathA.length - splitPathB.length;
   }
 
   // If we reach here, the paths should have been equal - but we've checked and they're not. Throw an error to indicate that something is wrong.

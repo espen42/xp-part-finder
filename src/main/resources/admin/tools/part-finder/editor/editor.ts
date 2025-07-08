@@ -8,7 +8,7 @@ import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/admin/too
 import { Node, ModifiedNode, NodeConfigEntry } from "@enonic-types/lib-node";
 import { Content, Component } from "@enonic-types/lib-content";
 import {
-  sortComponentPathsDescending,
+  sortComponentPaths,
   contentRegionMutators,
 } from "/admin/tools/part-finder/editor/utils/regionEditing";
 
@@ -356,7 +356,7 @@ export function createEditorFunc(
       const postProcessors = preparePostprocessors(requestedPostprocessors);
 
       const pathsSortedDesc = Object.keys(newComponents);
-      pathsSortedDesc.sort(sortComponentPathsDescending);
+      pathsSortedDesc.sort(sortComponentPaths);
 
       // Let the actual processing begin: one component after another (in reverse order), by target path:
       pathsSortedDesc.forEach((targetComponentPath) => {

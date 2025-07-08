@@ -2,6 +2,7 @@ import type { ContentUsage, MultiUsageInstance, Operation } from "/admin/tools/p
 import { getToolUrl } from "/lib/xp/admin";
 import { PathChangeTracker } from "/admin/tools/part-finder/editor/utils/pathChangeTracker";
 import { ContentItem } from "/admin/tools/part-finder/editor/editor";
+import {sortComponentPaths} from "/admin/tools/part-finder/editor/utils/regionEditing";
 
 class EditorResult {
   id: string;
@@ -190,7 +191,11 @@ export class Results {
   buildContentResult(): ContentUsage[] {
     const contents: ContentUsage[] = [];
 
-    this.results.forEach((result) => {
+    // Sort the results back into ascending order (less weird presentation), and summarize them for output
+    const resultComponentPaths = this.results.map((result) => result.componentPath)
+    resultComponentPaths.sort((a, b) => sortComponentPaths(a as string, b as string, false))
+    resultComponentPaths.forEach((componentPath) => {
+      const result = this.results.filter((result) => result.componentPath === componentPath)[0];
       addContentUsageSummary(contents, result, this.pathTrackers[result.path]);
     });
 
