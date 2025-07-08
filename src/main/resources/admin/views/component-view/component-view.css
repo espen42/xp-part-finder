@@ -131,6 +131,8 @@ table.table {
 
 .multi-usage-label {
   padding-left: 33px;
+  margin-bottom: 4px;
+  display: inline-block;
 }
 
 .multi-usage-label,

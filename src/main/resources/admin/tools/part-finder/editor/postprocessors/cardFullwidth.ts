@@ -135,7 +135,7 @@ export const cardFullwidth: ContentitemMutatingPostprocessorFunc = (contentItem,
     ) {
       log.warning("Invalid component: " + JSON.stringify(component));
       throw Error(
-        `Can't convert 'banner-with-image-hw': 'cardFullwidth' can't use 'p-ctabox__item--bg-dark' or 'p-ctabox__item--bg-darker' as backgroundcolor: signifies that a different card type should be used.`,
+        `Can't convert 'banner-with-image-hw': 'cardFullwidth' can't use 'p-ctabox__item--bg-dark' or 'p-ctabox__item--bg-darker' as backgroundcolor. Use a different card type (card-focus?).`,
       );
     }
 

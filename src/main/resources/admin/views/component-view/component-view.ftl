@@ -146,15 +146,45 @@
                     [#else]
                       <li>
                     [/#if]
-                    [#if !(usage.hideSelector?? && usage.hideSelector)]
-                      <input type="checkbox"
-                             id="select-item--${content.id}__${usage.path}"
-                             name="select-item--${content.id}__${usage.path}"
-                             value="${content.id}__${usage.path}"
-                             class="part-select-check"
-                      />
+
+                    [#if displaySummaryAndUndo]
+                      [#if !usage.error??]
+                        <div class="undo-radio-row">
+                          <span class="part-accept">
+                            <input type="radio"
+                                   id="delete-item--${content.id}__${usage.oldPath}"
+                                   name="radio--${content.id}__${usage.path}"
+                                   value="delete-item--${content.id}__${usage.oldPath}"
+                                   class="part-select-radio"
+                            />
+                            <label for="delete-item--${content.id}__${usage.oldPath}">
+                              <strong>✓</strong>&nbsp;&nbsp;${usage.newPath}
+                            </label>
+                          </span>
+                          <span class="part-undo">
+                            <label for="delete-item--${content.id}__${usage.newPath}"
+                                   class="part-undo-label">❌
+                            </label>
+                            <input type="radio"
+                                   id="delete-item--${content.id}__${usage.newPath}"
+                                   name="radio--${content.id}__${usage.path}"
+                                   value="delete-item--${content.id}__${usage.newPath}"
+                                   class="part-select-radio"
+                            />
+                          </span>
+                        </div>
+                      [/#if]
+                    [#else]
+                      [#if !(usage.hideSelector?? && usage.hideSelector)]
+                        <input type="checkbox"
+                               id="select-item--${content.id}__${usage.path}"
+                               name="select-item--${content.id}__${usage.path}"
+                               value="${content.id}__${usage.path}"
+                               class="part-select-check"
+                        />
+                      [/#if]
+                      <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]">${usage.path}[#if getconfig?? && usage.getconfig??] <span class="getconfig">(${usage.getconfig})</span>[/#if]</label>
                     [/#if]
-                    <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]">${usage.path}[#if getconfig?? && usage.getconfig??] <span class="getconfig">(${usage.getconfig})</span>[/#if]</label>
                     </li>
                   [/#list]
                 </ul>
