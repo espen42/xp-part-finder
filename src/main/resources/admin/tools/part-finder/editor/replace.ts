@@ -1,83 +1,15 @@
-import { getUser as getAuthUser, User } from "/lib/xp/auth";
-import { connect } from "/lib/xp/node";
 import { Results } from "/admin/tools/part-finder/editor/utils/results";
 import { find } from "/lib/part-finder/utils";
 import clone from "../../../../../../../node_modules/just-clone";
 import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/admin/tools/part-finder/editor/postprocessors";
 
-import { Node, ModifiedNode, NodeConfigEntry } from "@enonic-types/lib-node";
-import { Content, Component } from "@enonic-types/lib-content";
-import {
-  sortComponentPaths,
-  contentRegionMutators,
-} from "/admin/tools/part-finder/editor/utils/regionEditing";
+import { Component } from "@enonic-types/lib-content";
+import { sortComponentPaths, contentRegionMutators } from "/admin/tools/part-finder/editor/utils/regionEditing";
+import { ContentItem, EditorFunc, IndexConfigEntry } from "/admin/tools/part-finder/editor/index";
 
 type ComponentPostProcessor = {
   label: string;
   func: ContentitemMutatingPostprocessorFunc;
-};
-
-type IndexConfigEntry = {
-  path: string;
-  config: NodeConfigEntry;
-};
-
-export type ContentItem = Content & {
-  components: Component[];
-  _indexConfig?: {
-    configs: IndexConfigEntry[];
-  };
-};
-
-const getAliasOrUserKey = (): `user:${string}:${string}` => {
-  const user = getAuthUser();
-
-  let partMoverAliasUser: User | null = null;
-  const query = `displayName = 'Partmover (${user?.displayName})'`;
-
-  try {
-    const connection = connect({
-      repoId: "system-repo",
-      branch: "master",
-    });
-    const result = connection.query({
-      start: 0,
-      query,
-    });
-    if (result.hits.length > 0) {
-      const partMoverAliasUsers: (User | null)[] = result.hits
-        .map((hit) => connection.get(hit.id) as Node<User> & { principalType: string })
-        .filter((item) => item?.principalType === "USER" && (item?._id || "").match(/^user:system:[a-z0-9_\-+]+/i));
-
-      if (partMoverAliasUsers.length === 1) {
-        partMoverAliasUser = partMoverAliasUsers[0];
-      }
-    }
-
-    // Hack: the user-object node is missing a key field, but usually uses the same value as _id
-    // @ts-expect-error TS2339
-    const key = partMoverAliasUser?._id;
-
-    if (key) {
-      log.debug(`Signing batch operations with alias-user ${JSON.stringify(partMoverAliasUser?.displayName)}`);
-      return key;
-    }
-
-    if (!user?.key) {
-      throw Error("Couldn't resolve user.key: " + JSON.stringify(user));
-    }
-
-    log.debug(
-      `No alias-user found (looked for ${JSON.stringify(query)} in system-repo/master/root/identity). Signing batch operations with current user ${JSON.stringify(user?.displayName)}`,
-    );
-
-    return user.key;
-  } catch (e) {
-    log.warning(
-      `Error trying to find Partmover alias-user (looked for ${JSON.stringify(query)} in system-repo/master/root/identity). `,
-    );
-    throw e;
-  }
 };
 
 const verifyAllChangesWereMade = (newComponents, requestedComponentPaths) => {
@@ -214,7 +146,7 @@ const replaceComponentDescriptor = (
   }
 };
 
-export function createEditorFunc(
+export function createReplaceEditor(
   oldAppKey: string,
   oldComponentKey: string,
   newAppKey: string,
@@ -223,7 +155,7 @@ export function createEditorFunc(
   results: Results,
   componentPathsPerId: Record<string, string[] | null>,
   requestedPostprocessors?: string[] | string,
-): (contentItem: Node<ContentItem>) => ModifiedNode<ContentItem> {
+): EditorFunc {
   const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
   const newAppKeyDashed = newAppKey.replace(/\./g, "-");
 
@@ -237,8 +169,6 @@ export function createEditorFunc(
   const configReplacePattern = new RegExp("^(" + pathPatternString + "\\b)");
   const configReplaceTarget =
     "components." + targetComponentType + ".config." + newAppKeyDashed + "." + newComponentKey;
-
-  const userKey = getAliasOrUserKey();
 
   // IMPORTANT!
   // Take care to avoid indirect mutation of 'contentItem'! Don't mutate subobjects and arrays that are read from below
@@ -254,12 +184,12 @@ export function createEditorFunc(
   // 3. only when everything's completed successfully the intermediate objects/arrays overwrite data in contentItem.
   //
   // On errors, report the error and return the original contentItem unchanged.
-  const editor = (contentItem: Node<ContentItem>): ModifiedNode<ContentItem> => {
+  const editor: EditorFunc = (contentItem) => {
     /*
     Example component structure in a content: {
     "type": "layout",
     "path": "/main/0",
-    "layout": {
+    "layout": {s
       "descriptor": "no.posten.website:layoutDefault",
       "config": {
         "no-posten-website": {
@@ -283,6 +213,7 @@ export function createEditorFunc(
     const contentId = contentItem?._id || "###MISSING###";
 
     try {
+      log.info("--------------- ContentItem in focus:: " + JSON.stringify(contentItem._path, null, 2));
       results.initPathChangeTracker(contentItem);
       const components = contentItem?.components || [];
 
@@ -381,8 +312,7 @@ export function createEditorFunc(
         results.reportSuccess(clonedContentItem, targetComponentPath, "ADD");
       });
 
-      // Sign the change and return the CLONED and changed content item. This writes the changes.
-      clonedContentItem.modifier = userKey;
+      // Return the CLONED and changed content item. This writes the changes.
       return clonedContentItem;
     } catch (e) {
       // Mark and log any error on this content item, and return the original one. This keeps the original and wipes any changes.

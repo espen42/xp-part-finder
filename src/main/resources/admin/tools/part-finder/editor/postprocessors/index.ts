@@ -1,7 +1,7 @@
 import { findIndex } from "/lib/part-finder/utils";
 import { NodeIndexConfig } from "/lib/xp/node";
 import { Component } from "@enonic-types/lib-content";
-import { ContentItem } from "/admin/tools/part-finder/editor/editor";
+import { ContentItem } from "/admin/tools/part-finder/editor";
 import { cardFullwidth } from "/admin/tools/part-finder/editor/postprocessors/cardFullwidth";
 import { layoutNColumns } from "/admin/tools/part-finder/editor/postprocessors/layout-n-columns";
 import { throwerror } from "/admin/tools/part-finder/editor/postprocessors/throwerror";

@@ -1,5 +1,5 @@
 import { Component } from "@enonic-types/lib-content";
-import { ContentItem } from "/admin/tools/part-finder/editor/editor";
+import { ContentItem } from "/admin/tools/part-finder/editor";
 import { PathChangeTracker } from "/admin/tools/part-finder/editor/utils/pathChangeTracker";
 
 const getRootAndIndex = (path: string): [string, number | null] => {
@@ -57,9 +57,7 @@ export const sortComponentPaths = (pathA: string, pathB: string, descending: boo
     const regionA = splitPathA[i];
     const regionB = splitPathB[i];
     if (regionA !== regionB) {
-      return descending
-        ? regionB.localeCompare(regionA)
-        : regionA.localeCompare(regionB);;
+      return descending ? regionB.localeCompare(regionA) : regionA.localeCompare(regionB);
     }
 
     const indexA = parseInt(splitPathA[i + 1], 10);
@@ -72,17 +70,13 @@ export const sortComponentPaths = (pathA: string, pathB: string, descending: boo
       throw Error("Invalid path: " + pathB);
     }
     if (indexA !== indexB) {
-      return descending
-        ? indexB - indexA
-        : indexA - indexB;
+      return descending ? indexB - indexA : indexA - indexB;
     }
   }
 
   // If we reach here, the paths are equal up to the length of the shorter path. Then the longer path is considered a component inside the component with the shorter path, and should be sorted after it.
   if (splitPathA.length !== splitPathB.length) {
-    return descending
-      ? splitPathB.length - splitPathA.length
-      : splitPathA.length - splitPathB.length;
+    return descending ? splitPathB.length - splitPathA.length : splitPathA.length - splitPathB.length;
   }
 
   // If we reach here, the paths should have been equal - but we've checked and they're not. Throw an error to indicate that something is wrong.

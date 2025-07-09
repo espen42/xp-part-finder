@@ -7,6 +7,9 @@ import { hasRole as hasAuthRole } from "/lib/xp/auth";
 import { list as listRepos } from "/lib/xp/repo";
 import { listComponents, type ComponentDescriptorType, type ComponentDescriptor } from "/lib/xp/schema";
 
+import { Node } from "@enonic-types/lib-node";
+import { getAliasOrUserKey } from "/admin/tools/part-finder/editor/utils/aliasUser";
+
 import { render } from "/lib/tineikt/freemarker";
 
 import {
@@ -22,12 +25,13 @@ import { getComponentUsagesInRepo } from "../../views/component-view/component-v
 import type { ComponentViewParams } from "../../views/component-view/component-view.freemarker";
 import type { Header, Link } from "../../views/header/header.freemarker";
 import type { SortDirection } from "@enonic-types/core";
-import { createEditorFunc } from "/admin/tools/part-finder/editor/editor";
+import { createReplaceEditor } from "/admin/tools/part-finder/editor/replace";
 
 import { Results } from "/admin/tools/part-finder/editor/utils/results";
-import { ComponentItem, ComponentList } from "/admin/tools/part-finder/part-finder.freemarker";
+import { ComponentItem, ComponentList, Operation } from "/admin/tools/part-finder/part-finder.freemarker";
 import { processMultiUsage } from "/admin/tools/part-finder/usagePaths";
 import type { ComponentNavLink } from "/admin/views/navigation/navigation.freemarker";
+import { ContentItem, EditorFunc } from "/admin/tools/part-finder/editor";
 
 export type PartFinderQueryParams = {
   key: string;
@@ -44,6 +48,8 @@ export const LAYOUT_KEY = "LAYOUT";
 export const PAGE_KEY = "PAGE";
 
 const PAGE_TITLE = "Part finder";
+const TARGET_BRANCH = "draft";
+const PRINCIPAL_ADMIN = "role:system.admin";
 
 const VIEW = resolve("part-finder.ftl");
 const COMPONENT_VIEW = resolve("../../views/component-view/component-view.ftl");
@@ -387,6 +393,58 @@ const parseComponentPathsPerId = (targetIds) => {
 
 const trimString = (str) => ((str || "") + "").trim();
 
+const runEditor = (
+  editorFunc: EditorFunc,
+  repoIds: string[],
+  componentPathsPerId: Record<string, string[] | null>,
+  operation: Operation,
+  results: Results,
+) => {
+  const aliasOrUserKey = getAliasOrUserKey();
+
+  repoIds.forEach((targetRepo) => {
+    const repoName = stringAfterLast(targetRepo, ".");
+    results.setRepoContext(repoName);
+
+    const repo = nodeConnect({
+      repoId: targetRepo,
+      branch: TARGET_BRANCH,
+    });
+
+    runInContext(
+      {
+        repository: targetRepo,
+        branch: TARGET_BRANCH,
+        principals: [PRINCIPAL_ADMIN],
+      },
+      () => {
+        let item: Content | null;
+
+        Object.keys(componentPathsPerId).forEach((key) => {
+          item = null;
+          try {
+            item = getContent({ key });
+            if (item) {
+              repo.modify({
+                key,
+                editor: (contentItem: Node<ContentItem>) => {
+                  const modifiedContentItem = editorFunc(contentItem);
+
+                  // Sign the modified content item with the alias user or current user
+                  modifiedContentItem.modifier = aliasOrUserKey;
+                  return modifiedContentItem;
+                },
+              });
+            }
+          } catch (e) {
+            results.markError(item, null, operation, e, key);
+          }
+        });
+      },
+    );
+  });
+};
+
 export function post(req: XP.Request): XP.Response {
   if (!hasAuthRole("system.admin")) {
     return {
@@ -395,15 +453,13 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
+  const componentType = getParamString(req, "type");
   const sourceKey = trimString(req.params.key);
   const newKey = trimString(req.params.new_part_ref);
-  const componentType = trimString(req.params.type).toLowerCase();
   const requestedPostprocessors = trimString(req.params.postprocessors)
     .split(/\s*,\s*/g)
     .filter((processorName) => processorName.trim())
     .filter((processorName) => processorName !== "undefined");
-
-  const targetBranch = "draft";
 
   const targetIds: string[] = Object.keys(req.params)
     .filter((k) => k.startsWith("select-item--"))
@@ -448,49 +504,18 @@ export function post(req: XP.Request): XP.Response {
   const displayUnusedParam = getDisplayUnusedParam(req) ? "&unused=true" : "";
   const repoIds = getCMSRepoIds(repoParam);
 
-  repoIds.forEach((targetRepo) => {
-    const repoName = stringAfterLast(targetRepo, ".");
-    results.setRepoContext(repoName);
+  const replaceEditor = createReplaceEditor(
+    oldAppKey,
+    oldComponentKey,
+    newAppKey,
+    newComponentKey,
+    componentType,
+    results,
+    componentPathsPerId,
+    requestedPostprocessors,
+  );
 
-    const repo = nodeConnect({
-      repoId: targetRepo,
-      branch: targetBranch,
-    });
-
-    runInContext(
-      {
-        repository: targetRepo,
-        branch: targetBranch,
-        principals: ["role:system.admin"],
-      },
-      () => {
-        let item: Content | null;
-
-        const editor = createEditorFunc(
-          oldAppKey,
-          oldComponentKey,
-          newAppKey,
-          newComponentKey,
-          componentType,
-          results,
-          componentPathsPerId,
-          requestedPostprocessors,
-        );
-
-        Object.keys(componentPathsPerId).forEach((key) => {
-          item = null;
-          try {
-            item = getContent({ key });
-            if (item) {
-              repo.modify({ key, editor });
-            }
-          } catch (e) {
-            results.markError(item, null, "ADD", e, key);
-          }
-        });
-      },
-    );
-  });
+  runEditor(replaceEditor, repoIds, componentPathsPerId, "ADD", results);
 
   const taskSummary = `${sourceKey} → ${newKey}`;
   const appKey = getAppKey(newComponentKey);

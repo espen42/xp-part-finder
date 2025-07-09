@@ -1,8 +1,8 @@
 import type { ContentUsage, MultiUsageInstance, Operation } from "/admin/tools/part-finder/part-finder.freemarker";
 import { getToolUrl } from "/lib/xp/admin";
 import { PathChangeTracker } from "/admin/tools/part-finder/editor/utils/pathChangeTracker";
-import { ContentItem } from "/admin/tools/part-finder/editor/editor";
-import {sortComponentPaths} from "/admin/tools/part-finder/editor/utils/regionEditing";
+import { ContentItem } from "/admin/tools/part-finder/editor";
+import { sortComponentPaths } from "/admin/tools/part-finder/editor/utils/regionEditing";
 
 class EditorResult {
   id: string;
@@ -94,8 +94,8 @@ const getUsage = (componentPath: string, error?: string): MultiUsageInstance => 
 
 const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracker): void => {
   if (!usage.error) {
-    usage.oldPath = pathTracker.paths[usage.path];            // Tracked path of the original component, kept unchanged
-    usage.newPath = pathTracker.paths[`new::${usage.path}`];  // Tracked path of the changed component
+    usage.oldPath = pathTracker.paths[usage.path]; // Tracked path of the original component, kept unchanged
+    usage.newPath = pathTracker.paths[`new::${usage.path}`]; // Tracked path of the changed component
   }
 };
 
@@ -192,8 +192,8 @@ export class Results {
     const contents: ContentUsage[] = [];
 
     // Sort the results back into ascending order (less weird presentation), and summarize them for output
-    const resultComponentPaths = this.results.map((result) => result.componentPath)
-    resultComponentPaths.sort((a, b) => sortComponentPaths(a as string, b as string, false))
+    const resultComponentPaths = this.results.map((result) => result.componentPath);
+    resultComponentPaths.sort((a, b) => sortComponentPaths(a as string, b as string, false));
     resultComponentPaths.forEach((componentPath) => {
       const result = this.results.filter((result) => result.componentPath === componentPath)[0];
       addContentUsageSummary(contents, result, this.pathTrackers[result.path]);

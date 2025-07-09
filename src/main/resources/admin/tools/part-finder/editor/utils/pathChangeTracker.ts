@@ -1,4 +1,4 @@
-import { ContentItem } from "/admin/tools/part-finder/editor/editor";
+import { ContentItem } from "/admin/tools/part-finder/editor";
 
 export const init = (contentItem: ContentItem): Record<string, string> => {
   const pathChanges: Record<string, string> = {};
@@ -42,11 +42,6 @@ export class PathChangeTracker {
       this.paths[`new::${currentPath}`] = newPath;
     }
   };
-
-  getChangesMade = () =>
-    Object.keys(this.paths)
-      .filter((path) => this.paths[path] !== path)
-      .map((path) => [path, this.paths[path]]);
 
   toString = () =>
     Object.keys(this.paths)
