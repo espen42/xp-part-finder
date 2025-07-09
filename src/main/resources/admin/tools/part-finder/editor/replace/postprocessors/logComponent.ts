@@ -1,7 +1,7 @@
 import {
   ContentitemMutatingPostprocessorFunc,
   postprocessAndMutateComponent,
-} from "/admin/tools/part-finder/editor/postprocessors/index";
+} from "/admin/tools/part-finder/editor/replace/postprocessors";
 
 export const logComponent: ContentitemMutatingPostprocessorFunc = (contentItem, componentPath) => {
   postprocessAndMutateComponent(contentItem, componentPath, (component) => {

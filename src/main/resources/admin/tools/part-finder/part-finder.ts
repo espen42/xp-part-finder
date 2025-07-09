@@ -4,11 +4,10 @@ import { Content, get as getContent } from "/lib/xp/content";
 import { connect as nodeConnect } from "/lib/xp/node";
 import { run as runInContext } from "/lib/xp/context";
 import { hasRole as hasAuthRole } from "/lib/xp/auth";
-import { list as listRepos } from "/lib/xp/repo";
 import { listComponents, type ComponentDescriptorType, type ComponentDescriptor } from "/lib/xp/schema";
 
 import { Node } from "@enonic-types/lib-node";
-import { getAliasOrUserKey } from "/admin/tools/part-finder/editor/utils/aliasUser";
+import { getAliasOrUserKey } from "/admin/tools/part-finder/utils/aliasUser";
 
 import { render } from "/lib/tineikt/freemarker";
 
@@ -18,20 +17,25 @@ import {
   getPartFinderUrl,
   notNullOrUndefined,
   runAsAdmin,
-  startsWith,
 } from "/lib/part-finder/utils";
 import { getComponentNavLinkList } from "../../views/navigation/navigation";
 import { getComponentUsagesInRepo } from "../../views/component-view/component-view";
 import type { ComponentViewParams } from "../../views/component-view/component-view.freemarker";
 import type { Header, Link } from "../../views/header/header.freemarker";
 import type { SortDirection } from "@enonic-types/core";
-import { createReplaceEditor } from "/admin/tools/part-finder/editor/replace";
+import { createReplaceEditor } from "/admin/tools/part-finder/editor/replace/editor";
 
-import { Results } from "/admin/tools/part-finder/editor/utils/results";
+import { Results } from "/admin/tools/part-finder/utils/results";
 import { ComponentItem, ComponentList, Operation } from "/admin/tools/part-finder/part-finder.freemarker";
 import { processMultiUsage } from "/admin/tools/part-finder/usagePaths";
-import type { ComponentNavLink } from "/admin/views/navigation/navigation.freemarker";
 import { ContentItem, EditorFunc } from "/admin/tools/part-finder/editor";
+import {
+  getDisplayArchiveParam,
+  getDisplayReplacerParam, getDisplayUnusedParam, getParamBool,
+  getRepoParam, getSortParam
+} from "/admin/tools/part-finder/utils/params";
+import {getParamsForReplacing} from "/admin/tools/part-finder/editor/replace/params";
+import {getCMSRepoIds} from "/admin/tools/part-finder/utils/repoIds";
 
 export type PartFinderQueryParams = {
   key: string;
@@ -53,16 +57,6 @@ const PRINCIPAL_ADMIN = "role:system.admin";
 
 const VIEW = resolve("part-finder.ftl");
 const COMPONENT_VIEW = resolve("../../views/component-view/component-view.ftl");
-
-export const SORT_FUNCS: Record<
-  "alphaasc" | "alphadesc" | "countasc" | "countdesc",
-  (a: ComponentNavLink, b: ComponentNavLink) => number
-> = {
-  alphaasc: (a, b) => a.key.localeCompare(b.key),
-  alphadesc: (a, b) => b.key.localeCompare(a.key),
-  countasc: (a, b) => a.docCount - b.docCount,
-  countdesc: (a, b) => b.docCount - a.docCount,
-};
 
 export function getAppKey(key: string): string {
   return key.split(":")[0];
@@ -88,26 +82,6 @@ const getConfigRequest = (req): undefined | string => {
     ? undefined
     : getConfigParam;
 };
-
-const getParamString = (req, paramName: string): string =>
-  (req.params[paramName] + "")
-    .trim()
-    .toLowerCase()
-    .replace(/^undefined$/, "");
-
-const getParamBool = (req, paramName: string): string => getParamString(req, paramName).replace(/^false$/, "");
-
-const getDisplayReplacerParam = (req) => getParamBool(req, "replace");
-
-const getRepoParam = (req) => getParamString(req, "repo");
-
-const getDisplayArchiveParam = (req) => getParamBool(req, "archive");
-
-const getSortParam = (req): keyof typeof SORT_FUNCS | "" => {
-  const paramValue = getParamBool(req, "sort");
-  return SORT_FUNCS[paramValue] ? (paramValue as keyof typeof SORT_FUNCS) : "";
-};
-const getDisplayUnusedParam = (req) => getParamBool(req, "unused");
 
 const parseTargetConfig = (getConfigString) => {
   let targetValue;
@@ -327,19 +301,6 @@ function getFirstComponent(app: Application): ComponentDescriptor | undefined {
   );
 }
 
-function getCMSRepoIds(repoParam: string): string[] {
-  if (startsWith(repoParam, "com.enonic.cms.")) {
-    repoParam = repoParam.replace(/^com\.enonic\.cms\./, "");
-  }
-
-  return runAsAdmin(() =>
-    listRepos()
-      .map((repo) => repo.id)
-      .filter((repoId) => startsWith(repoId, "com.enonic.cms."))
-      .filter((repoId) => !repoParam || repoId === "com.enonic.cms." + repoParam),
-  );
-}
-
 function parseSortDirection(str: string = ""): SortDirection | undefined {
   const uppercasedStr = str.toUpperCase();
 
@@ -352,46 +313,6 @@ function parseSortDirection(str: string = ""): SortDirection | undefined {
 
 //-------------------------------
 
-const parseComponentPathsPerId = (targetIds) => {
-  let i: number, id: string, path: string | null;
-  const componentPathsPerId: Record<string, string[] | null> = {};
-
-  for (i = 0; i < targetIds.length; i++) {
-    id = targetIds[i];
-    path = null;
-
-    // If one of the targetIds have "__" in it, it signifies that this target is a multi-component-in-one-page one
-    // (which has id before "__" and path after), aka multi-path-usage (ie. an id should only replace this and that
-    // component path, and keep the same component on other paths).
-    // And in that case, all the targets by that id should be multi's. And vice versa. Check that, throw error if mix-up.
-    // If no mix-up, register the path or lack of path for that ID, for the editor func to handle.
-    if (id.indexOf("__") !== -1) {
-      id = targetIds[i].split("__")[0];
-      path = targetIds[i].replace(/^.*?__/, "");
-
-      if (componentPathsPerId[id] === null) {
-        throw Error(
-          `Parameter error: componentPathsPerId[${JSON.stringify(id)}] is already null instead of an array, can't add ${JSON.stringify(path)}`,
-        );
-      }
-
-      componentPathsPerId[id] = componentPathsPerId[id] || [];
-      // @ts-expect-error TS2531
-      componentPathsPerId[id].push(path);
-    } else {
-      if (Array.isArray(componentPathsPerId[id])) {
-        throw Error(
-          `Parameter error: componentPathsPerId[${JSON.stringify(id)}'] is already an array, can't set it to null`,
-        );
-      }
-      componentPathsPerId[id] = null;
-    }
-  }
-
-  return componentPathsPerId;
-};
-
-const trimString = (str) => ((str || "") + "").trim();
 
 const runEditor = (
   editorFunc: EditorFunc,
@@ -453,109 +374,77 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
-  const componentType = getParamString(req, "type");
-  const sourceKey = trimString(req.params.key);
-  const newKey = trimString(req.params.new_part_ref);
-  const requestedPostprocessors = trimString(req.params.postprocessors)
-    .split(/\s*,\s*/g)
-    .filter((processorName) => processorName.trim())
-    .filter((processorName) => processorName !== "undefined");
+    const {
+      oldAppKey,
+      oldComponentKey,
+      newAppKey,
+      newComponentKey,
+      componentPathsPerId,
+      requestedPostprocessors,
+      sortParam,
+      sourceKey,
+      newKey,
+      componentType,
+      repoIds,
+      displayArchiveParam,
+      displayUnusedParam,
+    } = getParamsForReplacing(req);
 
-  const targetIds: string[] = Object.keys(req.params)
-    .filter((k) => k.startsWith("select-item--"))
-    .map((k) => req.params[k] || "");
+    const results = new Results(sourceKey, newKey, componentType);
 
-  const args: { [key: string]: string } = {
-    key: sourceKey,
-    new_part_ref: newKey,
-    type: componentType,
-  };
+    const replaceEditor = createReplaceEditor(
+      oldAppKey,
+      oldComponentKey,
+      newAppKey,
+      newComponentKey,
+      componentType,
+      results,
+      componentPathsPerId,
+      requestedPostprocessors,
+    );
 
-  const missingArgs = Object.keys(args)
-    .filter((key) => !args[key])
-    .map((key) => key);
-  if (missingArgs.length > 0) {
-    return {
-      status: 400,
-      body: "BAD REQUEST. Missing POST parameters: " + JSON.stringify(missingArgs),
+    runEditor(replaceEditor, repoIds, componentPathsPerId, "ADD", results);
+
+    const taskSummary = `${sourceKey} → ${newKey}`;
+    const appKey = getAppKey(newComponentKey);
+    const type = componentType.toUpperCase();
+
+    const model = {
+      title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
+      displayName: PAGE_TITLE,
+      currentItemKey: newKey,
+      currentAppKey: appKey,
+      displayReplacer: "",
+      displaySummaryAndUndo: true,
+      oldItemKey: `${sourceKey}`,
+      newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${sortParam}${displayArchiveParam}${displayUnusedParam}`,
+      currentItem: {
+        url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
+        key: newKey,
+        type: componentType,
+        contents: results.buildContentResult(),
+        headings: [
+          {
+            text: "Display name",
+            name: "displayName",
+            url: "#",
+          },
+          {
+            text: "Content type",
+            name: "type",
+            url: "#",
+          },
+          {
+            text: "Path",
+            name: "_path",
+            url: "#",
+          },
+        ],
+      },
     };
-  }
 
-  let componentPathsPerId;
-  try {
-    componentPathsPerId = parseComponentPathsPerId(targetIds);
-  } catch (e) {
-    log.error(e);
     return {
-      status: 400,
-      body: "BAD REQUEST. Parameter error",
+      // TODO: Should make dedicated view for this, diffierent from the main part finder view (which should in turn be split into replace=true view and the old regular "finder" view).
+      body: render(COMPONENT_VIEW, model),
     };
-  }
-
-  const [oldAppKey, oldComponentKey] = sourceKey.split(":");
-  const [newAppKey, newComponentKey] = newKey.split(":");
-
-  const results = new Results(sourceKey, newKey, componentType);
-
-  const repoParam = getRepoParam(req);
-  const sort = getSortParam(req);
-  const sortParam = sort ? `&sort=${req.params.sort}` : "";
-  const displayArchiveParam = getDisplayArchiveParam(req) ? "&archive=true" : "";
-  const displayUnusedParam = getDisplayUnusedParam(req) ? "&unused=true" : "";
-  const repoIds = getCMSRepoIds(repoParam);
-
-  const replaceEditor = createReplaceEditor(
-    oldAppKey,
-    oldComponentKey,
-    newAppKey,
-    newComponentKey,
-    componentType,
-    results,
-    componentPathsPerId,
-    requestedPostprocessors,
-  );
-
-  runEditor(replaceEditor, repoIds, componentPathsPerId, "ADD", results);
-
-  const taskSummary = `${sourceKey} → ${newKey}`;
-  const appKey = getAppKey(newComponentKey);
-  const type = componentType.toUpperCase();
-
-  const model = {
-    title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
-    displayName: PAGE_TITLE,
-    currentItemKey: newKey,
-    currentAppKey: appKey,
-    displayReplacer: "",
-    displaySummaryAndUndo: true,
-    oldItemKey: `${sourceKey}`,
-    newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${sortParam}${displayArchiveParam}${displayUnusedParam}`,
-    currentItem: {
-      url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
-      key: newKey,
-      type: componentType,
-      contents: results.buildContentResult(),
-      headings: [
-        {
-          text: "Display name",
-          name: "displayName",
-          url: "#",
-        },
-        {
-          text: "Content type",
-          name: "type",
-          url: "#",
-        },
-        {
-          text: "Path",
-          name: "_path",
-          url: "#",
-        },
-      ],
-    },
-  };
-
-  return {
-    body: render(COMPONENT_VIEW, model),
-  };
 }

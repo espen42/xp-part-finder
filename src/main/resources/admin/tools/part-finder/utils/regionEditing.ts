@@ -1,6 +1,6 @@
 import { Component } from "@enonic-types/lib-content";
 import { ContentItem } from "/admin/tools/part-finder/editor";
-import { PathChangeTracker } from "/admin/tools/part-finder/editor/utils/pathChangeTracker";
+import { PathChangeTracker } from "/admin/tools/part-finder/utils/pathChangeTracker";
 
 const getRootAndIndex = (path: string): [string, number | null] => {
   const splitPath = path.replace(/^\//, "").split("/");

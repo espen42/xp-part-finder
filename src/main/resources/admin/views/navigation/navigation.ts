@@ -10,19 +10,11 @@ import { getPartFinderUrl, startsWith } from "/lib/part-finder/utils";
 import { listComponents } from "/lib/xp/schema";
 
 import type { ComponentNavLink, ComponentNavLinkList } from "./navigation.freemarker";
-import { LAYOUT_KEY, PAGE_KEY, PART_KEY, SORT_FUNCS } from "/admin/tools/part-finder/part-finder";
+import { LAYOUT_KEY, PAGE_KEY, PART_KEY } from "/admin/tools/part-finder/part-finder";
 import { AggregationsToAggregationResults, LayoutDescriptor, PageDescriptor, PartDescriptor } from "@enonic-types/core";
+import {SORT_FUNCS} from "/admin/tools/part-finder/utils/sorting";
+import {UriParams} from "/admin/tools/part-finder/utils/params";
 
-type UriParams = {
-  key: string;
-  type: string;
-  repo?: string;
-  replace?: string;
-  getconfig?: string;
-  archive?: string;
-  sort?: keyof typeof SORT_FUNCS;
-  unused?: string;
-};
 
 type CompTypeAggregation = {
   terms: {

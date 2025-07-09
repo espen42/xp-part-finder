@@ -1,11 +1,14 @@
-import { Results } from "/admin/tools/part-finder/editor/utils/results";
+import { Results } from "/admin/tools/part-finder/utils/results";
 import { find } from "/lib/part-finder/utils";
-import clone from "../../../../../../../node_modules/just-clone";
-import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/admin/tools/part-finder/editor/postprocessors";
+import clone from "just-clone";
 
 import { Component } from "@enonic-types/lib-content";
-import { sortComponentPaths, contentRegionMutators } from "/admin/tools/part-finder/editor/utils/regionEditing";
-import { ContentItem, EditorFunc, IndexConfigEntry } from "/admin/tools/part-finder/editor/index";
+import { sortComponentPaths, contentRegionMutators } from "/admin/tools/part-finder/utils/regionEditing";
+import { ContentItem, EditorFunc, IndexConfigEntry } from "/admin/tools/part-finder/editor";
+import {
+  ContentitemMutatingPostprocessorFunc,
+  POSTPROCESSORS,
+} from "/admin/tools/part-finder/editor/replace/postprocessors";
 
 type ComponentPostProcessor = {
   label: string;
@@ -213,7 +216,7 @@ export function createReplaceEditor(
     const contentId = contentItem?._id || "###MISSING###";
 
     try {
-      log.info("--------------- ContentItem in focus:: " + JSON.stringify(contentItem._path, null, 2));
+                                                                                                                        log.info("--------------- ContentItem in focus:: " + JSON.stringify(contentItem._path, null, 2));
       results.initPathChangeTracker(contentItem);
       const components = contentItem?.components || [];
 

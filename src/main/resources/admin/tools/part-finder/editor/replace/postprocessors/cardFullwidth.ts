@@ -1,10 +1,12 @@
 /**
  * Postprocessor for converting the 'banner-with-image-hw' component (lib-common, so it exists in both posten and bring) into 'cardFullwidth' component in the react-app.
- * DESTRUCTIVE: won't undo properly! Use with care!
  */
-
-import { ContentitemMutatingPostprocessorFunc, postprocessAndMutateComponent, replaceComponentConfig } from "./index";
 import { NodeIndexConfig } from "/lib/xp/node";
+import {
+  ContentitemMutatingPostprocessorFunc,
+  postprocessAndMutateComponent,
+  replaceComponentConfig,
+} from "/admin/tools/part-finder/editor/replace/postprocessors";
 
 type CommonConfig = {
   // Text content
