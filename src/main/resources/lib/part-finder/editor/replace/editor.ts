@@ -1,14 +1,15 @@
-import { Results } from "/admin/tools/part-finder/utils/results";
-import { find } from "/lib/part-finder/utils";
-import clone from "just-clone";
+import { Results } from "/lib/part-finder/utils/results";
+import { find } from "/lib/part-finder/utils/utils";
 
 import { Component } from "@enonic-types/lib-content";
-import { sortComponentPaths, contentRegionMutators } from "/admin/tools/part-finder/utils/regionEditing";
-import { ContentItem, EditorFunc, IndexConfigEntry } from "/admin/tools/part-finder/editor";
+import { contentRegionMutators } from "/lib/part-finder/utils/regionEditing";
+import { ContentItem, EditorFunc, IndexConfigEntry } from "/lib/part-finder/editor";
 import {
   ContentitemMutatingPostprocessorFunc,
   POSTPROCESSORS,
-} from "/admin/tools/part-finder/editor/replace/postprocessors";
+} from "/lib/part-finder/editor/replace/postprocessors";
+import {sortComponentPaths} from "/lib/part-finder/utils/sorting";
+import clone from "../../../../../../../node_modules/just-clone";
 
 type ComponentPostProcessor = {
   label: string;

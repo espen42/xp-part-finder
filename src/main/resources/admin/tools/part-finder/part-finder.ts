@@ -7,7 +7,7 @@ import { hasRole as hasAuthRole } from "/lib/xp/auth";
 import { listComponents, type ComponentDescriptorType, type ComponentDescriptor } from "/lib/xp/schema";
 
 import { Node } from "@enonic-types/lib-node";
-import { getAliasOrUserKey } from "/admin/tools/part-finder/utils/aliasUser";
+import { getAliasOrUserKey } from "/lib/part-finder/utils/aliasUser";
 
 import { render } from "/lib/tineikt/freemarker";
 
@@ -17,25 +17,25 @@ import {
   getPartFinderUrl,
   notNullOrUndefined,
   runAsAdmin,
-} from "/lib/part-finder/utils";
+} from "/lib/part-finder/utils/utils";
 import { getComponentNavLinkList } from "../../views/navigation/navigation";
 import { getComponentUsagesInRepo } from "../../views/component-view/component-view";
 import type { ComponentViewParams } from "../../views/component-view/component-view.freemarker";
 import type { Header, Link } from "../../views/header/header.freemarker";
 import type { SortDirection } from "@enonic-types/core";
-import { createReplaceEditor } from "/admin/tools/part-finder/editor/replace/editor";
+import { createReplaceEditor } from "/lib/part-finder/editor/replace/editor";
 
-import { Results } from "/admin/tools/part-finder/utils/results";
+import { Results } from "/lib/part-finder/utils/results";
 import { ComponentItem, ComponentList, Operation } from "/admin/tools/part-finder/part-finder.freemarker";
 import { processMultiUsage } from "/admin/tools/part-finder/usagePaths";
-import { ContentItem, EditorFunc } from "/admin/tools/part-finder/editor";
+import { ContentItem, EditorFunc } from "/lib/part-finder/editor";
 import {
   getDisplayArchiveParam,
   getDisplayReplacerParam, getDisplayUnusedParam, getParamBool,
   getRepoParam, getSortParam
-} from "/admin/tools/part-finder/utils/params";
-import {getParamsForReplacing} from "/admin/tools/part-finder/editor/replace/params";
-import {getCMSRepoIds} from "/admin/tools/part-finder/utils/repoIds";
+} from "/lib/part-finder/utils/params";
+import {getParamsForReplacing} from "/lib/part-finder/editor/replace/params";
+import {getCMSRepoIds} from "/lib/part-finder/utils/repoIds";
 
 export type PartFinderQueryParams = {
   key: string;

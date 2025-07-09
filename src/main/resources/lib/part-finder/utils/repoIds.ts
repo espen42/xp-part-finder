@@ -1,5 +1,5 @@
-import {runAsAdmin, startsWith} from "/lib/part-finder/utils";
 import { list as listRepos } from "/lib/xp/repo";
+import {runAsAdmin, startsWith} from "/lib/part-finder/utils/utils";
 
 export function getCMSRepoIds(repoParam: string): string[] {
   if (startsWith(repoParam, "com.enonic.cms.")) {

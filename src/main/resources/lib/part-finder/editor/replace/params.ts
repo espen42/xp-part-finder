@@ -3,9 +3,9 @@ import {
   getParamString,
   getRepoParam,
   getSortParam, trimString
-} from "/admin/tools/part-finder/utils/params";
-import {parseComponentPathsPerId} from "/admin/tools/part-finder/utils/componentPathsPerId";
-import {getCMSRepoIds} from "/admin/tools/part-finder/utils/repoIds";
+} from "/lib/part-finder/utils/params";
+import {parseComponentPathsPerId} from "/lib/part-finder/utils/componentPathsPerId";
+import {getCMSRepoIds} from "/lib/part-finder/utils/repoIds";
 
 type ParamsForReplacementProcessing = {
   requestedPostprocessors: string[];
@@ -24,6 +24,8 @@ type ParamsForReplacementProcessing = {
 };
 
 export const getParamsForReplacing = (req): ParamsForReplacementProcessing => {
+                                                                                                                        log.info(`req.params: ${JSON.stringify(req.params, null, 2)}`);
+
   const componentType = getParamString(req, "type");
   const sourceKey = trimString(req.params.key);
   const newKey = trimString(req.params.new_part_ref);

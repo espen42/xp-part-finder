@@ -1,5 +1,5 @@
 import { connect, multiRepoConnect, type Node, type QueryNodeParams } from "/lib/xp/node";
-import { notNullOrUndefined } from "/lib/part-finder/utils";
+import { notNullOrUndefined } from "/lib/part-finder/utils/utils";
 
 export function queryAllRepos<NodeData = Record<string, unknown>>(
   repositories: string[],

@@ -1,6 +1,6 @@
 import { getToolUrl } from "/lib/xp/admin";
 import { queryAllRepos } from "/lib/part-finder/nodes";
-import { getPartFinderUrl } from "/lib/part-finder/utils";
+import { getPartFinderUrl } from "/lib/part-finder/utils/utils";
 import type { AriaSortDirection, ComponentView, Heading } from "./component-view.freemarker";
 import type { Content, SortDirection, SortDsl } from "@enonic-types/core";
 import { getUsagePaths } from "/admin/tools/part-finder/usagePaths";

@@ -1,8 +1,8 @@
 import type { ContentUsage, MultiUsageInstance, Operation } from "/admin/tools/part-finder/part-finder.freemarker";
 import { getToolUrl } from "/lib/xp/admin";
-import { PathChangeTracker } from "/admin/tools/part-finder/utils/pathChangeTracker";
-import { ContentItem } from "/admin/tools/part-finder/editor";
-import { sortComponentPaths } from "/admin/tools/part-finder/utils/regionEditing";
+import { PathChangeTracker } from "/lib/part-finder/utils/pathChangeTracker";
+import { ContentItem } from "/lib/part-finder/editor";
+import { sortComponentPaths } from "/lib/part-finder/utils/sorting";
 
 class EditorResult {
   id: string;
