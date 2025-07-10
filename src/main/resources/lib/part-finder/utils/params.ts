@@ -1,4 +1,4 @@
-import {SORT_FUNCS} from "/lib/part-finder/utils/sorting";
+import { SORT_FUNCS } from "/lib/part-finder/utils/sorting";
 
 export type UriParams = {
   key: string;

@@ -4,11 +4,8 @@ import { find } from "/lib/part-finder/utils/utils";
 import { Component } from "@enonic-types/lib-content";
 import { contentRegionMutators } from "/lib/part-finder/utils/regionEditing";
 import { ContentItem, EditorFunc, IndexConfigEntry } from "/lib/part-finder/editor";
-import {
-  ContentitemMutatingPostprocessorFunc,
-  POSTPROCESSORS,
-} from "/lib/part-finder/editor/replace/postprocessors";
-import {sortComponentPaths} from "/lib/part-finder/utils/sorting";
+import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/lib/part-finder/editor/replace/postprocessors";
+import { sortComponentPaths } from "/lib/part-finder/utils/sorting";
 import clone from "../../../../../../../node_modules/just-clone";
 
 type ComponentPostProcessor = {
@@ -217,7 +214,6 @@ export function createReplaceEditor(
     const contentId = contentItem?._id || "###MISSING###";
 
     try {
-                                                                                                                        log.info("--------------- ContentItem in focus:: " + JSON.stringify(contentItem._path, null, 2));
       results.initPathChangeTracker(contentItem);
       const components = contentItem?.components || [];
 
@@ -240,10 +236,6 @@ export function createReplaceEditor(
           lastAttemptedComponentPath = verifyAndGetCompPath(component);
 
           if (componentMatchesTarget(component, targetComponentType, oldDescriptor, targetComponentPath)) {
-            if (!component.path) {
-              throw Error("Component without path: " + JSON.stringify(component));
-            }
-
             // By now, established a match: type, descriptor and path of the current component matches the target. Deep-clone
             // the component data to avoid mutation, and add the clone to the collection of data to store later, with path as key
             const componentClone = clone(component);
@@ -315,6 +307,8 @@ export function createReplaceEditor(
 
         results.reportSuccess(clonedContentItem, targetComponentPath, "ADD");
       });
+
+      results.finalizeContentItem(clonedContentItem);
 
       // Return the CLONED and changed content item. This writes the changes.
       return clonedContentItem;

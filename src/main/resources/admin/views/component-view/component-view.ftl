@@ -74,6 +74,9 @@
           <td class="name-column">
             [#if displaySummaryAndUndo]
               <div>${content.displayName}<br /><span class="repo-name">Repo: ${content.repo}</span></div>
+              [#if (content.id?? && content.controlHash??)]
+                <input type="hidden" name="contenthash__${content.id}" value="${content.controlHash}">
+              [/#if]
               <ul class="multi-usage-selectors">
                 [#list content.multiUsage as usage]
                   [#if usage.error??]

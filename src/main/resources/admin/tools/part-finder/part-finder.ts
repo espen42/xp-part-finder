@@ -31,11 +31,14 @@ import { processMultiUsage } from "/admin/tools/part-finder/usagePaths";
 import { ContentItem, EditorFunc } from "/lib/part-finder/editor";
 import {
   getDisplayArchiveParam,
-  getDisplayReplacerParam, getDisplayUnusedParam, getParamBool,
-  getRepoParam, getSortParam
+  getDisplayReplacerParam,
+  getDisplayUnusedParam,
+  //getParamBool,
+  getRepoParam,
+  getSortParam,
 } from "/lib/part-finder/utils/params";
-import {getParamsForReplacing} from "/lib/part-finder/editor/replace/params";
-import {getCMSRepoIds} from "/lib/part-finder/utils/repoIds";
+import { getParamsForReplacing } from "/lib/part-finder/editor/replace/params";
+import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
 
 export type PartFinderQueryParams = {
   key: string;
@@ -313,7 +316,6 @@ function parseSortDirection(str: string = ""): SortDirection | undefined {
 
 //-------------------------------
 
-
 const runEditor = (
   editorFunc: EditorFunc,
   repoIds: string[],
@@ -374,77 +376,77 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
-    const {
-      oldAppKey,
-      oldComponentKey,
-      newAppKey,
-      newComponentKey,
-      componentPathsPerId,
-      requestedPostprocessors,
-      sortParam,
-      sourceKey,
-      newKey,
-      componentType,
-      repoIds,
-      displayArchiveParam,
-      displayUnusedParam,
-    } = getParamsForReplacing(req);
+  const {
+    oldAppKey,
+    oldComponentKey,
+    newAppKey,
+    newComponentKey,
+    componentPathsPerId,
+    requestedPostprocessors,
+    sortParam,
+    sourceKey,
+    newKey,
+    componentType,
+    repoIds,
+    displayArchiveParam,
+    displayUnusedParam,
+  } = getParamsForReplacing(req);
 
-    const results = new Results(sourceKey, newKey, componentType);
+  const results = new Results(sourceKey, newKey, componentType);
 
-    const replaceEditor = createReplaceEditor(
-      oldAppKey,
-      oldComponentKey,
-      newAppKey,
-      newComponentKey,
-      componentType,
-      results,
-      componentPathsPerId,
-      requestedPostprocessors,
-    );
+  const replaceEditor = createReplaceEditor(
+    oldAppKey,
+    oldComponentKey,
+    newAppKey,
+    newComponentKey,
+    componentType,
+    results,
+    componentPathsPerId,
+    requestedPostprocessors,
+  );
 
-    runEditor(replaceEditor, repoIds, componentPathsPerId, "ADD", results);
+  runEditor(replaceEditor, repoIds, componentPathsPerId, "ADD", results);
 
-    const taskSummary = `${sourceKey} → ${newKey}`;
-    const appKey = getAppKey(newComponentKey);
-    const type = componentType.toUpperCase();
+  const taskSummary = `${sourceKey} → ${newKey}`;
+  const appKey = getAppKey(newComponentKey);
+  const type = componentType.toUpperCase();
 
-    const model = {
-      title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
-      displayName: PAGE_TITLE,
-      currentItemKey: newKey,
-      currentAppKey: appKey,
-      displayReplacer: "",
-      displaySummaryAndUndo: true,
-      oldItemKey: `${sourceKey}`,
-      newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${sortParam}${displayArchiveParam}${displayUnusedParam}`,
-      currentItem: {
-        url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
-        key: newKey,
-        type: componentType,
-        contents: results.buildContentResult(),
-        headings: [
-          {
-            text: "Display name",
-            name: "displayName",
-            url: "#",
-          },
-          {
-            text: "Content type",
-            name: "type",
-            url: "#",
-          },
-          {
-            text: "Path",
-            name: "_path",
-            url: "#",
-          },
-        ],
-      },
-    };
+  const model = {
+    title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
+    displayName: PAGE_TITLE,
+    currentItemKey: newKey,
+    currentAppKey: appKey,
+    displayReplacer: "",
+    displaySummaryAndUndo: true,
+    oldItemKey: `${sourceKey}`,
+    newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${sortParam}${displayArchiveParam}${displayUnusedParam}`,
+    currentItem: {
+      url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
+      key: newKey,
+      type: componentType,
+      contents: results.buildContentResult(),
+      headings: [
+        {
+          text: "Display name",
+          name: "displayName",
+          url: "#",
+        },
+        {
+          text: "Content type",
+          name: "type",
+          url: "#",
+        },
+        {
+          text: "Path",
+          name: "_path",
+          url: "#",
+        },
+      ],
+    },
+  };
 
-    return {
-      // TODO: Should make dedicated view for this, diffierent from the main part finder view (which should in turn be split into replace=true view and the old regular "finder" view).
-      body: render(COMPONENT_VIEW, model),
-    };
+  return {
+    // TODO: Should make dedicated view for this, diffierent from the main part finder view (which should in turn be split into replace=true view and the old regular "finder" view).
+    body: render(COMPONENT_VIEW, model),
+  };
 }

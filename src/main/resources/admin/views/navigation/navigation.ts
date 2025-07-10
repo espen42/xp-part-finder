@@ -12,9 +12,8 @@ import { listComponents } from "/lib/xp/schema";
 import type { ComponentNavLink, ComponentNavLinkList } from "./navigation.freemarker";
 import { LAYOUT_KEY, PAGE_KEY, PART_KEY } from "/admin/tools/part-finder/part-finder";
 import { AggregationsToAggregationResults, LayoutDescriptor, PageDescriptor, PartDescriptor } from "@enonic-types/core";
-import {SORT_FUNCS} from "/lib/part-finder/utils/sorting";
-import {UriParams} from "/lib/part-finder/utils/params";
-
+import { SORT_FUNCS } from "/lib/part-finder/utils/sorting";
+import { UriParams } from "/lib/part-finder/utils/params";
 
 type CompTypeAggregation = {
   terms: {

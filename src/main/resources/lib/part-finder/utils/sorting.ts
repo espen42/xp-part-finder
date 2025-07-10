@@ -1,4 +1,4 @@
-import {ComponentNavLink} from "/admin/views/navigation/navigation.freemarker";
+import { ComponentNavLink } from "/admin/views/navigation/navigation.freemarker";
 
 export const SORT_FUNCS: Record<
   "alphaasc" | "alphadesc" | "countasc" | "countdesc",
@@ -9,7 +9,6 @@ export const SORT_FUNCS: Record<
   countasc: (a, b) => a.docCount - b.docCount,
   countdesc: (a, b) => b.docCount - a.docCount,
 };
-
 
 export const sortComponentPaths = (pathA: string, pathB: string, descending: boolean = true): number => {
   if (pathA === pathB) {

@@ -28,7 +28,6 @@ export class PathChangeTracker {
    * Invariant: THIS APPROACH DEPENDS ON INSERTIONS HAPPENING IN REVERSE COMPONENT ORDER: bottom -> up
    */
   trackInsertion = (currentPath: string, newPath: string) => {
-
     const trackedToCurrentPath = Object.keys(this.paths).filter(
       (originalPath) => this.paths[originalPath] === currentPath,
     );

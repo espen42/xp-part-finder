@@ -3,6 +3,7 @@ import { getToolUrl } from "/lib/xp/admin";
 import { PathChangeTracker } from "/lib/part-finder/utils/pathChangeTracker";
 import { ContentItem } from "/lib/part-finder/editor";
 import { sortComponentPaths } from "/lib/part-finder/utils/sorting";
+import { hashContentItem } from "/lib/part-finder/utils/contentHashing";
 
 class EditorResult {
   id: string;
@@ -59,12 +60,18 @@ const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
   currentContent.hasMultiUsage = wantedValue;
 };
 
+/**
+ * Accumulates different EditorResults (which corresponds to one component change each)
+ * into the ContentUsage (which corresponds to one content item) they belong in.
+ * Creates and registers a new ContentUsage in the 'contents' map if it doesn't exist yet.
+ */
 const addContentUsageSummary = (
-  contents: ContentUsage[],
+  contents: Record<string, ContentUsage>,
   result: EditorResult,
+  controlHash: string | null,
   pathTracker: PathChangeTracker,
 ): void => {
-  let currentContent: ContentUsage = contents.filter((content) => content.id === result.id)[0];
+  let currentContent: ContentUsage = contents[result.id];
 
   if (!currentContent) {
     currentContent = {
@@ -75,8 +82,9 @@ const addContentUsageSummary = (
       repo: result.repo,
       path: (result.path || "").replace(/^\/content/, ""),
       multiUsage: [],
+      controlHash,
     };
-    contents.push(currentContent);
+    contents[result.id] = currentContent;
   }
 
   setMultiUsageAddition(currentContent, result, pathTracker);
@@ -135,6 +143,9 @@ export class Results {
   // his keeps track of that throughout the batch: for each contentItem (the toplevel key) by mapping originalPath -> newPath of changed components:
   pathTrackers: Record<string, PathChangeTracker>;
 
+  // Maps a contentItem-path to a hash of its post-change content, to verify that the content item was not changed in the meantime before the review. See contentHashing.ts.
+  contentHashes: Record<string, string | null>;
+
   constructor(sourceKey: string, newKey: string, targetComponentType: string) {
     this.results = [];
     this.repoName = ".setRepoContext hasn't run yet";
@@ -142,6 +153,7 @@ export class Results {
     this.newKey = newKey;
     this.targetComponentType = targetComponentType;
     this.pathTrackers = {};
+    this.contentHashes = {};
   }
 
   setRepoContext(repoName: string) {
@@ -188,18 +200,23 @@ export class Results {
     log.error(error);
   }
 
+  finalizeContentItem = (contentItem: ContentItem): void => {
+    this.contentHashes[contentItem._id] = hashContentItem(contentItem);
+  };
+
   buildContentResult(): ContentUsage[] {
-    const contents: ContentUsage[] = [];
+    const contents: Record<string, ContentUsage> = {};
 
     // Sort the results back into ascending order (less weird presentation), and summarize them for output
     const resultComponentPaths = this.results.map((result) => result.componentPath);
     resultComponentPaths.sort((a, b) => sortComponentPaths(a as string, b as string, false));
     resultComponentPaths.forEach((componentPath) => {
       const result = this.results.filter((result) => result.componentPath === componentPath)[0];
-      addContentUsageSummary(contents, result, this.pathTrackers[result.path]);
+      addContentUsageSummary(contents, result, this.contentHashes[result.id], this.pathTrackers[result.path]);
     });
 
-    contents.forEach((currentContent) => {
+    const contentResult: ContentUsage[] = Object.keys(contents).map((contentId) => {
+      const currentContent = contents[contentId];
       if (currentContent.multiUsage.length === 0) {
         currentContent.hasMultiUsage = false;
         if (!currentContent.error && currentContent.multiUsage[0].error) {
@@ -207,9 +224,10 @@ export class Results {
         }
         currentContent.multiUsage = [];
       }
+      return currentContent;
     });
 
-    return contents;
+    return contentResult;
   }
 
   toString(): string {

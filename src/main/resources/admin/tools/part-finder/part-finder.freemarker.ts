@@ -10,11 +10,6 @@ export type ComponentList = {
   currentAppKey?: string;
 };
 
-export type ItemList = {
-  title: string;
-  items: ComponentItem[];
-};
-
 export type ComponentItem = {
   key: string;
   url: string;
@@ -24,6 +19,9 @@ export type ComponentItem = {
   contents: ContentUsage[];
 };
 
+/** Presentation item: corresponds to one content item.
+ * Has a post-editing data control hash string and a list of usages of the component type in question
+ * - or a presentable error if the process failed at any point for that content item. */
 export type ContentUsage = {
   url: string;
   displayName: string;
@@ -31,6 +29,7 @@ export type ContentUsage = {
   repo: string;
   path: string;
   id: string;
+  controlHash: string | null;
   error?: string;
   usagePaths?: UsagePaths;
   hasMultiUsage?: boolean;
