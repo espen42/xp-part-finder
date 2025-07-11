@@ -6,15 +6,39 @@
 <turbo-frame id="content-view">
   [#if displayReplacer != '' || displaySummaryAndUndo]
     <form action="./part-finder?key=${currentItem.key}&type=${currentItem.type}" method="post">
+    [#if displaySummaryAndUndo]
+      <input type="hidden" name="review" value="true"></input>
+    [/#if]
   [/#if]
 
   <table class="table">
     [#if displaySummaryAndUndo]
       <caption class="label-big">
-        Summary - ${currentItem.type} key replacement<br/>
-        <div class="inline-pre">From: <pre>${oldItemKey}</pre></div>
-        <div class="inline-pre">To: <a href="${newItemToolUrl}" target="_blank"><pre>${currentItem.key}</pre></a></div>
+        <h2>${currentItem.type} replacement - STEP 1</h2>
+        <div class="inline-pre">From key: <pre>${oldItemKey}</pre></div>
+        <div class="inline-pre">To key: <a href="${newItemToolUrl}" target="_blank"><pre>${currentItem.key}</pre></a></div><br/>
+        <p><strong>REVIEW THE CHANGES AND PROCEED TO STEP 2:</strong></p><br/>
       </caption>
+
+      <div class="usage">
+        <h3>Usage:</h3><br/>
+        <p><span class="okay-check" style="position: relative">✓</span>Wherever components have changed (or actually: a changed component has been added), a copy of the old component has been kept right below it in the same region.</p>
+        <p>
+          <ol>
+            <li>Use the links below to review all the changes, and use the radio buttons in the right column to:
+              <ul>
+                <li>mark <span style="color: darkgreen">the changes you want to keep, with <strong>✓</strong></span> (this will delete the unchanged original in the next step), or</li>
+                <li>mark <span style="color: darkred">the changes you want to reject, with ❌</span> (this will delete the changed new component in the next step).</li>
+              </ul>
+            </li>
+            <li>Then, use the submit button to perform the batch-delete step according to your markings.</li>
+          </ol>
+        </p><br/>
+
+        <p>❌<br />Any content items where any part of the process failed (see <span style="color: darkred"> error messages</span>) are left unchanged.</p><br/>
+        <p>Note: the <strong>component paths</strong> in the <em>left</em> column in the table are the ones that were targeted for change, and the final paths after step 2. The component paths in the <em>right</em> column may be temporarily different in step (if component copies were inserted). But those are the changed-component paths that need to be checked.</p><br/>
+        </div>
+
     [#else]
       <caption class="label-big">${currentItem.type}: ${currentItem.key}</caption>
     [/#if]
