@@ -14,7 +14,6 @@
  * So before performing the second step, we need to verify that the content item is still in the same state as it was after the first step.
  */
 
-// @ts-ignore
 import * as xxh from "../../../../../../node_modules/xxhashjs/build/xxhash.js";
 import { ContentItem } from "/lib/part-finder/editor";
 
@@ -26,7 +25,6 @@ const SEED = 0x1dc87f6bae9123;
 // Ensures it's the actual data that matters, not the order of keys of objects (the order of array items, however, does matter).
 // Return a determinstically normalized version of the object, with sorted keys.
 const normalize: <T>(obj: T) => T = (obj) => {
-
   if (obj == null || typeof obj !== "object") {
     return obj;
   }
@@ -43,22 +41,22 @@ const normalize: <T>(obj: T) => T = (obj) => {
   }
 
   if (obj instanceof Set) {
-    return Array.from(obj)
-      .map((item) => normalize(item));
+    return Array.from(obj).map((item) => normalize(item));
   }
 
   // Check for Enonic XP proxy objects using their Java class signatures
   const objectType = Object.prototype.toString.call(obj);
-  if (objectType.startsWith('[object com.enonic.xp.')) {
+  if (objectType.startsWith("[object com.enonic.xp.")) {
     try {
-      return normalize(JSON.parse(obj.toString()))
+      return normalize(JSON.parse(obj.toString()));
     } catch (e) {
-      return obj.toString()
+      log.debug(e);
+      return obj.toString();
     }
   }
 
   // Regular object
-  const sortedKeys = Object.keys(obj)
+  const sortedKeys = Object.keys(obj);
   sortedKeys.sort();
   const result = {};
   for (const key of sortedKeys) {

@@ -214,8 +214,12 @@ export function createReplaceEditor(
     const contentId = contentItem?._id || "###MISSING###";
 
     try {
-      results.initPathChangeTracker(contentItem);
-      const components = contentItem?.components || [];
+      // Preparation: Deep-clone the current content item, inject the updated data into it
+      // (overwriting existing keys), and return the clone:
+      const clonedContentItem = clone(contentItem);
+
+      results.initPathChangeTracker(clonedContentItem);
+      const components = clonedContentItem?.components || [];
 
       // List either selected paths to target, or if none are specifically targeted: all available component paths
       const targetComponentPaths: string[] =
@@ -257,7 +261,7 @@ export function createReplaceEditor(
 
       verifyAllChangesWereMade(newComponents, componentPathsPerId[contentId]);
 
-      const origIndexConfigs: IndexConfigEntry[] = contentItem?._indexConfig?.configs || [];
+      const origIndexConfigs: IndexConfigEntry[] = clonedContentItem?._indexConfig?.configs || [];
       for (const currentIndexConfig of origIndexConfigs) {
         lastAttemptedComponentPath = currentIndexConfig.path + " (config path)";
 
@@ -273,9 +277,6 @@ export function createReplaceEditor(
 
       lastAttemptedComponentPath = null;
 
-      // Preparation: Deep-clone the current content item, inject the updated data into it
-      // (overwriting existing keys), and return the clone:
-      const clonedContentItem = clone(contentItem);
       if (newIndexConfigs.length) {
         clonedContentItem._indexConfig.configs = newIndexConfigs;
       }
@@ -293,7 +294,7 @@ export function createReplaceEditor(
         contentRegionMutators.addComponent(
           clonedContentItem,
           newComponents[targetComponentPath],
-          results.pathTrackers[contentItem._path],
+          results.pathTrackers[clonedContentItem._path],
         );
 
         runPostprocessors(
@@ -309,6 +310,9 @@ export function createReplaceEditor(
       });
 
       results.finalizeContentItem(clonedContentItem);
+
+      // Changes have been made, so mark the content item for a "modifier" signature.
+      clonedContentItem[SIGNATURE_MARKER_KEY] = true;
 
       // Return the CLONED and changed content item. This writes the changes.
       return clonedContentItem;

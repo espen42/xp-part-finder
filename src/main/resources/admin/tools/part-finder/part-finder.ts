@@ -33,6 +33,7 @@ import {
   getDisplayArchiveParam,
   getDisplayReplacerParam,
   getDisplayUnusedParam,
+  getParamBool,
   //getParamBool,
   getRepoParam,
   getSortParam,
@@ -60,6 +61,8 @@ const PRINCIPAL_ADMIN = "role:system.admin";
 
 const VIEW = resolve("part-finder.ftl");
 const COMPONENT_VIEW = resolve("../../views/component-view/component-view.ftl");
+
+export const SIGNATURE_MARKER_KEY = "/\\$@:__ This contentitem was changed so sign it __:@/\\";
 
 export function getAppKey(key: string): string {
   return key.split(":")[0];
@@ -353,8 +356,11 @@ const runEditor = (
                 editor: (contentItem: Node<ContentItem>) => {
                   const modifiedContentItem = editorFunc(contentItem);
 
-                  // Sign the modified content item with the alias user or current user
-                  modifiedContentItem.modifier = aliasOrUserKey;
+                  // If the content item has been changed, sign the modified content item with the alias user or current user.
+                  if (modifiedContentItem[SIGNATURE_MARKER_KEY]) {
+                    delete modifiedContentItem[SIGNATURE_MARKER_KEY];
+                    modifiedContentItem.modifier = aliasOrUserKey;
+                  }
                   return modifiedContentItem;
                 },
               });
@@ -376,74 +382,82 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
-  const {
-    oldAppKey,
-    oldComponentKey,
-    newAppKey,
-    newComponentKey,
-    componentPathsPerId,
-    requestedPostprocessors,
-    sortParam,
-    sourceKey,
-    newKey,
-    componentType,
-    repoIds,
-    displayArchiveParam,
-    displayUnusedParam,
-  } = getParamsForReplacing(req);
+  let model;
 
-  const results = new Results(sourceKey, newKey, componentType);
+  const isReview = getParamBool(req, "review");
+  if (!isReview) {
+    const {
+      oldAppKey,
+      oldComponentKey,
+      newAppKey,
+      newComponentKey,
+      componentPathsPerId,
+      requestedPostprocessors,
+      sortParam,
+      sourceKey,
+      newKey,
+      componentType,
+      repoIds,
+      displayArchiveParam,
+      displayUnusedParam,
+    } = getParamsForReplacing(req);
 
-  const replaceEditor = createReplaceEditor(
-    oldAppKey,
-    oldComponentKey,
-    newAppKey,
-    newComponentKey,
-    componentType,
-    results,
-    componentPathsPerId,
-    requestedPostprocessors,
-  );
+    const results = new Results(sourceKey, newKey, componentType);
 
-  runEditor(replaceEditor, repoIds, componentPathsPerId, "ADD", results);
+    const replaceEditor = createReplaceEditor(
+      oldAppKey,
+      oldComponentKey,
+      newAppKey,
+      newComponentKey,
+      componentType,
+      results,
+      componentPathsPerId,
+      requestedPostprocessors,
+    );
 
-  const taskSummary = `${sourceKey} → ${newKey}`;
-  const appKey = getAppKey(newComponentKey);
-  const type = componentType.toUpperCase();
+    runEditor(replaceEditor, repoIds, componentPathsPerId, "ADD", results);
 
-  const model = {
-    title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
-    displayName: PAGE_TITLE,
-    currentItemKey: newKey,
-    currentAppKey: appKey,
-    displayReplacer: "",
-    displaySummaryAndUndo: true,
-    oldItemKey: `${sourceKey}`,
-    newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${sortParam}${displayArchiveParam}${displayUnusedParam}`,
-    currentItem: {
-      url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
-      key: newKey,
-      type: componentType,
-      contents: results.buildContentResult(),
-      headings: [
-        {
-          text: "Display name",
-          name: "displayName",
-          url: "#",
-        },
-        {
-          text: "Content type",
-          name: "type",
-          url: "#",
-        },
-        {
-          text: "Path",
-          name: "_path",
-          url: "#",
-        },
-      ],
-    },
-  };
+    const taskSummary = `${sourceKey} → ${newKey}`;
+    const appKey = getAppKey(newComponentKey);
+    const type = componentType.toUpperCase();
+
+    model = {
+      title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
+      displayName: PAGE_TITLE,
+      currentItemKey: newKey,
+      currentAppKey: appKey,
+      displayReplacer: "",
+      displaySummaryAndUndo: true,
+      oldItemKey: `${sourceKey}`,
+      newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${sortParam}${displayArchiveParam}${displayUnusedParam}`,
+      currentItem: {
+        url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
+        key: newKey,
+        type: componentType,
+        contents: results.buildContentResult(),
+        headings: [
+          {
+            text: "Display name",
+            name: "displayName",
+            url: "#",
+          },
+          {
+            text: "Content type",
+            name: "type",
+            url: "#",
+          },
+          {
+            text: "Path",
+            name: "_path",
+            url: "#",
+          },
+        ],
+      },
+    };
+
+  } else {
+    throw Error("Nope");
+  }
 
   return {
     // TODO: Should make dedicated view for this, diffierent from the main part finder view (which should in turn be split into replace=true view and the old regular "finder" view).

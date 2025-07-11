@@ -207,11 +207,16 @@ export class Results {
   buildContentResult(): ContentUsage[] {
     const contents: Record<string, ContentUsage> = {};
 
-    // Sort the results back into ascending order (less weird presentation), and summarize them for output
-    const resultComponentPaths = this.results.map((result) => result.componentPath);
-    resultComponentPaths.sort((a, b) => sortComponentPaths(a as string, b as string, false));
-    resultComponentPaths.forEach((componentPath) => {
-      const result = this.results.filter((result) => result.componentPath === componentPath)[0];
+    // Sort the results back into ascending componentpath order (less weird presentation)
+    this.results.sort((a: EditorResult, b: EditorResult) =>
+      a.id !== b.id
+        ? a.id.localeCompare(b.id)
+        : sortComponentPaths(a.componentPath as string, b.componentPath as string, false),
+    );
+
+
+    // summarize the results for output
+    this.results.forEach((result) => {
       addContentUsageSummary(contents, result, this.contentHashes[result.id], this.pathTrackers[result.path]);
     });
 
