@@ -14,7 +14,7 @@
     --part-finder--header-background-color: var(--color-theme-base-default);
 
     display: grid;
-    grid-column:  1 / span 4;
+    grid-column: 1 / span 4;
     background-color: var(--part-finder--header-background-color);
     grid-template-columns: subgrid;
 
@@ -49,12 +49,13 @@
   white-space: nowrap;
   margin-top: 4px;
 }
+
 .part-undo {
   border-left: 1px solid #eee;
   margin-left: 12px;
   height: 100%;
   display: inline-block;
-    padding-right: 6px;
+  padding-right: 6px;
 
   > * {
     padding-top: 2px;
@@ -63,7 +64,6 @@
   }
 
   label {
-    font-size: 12px;
     padding-left: 16px;
     padding-right: 6px;
   }
@@ -72,8 +72,8 @@
     background-color: #faa;
   }
 }
-.part-accept {
 
+.part-accept {
   > * {
     padding-top: 2px;
     padding-bottom: 2px;
@@ -83,7 +83,16 @@
   label {
     color: darkgreen;
     margin-left: 6px;
+  }
+}
+
+td {
+  .part-accept label {
     font-size: 13px;
     font-style: italic;
   }
+  .part-undo label strong {
+    font-size: 12px;
+  }
 }
+

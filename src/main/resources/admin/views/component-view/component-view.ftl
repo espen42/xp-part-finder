@@ -62,25 +62,54 @@
           </th>
         [/#list]
 
+        [#-- Extra replace-routine column --]
         [#if displayReplacer != '' || displaySummaryAndUndo]
           <th class="part-selectall-col" scope="col">
-            [#if displayReplacer != '']Replace ${currentItem.type}[#else]Undo[/#if]
-            <br/>
-            <div class="select-all-container">
-              <input type="checkbox"
-                     id="_select_change_all_"
-                     name="_select_change_all_"
-                     value="change-all"
-                     class="part-selectall-check part-select-check"
-              />
-              <label for="_select_change_all_" class="part-selectall-label">
-                Select all
-              </label>
-            </div>
-            [#if getconfig??]
-              <span class="getconfig">
-                  (${getconfig})
+
+            [#if displayReplacer != '']
+              Replace ${currentItem.type}
+              <br/>
+              <div class="select-all-container">
+                <input type="checkbox"
+                       id="_select_change_all_"
+                       name="_select_change_all_"
+                       value="change-all"
+                       class="part-selectall-check part-select-check"
+                />
+                <label for="_select_change_all_" class="part-selectall-label">
+                  Select all
+                </label>
+              </div>
+              [#if getconfig??]
+                <span class="getconfig">
+                    (${getconfig})
+                  </span>
+              [/#if]
+
+            [#else]
+              <div class="undo-radio-row">
+                <span class="part-accept">
+                  <input type="radio"
+                       id="_select_accept_all_"
+                       name="_select_review_all_"
+                       value="accept-all"
+                  />
+                  <label for="_select_accept_all_">
+                    <strong>✓</strong> Accept&nbsp;all
+                  </label>
                 </span>
+                <span class="part-undo">
+                  <label for="_select_undo_all_"
+                         class="part-undo-label">Undo all ❌
+                  </label>
+                  <input type="radio"
+                         id="_select_undo_all_"
+                         name="_select_review_all_"
+                         value="undo-all"
+                  />
+                </span>
+              </div>
+
             [/#if]
           </th>
         [/#if]
