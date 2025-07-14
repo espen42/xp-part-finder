@@ -41,8 +41,6 @@
 }
 
 .usage-error {
-  padding-left: 33px;
-  padding-top: 20px;
   display: block;
   color: darkred;
 }

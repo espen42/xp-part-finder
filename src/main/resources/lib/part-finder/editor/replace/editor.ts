@@ -7,6 +7,7 @@ import { ContentItem, EditorFunc, IndexConfigEntry } from "/lib/part-finder/edit
 import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/lib/part-finder/editor/replace/postprocessors";
 import { sortComponentPaths } from "/lib/part-finder/utils/sorting";
 import clone from "../../../../../../../node_modules/just-clone";
+import { SIGNATURE_MARKER_KEY } from "/admin/tools/part-finder/part-finder";
 
 type ComponentPostProcessor = {
   label: string;

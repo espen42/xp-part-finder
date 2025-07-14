@@ -105,8 +105,7 @@
                 [#list content.multiUsage as usage]
                   [#if usage.error??]
                     <li title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
-                    ❌ <span class="multi-usage-label">${usage.path}</span><br />
-                    <span class="usage-error">${usage.error}</span>
+                    ❌ <strong>Failed</strong>
                   [#else]
                     <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
                     <span class="okay-check">✓</span> <span class="multi-usage-label">${usage.path}</span>
@@ -124,9 +123,8 @@
         [#else]
           [#if displaySummaryAndUndo]
             [#if content.error??]
-            <td  class="name-column" title="Failed: content ${content.displayName}. Error message: ${content.error}">
-              ❌ ${content.displayName}<br /><span class="repo-name" title="Use /remove URI parameter: repo=${content.repo}">Repo: ${content.repo}</span>
-              <br /><span class="usage-error">${content.error}</span>
+              <td  class="name-column" title="Failed: content ${content.displayName}. Error message: ${content.error}">
+              ❌<strong>Failed</strong>
             [#else]
               <td  class="name-column" title="Ok: changed content ${content.displayName}">
               <span class="okay-check">✓</span> <span class="summary-name">${content.displayName}</span>
@@ -157,15 +155,15 @@
                 <div>
                   [#if displayReplacer != '']
                     Usages:
-                  [#else]
-                    Undo:
                   [/#if]
                 </div>
                 <ul class="multi-usage-selectors">
                   [#list content.multiUsage as usage]
                     [#if displaySummaryAndUndo]
                       [#if usage.error??]
-                      <li title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
+                        <li title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
+                        <p>Component path:<br/>${usage.path}</p><br/>
+                        <p>Error message:<br/><span class="usage-error">${usage.error}</span></p>
                       [#else]
                         <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
                       [/#if]
@@ -221,7 +219,9 @@
             [#else]
               [#if displaySummaryAndUndo]
                 [#if content.error??]
-                <td title="Failed: content ${content.displayName}. Error message: ${content.error}">
+                  <td title="Failed: content ${content.displayName}. Error message: ${content.error}">
+                  <p>Content error</p><br/>
+                  <p>Error message:<br/><span class="usage-error">${content.error}</span></p>
                 [#else]
                   <td title="Ok: changed content ${content.displayName}">
                 [/#if]
