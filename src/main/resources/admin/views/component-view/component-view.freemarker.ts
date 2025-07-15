@@ -20,6 +20,7 @@ export type ComponentViewParams = {
   repoParam?: string;
   displayReplacer?: string;
   displaySummaryAndUndo?: boolean;
+  allIds?: string;
 };
 
 export type Usage = {

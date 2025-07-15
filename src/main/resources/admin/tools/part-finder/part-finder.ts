@@ -40,6 +40,7 @@ import {
 } from "/lib/part-finder/utils/params";
 import { getParamsForReplacing } from "/lib/part-finder/editor/replace/params";
 import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
+import { listContentIdsAndUsagePaths } from "/lib/part-finder/utils/contentIdSummary";
 
 export type PartFinderQueryParams = {
   key: string;
@@ -272,6 +273,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     hasNoschema: (noSchema || []).length > 0,
     unusedItems: unused,
     hasUnused: unused.length > 0,
+    allIds: JSON.stringify(listContentIdsAndUsagePaths(currentItem)),
   };
 
   if (getConfigParam) {
@@ -421,6 +423,32 @@ export function post(req: XP.Request): XP.Response {
     const appKey = getAppKey(newComponentKey);
     const type = componentType.toUpperCase();
 
+    const currentItem = {
+      url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
+      key: newKey,
+      type: componentType,
+      contents: results.buildContentResult(),
+      headings: [
+        {
+          text: "Display name",
+          name: "displayName",
+          url: "#",
+        },
+        {
+          text: "Content type",
+          name: "type",
+          url: "#",
+        },
+        {
+          text: "Path",
+          name: "_path",
+          url: "#",
+        },
+      ],
+    };
+
+    const allIds = JSON.stringify(listContentIdsAndUsagePaths(currentItem));
+
     model = {
       title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
       displayName: PAGE_TITLE,
@@ -430,31 +458,9 @@ export function post(req: XP.Request): XP.Response {
       displaySummaryAndUndo: true,
       oldItemKey: `${sourceKey}`,
       newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${sortParam}${displayArchiveParam}${displayUnusedParam}`,
-      currentItem: {
-        url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
-        key: newKey,
-        type: componentType,
-        contents: results.buildContentResult(),
-        headings: [
-          {
-            text: "Display name",
-            name: "displayName",
-            url: "#",
-          },
-          {
-            text: "Content type",
-            name: "type",
-            url: "#",
-          },
-          {
-            text: "Path",
-            name: "_path",
-            url: "#",
-          },
-        ],
-      },
+      currentItem,
+      allIds,
     };
-
   } else {
     throw Error("Nope");
   }

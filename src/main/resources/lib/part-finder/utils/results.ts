@@ -214,7 +214,6 @@ export class Results {
         : sortComponentPaths(a.componentPath as string, b.componentPath as string, false),
     );
 
-
     // summarize the results for output
     this.results.forEach((result) => {
       addContentUsageSummary(contents, result, this.contentHashes[result.id], this.pathTrackers[result.path]);
