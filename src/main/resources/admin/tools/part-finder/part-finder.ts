@@ -212,6 +212,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
       currentItem,
       displayReplacer: currentItemType === PART_KEY || currentItemType === LAYOUT_KEY ? displayReplacer : "false",
       displaySummaryAndUndo: false,
+      allIds: JSON.stringify(listContentIdsAndUsagePaths(currentItem))
     };
     if (getConfigParam) {
       model.getconfig = getConfigParam;

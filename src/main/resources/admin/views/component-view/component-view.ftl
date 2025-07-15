@@ -340,7 +340,9 @@
     pf.undoAllElem = document.getElementById("_select_undo_all_");
     pf.targetPartNameElem = document.getElementById("new_part_ref");
 
-    pf.allIds=${allIds}
+    pf.allIds=[#if allIds??    ]${allIds}
+    [#else                     ][]
+    [/#if]
     pf.selectedIds=[];
     pf.acceptIds=[]
     pf.undoIds=[]
