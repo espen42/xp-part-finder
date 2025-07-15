@@ -14,30 +14,10 @@
   <table class="table">
     [#if displaySummaryAndUndo]
       <caption class="label-big">
-        <h2>${currentItem.type} replacement - STEP 1</h2>
+        <h2>Summary: ${currentItem.type} replacement - STEP 1</h2>
         <div class="inline-pre">From key: <pre>${oldItemKey}</pre></div>
         <div class="inline-pre">To key: <a href="${newItemToolUrl}" target="_blank"><pre>${currentItem.key}</pre></a></div><br/>
-        <p><strong>REVIEW THE CHANGES AND PROCEED TO STEP 2:</strong></p><br/>
       </caption>
-
-      <div class="usage">
-        <h3>Usage:</h3><br/>
-        <p><span class="okay-check" style="position: relative">✓</span>Wherever components have changed (or actually: a changed component has been added), a copy of the old component has been kept right below it in the same region.</p>
-        <p>
-          <ol>
-            <li>Use the links below to review all the changes, and use the radio buttons in the right column to:
-              <ul>
-                <li>mark <span style="color: darkgreen">the changes you want to keep, with <strong>✓</strong></span> (this will delete the unchanged original in the next step), or</li>
-                <li>mark <span style="color: darkred">the changes you want to reject, with ❌</span> (this will delete the changed new component in the next step).</li>
-              </ul>
-            </li>
-            <li>Then, use the submit button to perform the batch-delete step according to your markings.</li>
-          </ol>
-        </p><br/>
-
-        <p>❌<br />Any content items where any part of the process failed (see <span style="color: darkred"> error messages</span>) are left unchanged.</p><br/>
-        <p>Note: the <strong>component paths</strong> in the <em>left</em> column in the table are the ones that were targeted for change, and the final paths after step 2. The component paths in the <em>right</em> column may be temporarily different in step (if component copies were inserted). But those are the changed-component paths that need to be checked.</p><br/>
-        </div>
 
     [#else]
       <caption class="label-big">${currentItem.type}: ${currentItem.key}</caption>
@@ -87,7 +67,7 @@
               [/#if]
 
             [#else]
-              <div class="review-radio-row">
+              <div id="review-all" class="review-radio-row">
                 <span class="part-accept">
                   <input type="radio"
                        id="_select_accept_all_"
@@ -310,23 +290,77 @@
         />
         <p id="btn-info"><strong>Caution!</strong> This will change content data, and may break page displays.<br />Some changes (especially when errors are marked) can't be easily reversed by a new rename or the undo function on the next page.</br><strong>Stay safe and backup</strong> all the targeted content before changing, eg. with Data Toolbox</p>
       [#elseif displaySummaryAndUndo]
-        <div class="new-part-label">
-          <p><strong>Check the links above to verify the content.</strong></p>
-          <p>Navigating away will wipe this list and the opportunity to undo!</p>
-          <p>The links open in a new tab, though.</p>
+        <div id="all-info">
+          <div class="new-part-label">
+            <h3>Intermediate state!</h3><br/>
+            <p>
+              <span class="okay-check"
+                    style="position: relative;display: inline-block !important; margin-right: 8px">✓</span>Wherever
+              components have changed, a copy of the
+              old component has been kept right below it in the same region (or: an updated component has been inserted
+              before the old one).
+            </p><br/>
+
+            <p>Before proceeding, <strong>use the links and check the new components</strong>. The links open in a new
+              tab.</p>
+            <p>Navigating away (or closing this tab) will wipe this list and the opportunity to undo!</p>
+          </div>
+
+          <input type="hidden" name="new_part_ref" id="new_part_ref" value="${oldItemKey}"/>
+
+          <input type="submit"
+                 id="btn_execute_review"
+                 value="🪠&nbsp;Step 2: cleanup"
+                 class="new-part-button"
+                 disabled
+          />
+          <br/><br/>
+
+          <div id="usage">
+            <h3>Usage:</h3><br/>
+            <p>
+            <ol>
+              <li>Use the links in the table to review all the changes, and mark the with the radio buttons:</li>
+              <ul>
+                <li>Mark <span style="color: darkgreen">the changes you want to keep, with <strong>✓</strong></span>. This
+                  will delete the unchanged original in the next step, or
+                </li>
+                <li>Mark <span style="color: darkred">the changes you want to reject, with ❌</span>. This will delete the
+                  changed new component in the next step.
+                </li>
+              </ul>
+              <li>The "Step 2: cleanup" button performs the batch-delete step according to your markings. For each
+                changed ${currentItem.type} marked as accepted, delete the original so only the change remains.
+                And vise versa, for each marked for undo, delete the new one so only the original remains. Any content
+                items where any part of the process failed (see <span style="color: darkred"> error messages</span>) are
+                left unchanged.</p><br/></li>
+            </ol>
+            <br/>
+            <div id="unmarked-info"><strong><span id="unmarked-counter">0</span> currently unmarked ${currentItem.type}(s)</strong>
+              will be
+              left in this incomplete state: with both the updated ${currentItem.type} and the original copy!
+            </div>
+            </p>
+            <br/>
+
+            <p>
+            <h3>Understanding the component paths</h3><br/>
+            <ul>
+              <li>The component paths in the <em>Display name</em> column in the table, are the ones that were
+                targeted for change. After step 2, that's what the paths will be again.
+              </li>
+              <li>The right column however, says what the component paths are <em>now</em>, in this intermediate state.
+                Those may be different paths, if any component copies were inserted.
+              </li>
+              <li>
+                The paths on the right are the ones you should check now, before hitting "Step 2: cleanup".
+              </li>
+            </ul>
+            </p>
+            <br/>
+          </div>
         </div>
-
-        <input type="hidden" name="new_part_ref" id="new_part_ref" value="${oldItemKey}"/>
-
-        <input type="submit"
-               id="btn_change_part"
-               value="Undo ↺"
-               class="new-part-button"
-               disabled
-        />
-        <div id="btn-info" class="inline-pre">Revert the new <pre>${currentItem.key}</pre> back to the old <pre>${oldItemKey}</pre> on selected ${currentItem.type}s.</div>
       [/#if]
-
 
       [#if displayReplacer != '' || displaySummaryAndUndo]
     </form>
@@ -335,17 +369,29 @@
     window._pf_ = {}
     var pf=window._pf_;
 
+    pf.allIds=[#if allIds??    ]${allIds}
+    [#else                     ][]
+    [/#if];
+
     pf.selectAllElem = document.getElementById("_select_change_all_");
     pf.acceptAllElem = document.getElementById("_select_accept_all_");
     pf.undoAllElem = document.getElementById("_select_undo_all_");
     pf.targetPartNameElem = document.getElementById("new_part_ref");
 
-    pf.allIds=[#if allIds??    ]${allIds}
-    [#else                     ][]
-    [/#if]
+    [#--
+      For the radio buttons, add event listeners for checking/unchecking events:
+      These are used in the summary/undo mode to mark items for deletion or acceptance.
+      The  arrays 'acceptIds' and 'undoIds' are used to keep track of which items are selected for deletion or acceptance.
+    --]
+    pf.reviewRadioRows = document.querySelectorAll("td .review-radio-row")
     pf.selectedIds=[];
     pf.acceptIds=[]
-    pf.undoIds=[]
+    pf.undoIds = []
+
+    if (!pf.reviewRadioRows || pf.reviewRadioRows.length < 1) {
+      document.getElementById("review-all") && (document.getElementById("review-all").style.visibility = "hidden")
+      document.getElementById("all-info") && (document.getElementById("all-info").style.visibility = "hidden")
+    }
 
     [#--
       Enable or disable the "Replace part" or "Undo" button.
@@ -374,6 +420,28 @@
       }, 100)
     }
 
+    pf.updateReviewGui = function() {
+      const markedCount = pf.acceptIds.length + pf.undoIds.length
+      const unmarkedCount =  pf.reviewRadioRows.length - markedCount
+
+      const unmarkedCounterElem = document.getElementById("unmarked-counter")
+      if (unmarkedCounterElem) {
+        unmarkedCounterElem.innerHTML = "" + unmarkedCount
+      }
+
+      const submitButtonElement = document.getElementById("btn_execute_review")
+      if (submitButtonElement) {
+        submitButtonElement.disabled = (markedCount === 0)
+      }
+
+      const unmarkedInfoElem = document.getElementById("unmarked-info")
+      if (unmarkedInfoElem) {
+        unmarkedInfoElem.style.display = (unmarkedCount > 0 && markedCount > 0) ? "block" : "none"
+      }
+    }
+
+    [#--  For each select-item checkbox, add an event listener for checking/unchecking events --]
+
     pf.allIds.forEach(id => {
 
       [#--
@@ -399,12 +467,6 @@
       }
     })
 
-    [#--
-      For the radio buttons, add event listeners for checking/unchecking events:
-      These are used in the summary/undo mode to mark items for deletion or acceptance.
-      The  arrays 'acceptIds' and 'undoIds' are used to keep track of which items are selected for deletion or acceptance.
-    --]
-    pf.reviewRadioRows = document.querySelectorAll("td .review-radio-row")
     pf.selectionInRow = {}
     if (pf.reviewRadioRows) {
       pf.reviewRadioRows.forEach(radioRow => {
@@ -438,6 +500,7 @@
           pf.acceptAllElem.checked = (pf.acceptIds.length === pf.reviewRadioRows.length)
           pf.undoAllElem.checked = (pf.undoIds.length === pf.reviewRadioRows.length)
 
+          pf.updateReviewGui();
         })
       })
     }
@@ -459,6 +522,7 @@
             pf.acceptIds.push(accept.value)
           })
 
+          pf.updateReviewGui();
       })
     }
 
@@ -477,6 +541,8 @@
             pf.selectionInRow[undo.name] = undo.value
             pf.undoIds.push(undo.value)
           })
+
+          pf.updateReviewGui();
       })
     }
 
@@ -509,6 +575,7 @@
     [/#if]
 
     pf.checkSelection();
+    pf.updateReviewGui();
   </script>
   [/#if]
 </turbo-frame>

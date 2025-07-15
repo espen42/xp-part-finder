@@ -462,6 +462,7 @@ export function post(req: XP.Request): XP.Response {
       currentItem,
       allIds,
     };
+
   } else {
     throw Error("Nope");
   }
