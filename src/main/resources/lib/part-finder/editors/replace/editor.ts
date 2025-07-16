@@ -3,8 +3,8 @@ import { find } from "/lib/part-finder/utils/utils";
 
 import { Component } from "@enonic-types/lib-content";
 import { contentRegionMutators } from "/lib/part-finder/utils/regionEditing";
-import { ContentItem, EditorFunc, IndexConfigEntry } from "/lib/part-finder/editor";
-import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/lib/part-finder/editor/replace/postprocessors";
+import { ContentItem, EditorFunc, IndexConfigEntry } from "/lib/part-finder/editors";
+import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/lib/part-finder/editors/replace/postprocessors";
 import { sortComponentPaths } from "/lib/part-finder/utils/sorting";
 import clone from "../../../../../../../node_modules/just-clone";
 import { SIGNATURE_MARKER_KEY } from "/admin/tools/part-finder/part-finder";

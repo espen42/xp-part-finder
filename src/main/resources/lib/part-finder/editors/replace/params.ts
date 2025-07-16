@@ -26,6 +26,7 @@ type ParamsForReplacementProcessing = {
 };
 
 export const getParamsForReplacing = (req): ParamsForReplacementProcessing => {
+  log.info(`req.params: ${JSON.stringify(req.params, null, 2)}`);
 
   const componentType = getParamString(req, "type");
   const sourceKey = trimString(req.params.key);

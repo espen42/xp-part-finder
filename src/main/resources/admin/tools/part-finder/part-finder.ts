@@ -23,12 +23,12 @@ import { getComponentUsagesInRepo } from "../../views/component-view/component-v
 import type { ComponentViewParams } from "../../views/component-view/component-view.freemarker";
 import type { Header, Link } from "../../views/header/header.freemarker";
 import type { SortDirection } from "@enonic-types/core";
-import { createReplaceEditor } from "/lib/part-finder/editor/replace/editor";
+import { createReplaceEditor } from "/lib/part-finder/editors/replace/editor";
 
 import { Results } from "/lib/part-finder/utils/results";
 import { ComponentItem, ComponentList, Operation } from "/admin/tools/part-finder/part-finder.freemarker";
 import { processMultiUsage } from "/admin/tools/part-finder/usagePaths";
-import { ContentItem, EditorFunc } from "/lib/part-finder/editor";
+import { ContentItem, EditorFunc } from "/lib/part-finder/editors";
 import {
   getDisplayArchiveParam,
   getDisplayReplacerParam,
@@ -38,7 +38,7 @@ import {
   getRepoParam,
   getSortParam,
 } from "/lib/part-finder/utils/params";
-import { getParamsForReplacing } from "/lib/part-finder/editor/replace/params";
+import { getParamsForReplacing } from "/lib/part-finder/editors/replace/params";
 import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
 import { listContentIdsAndUsagePaths } from "/lib/part-finder/utils/contentIdSummary";
 
@@ -212,7 +212,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
       currentItem,
       displayReplacer: currentItemType === PART_KEY || currentItemType === LAYOUT_KEY ? displayReplacer : "false",
       displaySummaryAndUndo: false,
-      allIds: JSON.stringify(listContentIdsAndUsagePaths(currentItem))
+      allIds: JSON.stringify(listContentIdsAndUsagePaths(currentItem)),
     };
     if (getConfigParam) {
       model.getconfig = getConfigParam;
@@ -462,7 +462,6 @@ export function post(req: XP.Request): XP.Response {
       currentItem,
       allIds,
     };
-
   } else {
     throw Error("Nope");
   }

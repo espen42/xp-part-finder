@@ -1,5 +1,5 @@
 import { Component } from "@enonic-types/lib-content";
-import { ContentItem } from "/lib/part-finder/editor";
+import { ContentItem } from "/lib/part-finder/editors";
 import { PathChangeTracker } from "/lib/part-finder/utils/pathChangeTracker";
 
 const getRootAndIndex = (path: string): [string, number | null] => {

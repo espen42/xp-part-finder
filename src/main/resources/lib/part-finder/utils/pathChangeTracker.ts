@@ -1,4 +1,4 @@
-import { ContentItem } from "/lib/part-finder/editor";
+import { ContentItem } from "/lib/part-finder/editors";
 
 export const init = (contentItem: ContentItem): Record<string, string> => {
   const pathChanges: Record<string, string> = {};

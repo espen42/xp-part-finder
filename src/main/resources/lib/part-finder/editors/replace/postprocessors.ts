@@ -1,13 +1,13 @@
 import { findIndex } from "/lib/part-finder/utils/utils";
 import { NodeIndexConfig } from "/lib/xp/node";
 import { Component } from "@enonic-types/lib-content";
-import { ContentItem } from "/lib/part-finder/editor";
-import { cardFullwidth } from "/lib/part-finder/editor/replace/postprocessors/cardFullwidth";
-import { layoutNColumns } from "/lib/part-finder/editor/replace/postprocessors/layout-n-columns";
-import { throwerror } from "/lib/part-finder/editor/replace/postprocessors/throwerror";
-import { logContent } from "/lib/part-finder/editor/replace/postprocessors/logContent";
-import { logConfig } from "/lib/part-finder/editor/replace/postprocessors/logConfig";
-import { logComponent } from "/lib/part-finder/editor/replace/postprocessors/logComponent";
+import { ContentItem } from "/lib/part-finder/editors";
+import { cardFullwidth } from "/lib/part-finder/editors/replace/postprocessors/cardFullwidth";
+import { layoutNColumns } from "/lib/part-finder/editors/replace/postprocessors/layout-n-columns";
+import { throwerror } from "/lib/part-finder/editors/replace/postprocessors/throwerror";
+import { logContent } from "/lib/part-finder/editors/replace/postprocessors/logContent";
+import { logConfig } from "/lib/part-finder/editors/replace/postprocessors/logConfig";
+import { logComponent } from "/lib/part-finder/editors/replace/postprocessors/logComponent";
 
 // Available postprocessors:
 // key in this object:  processor names, available to refer to from URL parameter on POST when changing/replacing component names. Eg: ...?postprocess=logger

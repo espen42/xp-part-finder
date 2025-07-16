@@ -1,7 +1,7 @@
 import {
   ContentitemMutatingPostprocessorFunc,
   postprocessAndMutateComponent,
-} from "/lib/part-finder/editor/replace/postprocessors";
+} from "/lib/part-finder/editors/replace/postprocessors";
 
 export const layoutNColumns: ContentitemMutatingPostprocessorFunc = (
   contentItem,
