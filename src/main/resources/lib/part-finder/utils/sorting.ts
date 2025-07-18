@@ -63,6 +63,10 @@ const sortComponentPaths: SortFunc<string> = (pathA, pathB) => {
 const getComponentPathSorterFunc = (descending: boolean = false): SortFunc<string> =>
   descending ? (pathA: string, pathB: string): number => sortComponentPaths(pathB, pathA) : sortComponentPaths;
 
+export const sortComponentPathsAsc = (paths: string[]): SortedArrayAscending<string> => {
+  const sorterFunc = getComponentPathSorterFunc();
+  return [...paths].sort(sorterFunc) as SortedArrayAscending<string>;
+};
 export const sortComponentPathsDesc = (paths: string[]): SortedArrayDescending<string> => {
   const sorterFunc = getComponentPathSorterFunc(true);
   return [...paths].sort(sorterFunc) as SortedArrayDescending<string>;

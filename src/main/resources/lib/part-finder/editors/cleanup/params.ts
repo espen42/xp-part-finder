@@ -1,4 +1,5 @@
 import {
+  getControlHashesParam,
   getDisplayArchiveParam,
   getDisplayUnusedParam,
   getParamString,
@@ -6,26 +7,24 @@ import {
   getSortParam,
   trimString,
 } from "/lib/part-finder/utils/params";
-import { parseComponentPathsPerId } from "/lib/part-finder/utils/componentPathsPerId";
-import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
+import {parseComponentPathsPerId} from "/lib/part-finder/utils/componentPathsPerId";
+import {getCMSRepoIds} from "/lib/part-finder/utils/repoIds";
 
-type ParamsForReplacementProcessing = {
-  requestedPostprocessors: string[];
-  componentPathsPerId: Record<string, string[] | null>;
-  oldAppKey: string;
-  oldComponentKey: string;
-  newAppKey: string;
-  newComponentKey: string;
+type ParamsForCleanupProcessing = {
+  controlHashes: Record<string, string>,
+  componentPathsPerId: Record<string, string[] | null>,
   sourceKey: string;
   newKey: string;
   componentType: string;
+  repoIds: string[];
+  newComponentKey: string;
+  newAppKey: string;
   sortParam: string;
   displayArchiveParam: string;
   displayUnusedParam: string;
-  repoIds: string[];
 };
 
-export const getParamsForReplacing = (req): ParamsForReplacementProcessing => {
+export const getParamsForCleanup = (req): ParamsForCleanupProcessing => {
 
   const componentType = getParamString(req, "type");
   const sourceKey = trimString(req.params.key);
@@ -47,28 +46,34 @@ export const getParamsForReplacing = (req): ParamsForReplacementProcessing => {
     throw Error("Missing POST parameters: " + JSON.stringify(missingArgs));
   }
 
-  const [oldAppKey, oldComponentKey] = sourceKey.split(":");
+  //const [oldAppKey, oldComponentKey] = sourceKey.split(":");
   const [newAppKey, newComponentKey] = newKey.split(":");
 
   const repoParam = getRepoParam(req);
   const sort = getSortParam(req);
 
   return {
-    requestedPostprocessors: trimString(req.params.postprocessors)
-      .split(/\s*,\s*/g)
-      .filter((processorName) => processorName.trim())
-      .filter((processorName) => processorName !== "undefined"),
+    controlHashes: getControlHashesParam(req),
     componentPathsPerId: parseComponentPathsPerId(targetIds),
-    oldAppKey,
-    oldComponentKey,
-    newAppKey,
-    newComponentKey,
     sourceKey,
     newKey,
     componentType,
+    repoIds: getCMSRepoIds(repoParam),
+    newAppKey,
+    newComponentKey,
     sortParam: sort ? `&sort=${req.params.sort}` : "",
     displayArchiveParam: getDisplayArchiveParam(req) ? "&archive=true" : "",
     displayUnusedParam: getDisplayUnusedParam(req) ? "&unused=true" : "",
-    repoIds: getCMSRepoIds(repoParam),
+    //oldAppKey,
+
+
+    //oldComponentKey,
+
+
+    //,
+
+
+
+
   };
 };

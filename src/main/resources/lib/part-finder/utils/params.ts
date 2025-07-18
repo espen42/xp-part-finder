@@ -27,6 +27,17 @@ export const getRepoParam = (req) => getParamString(req, "repo");
 
 export const getDisplayArchiveParam = (req) => getParamBool(req, "archive");
 
+export const getControlHashesParam = (req): Record<string, string> => {
+  const contentHashKeys = Object.keys(req.params).filter(param => param.startsWith("contenthash__"));
+  const controlHashes = {}
+  contentHashKeys.forEach( key => {
+    const controlHash = req.params[key];
+    const contentId = key.replace(/^contenthash__/, "");
+    controlHashes[contentId] = controlHash;
+  })
+  return controlHashes
+}
+
 export const getSortParam = (req): keyof typeof SORT_FUNCS | "" => {
   const paramValue = getParamBool(req, "sort");
   return SORT_FUNCS[paramValue] ? (paramValue as keyof typeof SORT_FUNCS) : "";
