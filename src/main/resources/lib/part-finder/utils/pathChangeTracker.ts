@@ -1,4 +1,5 @@
 import { ContentItem } from "/lib/part-finder/editors";
+import { Component } from "@enonic-types/lib-content";
 
 export const init = (contentItem: ContentItem): Record<string, string> => {
   const pathChanges: Record<string, string> = {};
@@ -24,22 +25,30 @@ export class PathChangeTracker {
   }
 
   /**
-   * Tracks an insertion where some component is being moved one down in the region, from one path to another.
-   * Invariant: THIS APPROACH DEPENDS ON INSERTIONS HAPPENING IN REVERSE COMPONENT ORDER: bottom -> up
+   * Tracks an insertion: one component was inserted into a region, pushing all components in the same region down,
+   * and therefore incrementing the path index of the components below (but not other components).
+   *
+   * Invariants: to avoid path collisions when there are multiple items below the inserted one, this MUST HAPPEN IN REVERSE
+   * COMPONENT ORDER: bottom -> up in the region.
    */
-  trackInsertion = (currentPath: string, newPath: string) => {
+  trackInsertion = (
+    previousPath: string,
+    newPath: string
+  ) => {
     const trackedToCurrentPath = Object.keys(this.paths).filter(
-      (originalPath) => this.paths[originalPath] === currentPath,
+      (originalPath) => this.paths[originalPath] === previousPath,
     );
     if (trackedToCurrentPath.length > 1) {
       throw Error(
-        `Unexpected state - it seems more than one component has been tracked to path ${JSON.stringify(currentPath)}. Those components has these original paths: ${JSON.stringify(trackedToCurrentPath)}`,
+        `Unexpected state - it seems more than one component has been tracked to path ${JSON.stringify(previousPath)}. Those components has these original paths: ${JSON.stringify(trackedToCurrentPath)}`,
       );
     }
     if (trackedToCurrentPath.length) {
       this.paths[trackedToCurrentPath[0]] = newPath;
     } else {
-      this.paths[`new::${currentPath}`] = newPath;
+      this.paths[`new::${previousPath}`] = newPath;
+    }
+  };
     }
   };
 

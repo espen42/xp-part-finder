@@ -2,10 +2,10 @@ import type { ContentUsage, MultiUsageInstance, Operation } from "/admin/tools/p
 import { getToolUrl } from "/lib/xp/admin";
 import { PathChangeTracker } from "/lib/part-finder/utils/pathChangeTracker";
 import { ContentItem } from "/lib/part-finder/editors";
-import { sortComponentPaths } from "/lib/part-finder/utils/sorting";
+import { SortedArrayAscending, sortResultsByPathAsc } from "/lib/part-finder/utils/sorting";
 import { hashContentItem } from "/lib/part-finder/utils/contentHashing";
 
-class EditorResult {
+export class EditorResult {
   id: string;
   url: string;
   displayName: string;
@@ -65,29 +65,33 @@ const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
  * into the ContentUsage (which corresponds to one content item) they belong in.
  * Creates and registers a new ContentUsage in the 'contents' map if it doesn't exist yet.
  */
-const addContentUsageSummary = (
+const summarizeResults = (
+  results: SortedArrayAscending<EditorResult>,
   contents: Record<string, ContentUsage>,
-  result: EditorResult,
-  controlHash: string | null,
-  pathTracker: PathChangeTracker,
+  controlHashes: Record<string, string | null>,
+  pathTrackers: Record<string, PathChangeTracker>,
 ): void => {
-  let currentContent: ContentUsage = contents[result.id];
+  results.forEach((result) => {
+    const controlHash = controlHashes[result.id];
+    const pathTracker = pathTrackers[result.path];
+    let currentContent: ContentUsage = contents[result.id];
 
-  if (!currentContent) {
-    currentContent = {
-      id: result.id,
-      url: result.url,
-      displayName: result.displayName,
-      type: result.type,
-      repo: result.repo,
-      path: (result.path || "").replace(/^\/content/, ""),
-      multiUsage: [],
-      controlHash,
-    };
-    contents[result.id] = currentContent;
-  }
+    if (!currentContent) {
+      currentContent = {
+        id: result.id,
+        url: result.url,
+        displayName: result.displayName,
+        type: result.type,
+        repo: result.repo,
+        path: (result.path || "").replace(/^\/content/, ""),
+        multiUsage: [],
+        controlHash,
+      };
+      contents[result.id] = currentContent;
+    }
 
-  setMultiUsageAddition(currentContent, result, pathTracker);
+    setMultiUsageAddition(currentContent, result, pathTracker);
+  });
 };
 
 const getUsage = (componentPath: string, error?: string): MultiUsageInstance => {
@@ -208,16 +212,10 @@ export class Results {
     const contents: Record<string, ContentUsage> = {};
 
     // Sort the results back into ascending componentpath order (less weird presentation)
-    this.results.sort((a: EditorResult, b: EditorResult) =>
-      a.id !== b.id
-        ? a.id.localeCompare(b.id)
-        : sortComponentPaths(a.componentPath as string, b.componentPath as string, false),
-    );
+    const sortedResults = sortResultsByPathAsc(this.results);
 
     // summarize the results for output
-    this.results.forEach((result) => {
-      addContentUsageSummary(contents, result, this.contentHashes[result.id], this.pathTrackers[result.path]);
-    });
+    summarizeResults(sortedResults, contents, this.contentHashes, this.pathTrackers);
 
     const contentResult: ContentUsage[] = Object.keys(contents).map((contentId) => {
       const currentContent = contents[contentId];

@@ -1,6 +1,7 @@
 import { Component } from "@enonic-types/lib-content";
 import { ContentItem } from "/lib/part-finder/editors";
 import { PathChangeTracker } from "/lib/part-finder/utils/pathChangeTracker";
+import {SortedArrayDescending, sortByPathAttributeDesc, sortByPathAttributeAsc} from "/lib/part-finder/utils/sorting";
 
 const getRootAndIndex = (path: string): [string, number | null] => {
   const splitPath = path.replace(/^\//, "").split("/");
@@ -9,7 +10,8 @@ const getRootAndIndex = (path: string): [string, number | null] => {
   try {
     index = parseInt(splitPath[splitPath.length - 1], 10);
   } catch (e) {
-    log.warning(`Failed to parse a numeral last index from path: ${path}: ${e}`);
+    log.warning(e)
+    throw Error(`Failed to parse a numeral last index from path ${JSON.stringify(path)}`);
   }
   return [`/${parentPath}/`.replace(/\/+/g, "/"), undefined === index || isNaN(index) ? null : index];
 };
@@ -20,8 +22,13 @@ const verifyInputs = (contentItem, newComponent) => {
     throw new Error("Content item does not have a components array");
   }
   if (
-    contentItem.components.filter((component: Component) => component.path === "/" && component.type === "page")
-      .length === 0
+    contentItem.components.filter((component: Component) => {
+      if (!component.path) {
+        log.warning("A component in the content item is missing a path: " + JSON.stringify(contentItem));
+        throw Error("Invalid content item: a component is missing a path");
+      }
+      return component.path === "/" && component.type === "page";
+    }).length === 0
   ) {
     throw new Error("Content item does not have a page component at the root path");
   }
@@ -46,6 +53,10 @@ const verifyInputs = (contentItem, newComponent) => {
 };
 
 export const contentRegionMutators = {
+
+  /** Updates the contentItem's components when adding a new component to a region.
+   * Specifically, add the component data to the .components array, and update the path of the new component and all components below it in the same region.
+   */
   addComponent: (
     contentItem: ContentItem,
     componentToAdd: Component,
@@ -59,10 +70,11 @@ export const contentRegionMutators = {
       path: overrideAddAtPath || componentToAdd.path,
     } as Component;
 
+    // After this, we know every old and new component has a path, hence the "as string"'s below
     verifyInputs(contentItem, newComponent);
 
     // eslint-disable-next-line prefer-const
-    let [regionPath, pathTargetIndex] = getRootAndIndex(newComponent.path || "");
+    let [regionPath, pathTargetIndex] = getRootAndIndex(newComponent.path as string);
 
     if (regionPath === "/") {
       throw new Error("Cannot add a component at the root path '/'. Please specify a region path.");
@@ -74,18 +86,27 @@ export const contentRegionMutators = {
     let highestPathIndexSeen = -1;
     let newComponentIndex = -1;
 
+    const sortedComponentsDesc: SortedArrayDescending<Component> = sortByPathAttributeDesc(
+        contentItem.components || [],
+        "path",
+      );
+    const belowInSameRegion: Component[] = []
+
     // Iterate through components to find the insertion point, as defined by `addAtPath`.
-    for (let i = 0; i < (contentItem.components || []).length; i++) {
-      const currentComponent = contentItem.components[i];
+    for (let i = 0; i < sortedComponentsDesc.length; i++) {
+      const currentComponent = sortedComponentsDesc[i];
       if (currentComponent.path === newComponent.path) {
-        contentItem.components.splice(i, 0, newComponent); // Insert the new component (that already has the specified path)
+        belowInSameRegion.push(currentComponent)
+        sortedComponentsDesc.splice(i, 0, newComponent); // Insert the new component (that already has the specified path)
         hasAdded = true;
         newComponentIndex = i;
         break;
       } else {
-        const isInTargetRegion = (currentComponent.path || "").match(inTargetRegionPattern);
+        const isInTargetRegion = (currentComponent.path as string).match(inTargetRegionPattern);
         if (isInTargetRegion) {
-          const [, pathIndex] = getRootAndIndex(currentComponent.path || "");
+          belowInSameRegion.push(currentComponent)
+
+          const [, pathIndex] = getRootAndIndex(currentComponent.path as string);
           if (pathIndex !== null && pathIndex > highestPathIndexSeen) {
             highestPathIndexSeen = pathIndex;
             newComponentIndex = i;
@@ -103,7 +124,7 @@ export const contentRegionMutators = {
         newComponent.path = `${regionPath}${highestPathIndexSeen + 1}`;
         pathTargetIndex = highestPathIndexSeen + 1;
 
-        contentItem.components.splice(newComponentIndex, 0, newComponent);
+        sortedComponentsDesc.splice(newComponentIndex, 0, newComponent);
         hasAdded = true;
       } else {
         throw new Error(`No matching region found for path: ${newComponent.path}`);
@@ -113,30 +134,20 @@ export const contentRegionMutators = {
 
     // If the component was added, we need to update the paths of all components in the same region that have a path index greater than the new component's index.
     if (hasAdded) {
-      // THIS APPROACH DEPENDS ON INSERTIONS HAPPENING IN REVERSE COMPONENT ORDER: bottom -> up
-      for (let i = (contentItem.components || []).length - 1; i >= 0; i--) {
-        const currentComponent = contentItem.components[i] as { path: string };
+      for (const component of belowInSameRegion) {
+        const [regionPath, pathIndex] = getRootAndIndex(component.path as string);
 
-        // Uses the two regex groups in the inSameRegionPattern to not only check if the component is in the same region, but also to get the region's path and the component's index within the region
-        const targetRegionMatch = currentComponent.path.match(inTargetRegionPattern);
-        if (targetRegionMatch) {
-          const regionPath = targetRegionMatch[1];
-          const currentPathIndex = parseInt(targetRegionMatch[2], 10);
-
-          if (currentPathIndex != null && pathTargetIndex !== null && currentPathIndex >= pathTargetIndex) {
-            if (i === newComponentIndex) {
-              pathTracker.trackInsertion(currentComponent.path, currentComponent.path);
-            } else {
-              const newPath = currentComponent.path.replace(
-                `${regionPath}${currentPathIndex}`,
-                `${regionPath}${currentPathIndex + 1}`,
-              );
-              pathTracker.trackInsertion(currentComponent.path, newPath);
-              currentComponent.path = newPath;
-            }
-          }
+        if (pathIndex !== null && pathTargetIndex != null && pathIndex >= pathTargetIndex) {
+          const previousPath = component.path as string
+          component.path = (component.path as string).replace(
+            `${regionPath}${pathIndex}`,
+            `${regionPath}${pathIndex + 1}`,
+          );
+          pathTracker.trackInsertion(previousPath, component.path);
         }
       }
+      pathTracker.trackInsertion(newComponent.path as string, newComponent.path as string);
     }
+    contentItem.components = sortByPathAttributeAsc(sortedComponentsDesc, "path");
   },
 };

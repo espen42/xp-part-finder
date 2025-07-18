@@ -1,13 +1,14 @@
-import { Results } from "/lib/part-finder/utils/results";
-import { find } from "/lib/part-finder/utils/utils";
+import {Results} from "/lib/part-finder/utils/results";
+import {find} from "/lib/part-finder/utils/utils";
 
-import { Component } from "@enonic-types/lib-content";
-import { contentRegionMutators } from "/lib/part-finder/utils/regionEditing";
-import { ContentItem, EditorFunc, IndexConfigEntry } from "/lib/part-finder/editors";
-import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/lib/part-finder/editors/replace/postprocessors";
-import { sortComponentPaths } from "/lib/part-finder/utils/sorting";
+import {Component} from "@enonic-types/lib-content";
+import {contentRegionMutators} from "/lib/part-finder/utils/regionEditing";
+import {ContentItem, EditorFunc, IndexConfigEntry} from "/lib/part-finder/editors";
+import {ContentitemMutatingPostprocessorFunc, POSTPROCESSORS} from "/lib/part-finder/editors/replace/postprocessors";
 import clone from "../../../../../../../node_modules/just-clone";
-import { SIGNATURE_MARKER_KEY } from "/admin/tools/part-finder/part-finder";
+import {SIGNATURE_MARKER_KEY} from "/admin/tools/part-finder/part-finder";
+import {sortComponentPathsDesc, SortedArrayDescending} from "/lib/part-finder/utils/sorting";
+import {getLastAttemptTracker, LastAttemptTracker} from "/lib/part-finder/utils/lastAttemptTracker";
 
 type ComponentPostProcessor = {
   label: string;
@@ -148,6 +149,58 @@ const replaceComponentDescriptor = (
   }
 };
 
+/**
+ * Processes the components in descending order, meaning from the bottom of the region and up.
+ * This is to avoid path collisions when adding new components.
+ *
+ * @param clonedContentItem - The content item being processed.
+ * @param pathsSortedDesc - Sorted array of component paths in descending order.
+ * @param newComponents - New components to be added, keyed by their paths.
+ * @param targetComponentType - The type of the target component.
+ * @param newAppKeyDashed - The new app key with dashes instead of dots.
+ * @param newComponentKey - The new component key.
+ * @param postProcessors - Post-processor functions to run on each component.
+ * @param lastAttempted - Tracker for the last attempted component path, in case of errors.
+ * @param results - Report success or errors and summarize in the end.
+ */
+const processComponentsDescending = (
+  clonedContentItem: ContentItem,
+  pathsSortedDesc: SortedArrayDescending<string>,
+  newComponents: { [path: string]: Component },
+  targetComponentType: string,
+  newAppKeyDashed: string,
+  newComponentKey: string,
+  postProcessors: ComponentPostProcessor[],
+  lastAttempted: LastAttemptTracker,
+  results: Results
+) => {
+
+  // Let the actual processing begin: one component after another
+  // (sorted in "reverse order": descending means from the bottom and up in the region, to avoid path collisions),
+  // by target path:
+  pathsSortedDesc.forEach((targetComponentPath) => {
+    lastAttempted.componentPath = targetComponentPath;
+
+    // Duplicate for safer undo: inject the new/changed component before the original
+    contentRegionMutators.addComponent(
+      clonedContentItem,
+      newComponents[targetComponentPath],
+      results.pathTrackers[clonedContentItem._path],
+    );
+
+    runPostprocessors(
+      clonedContentItem,
+      postProcessors,
+      targetComponentPath,
+      targetComponentType,
+      newAppKeyDashed,
+      newComponentKey,
+    );
+
+    results.reportSuccess(clonedContentItem, targetComponentPath, "ADD");
+  });
+};
+
 export function createReplaceEditor(
   oldAppKey: string,
   oldComponentKey: string,
@@ -209,14 +262,15 @@ export function createReplaceEditor(
 
     const newIndexConfigs: IndexConfigEntry[] = [];
 
+
     // For tracing and reporting errors
-    let lastAttemptedComponentPath: string | null = null;
+    const lastAttempted = getLastAttemptTracker()
 
     const contentId = contentItem?._id || "###MISSING###";
 
     try {
-      // Preparation: Deep-clone the current content item, inject the updated data into it
-      // (overwriting existing keys), and return the clone:
+      // Preparation: Deep-clone the current content item, allowing a return to the original data if anything failed
+      // (or rather, not write the changes to the contentItem until everything has completed successfully)
       const clonedContentItem = clone(contentItem);
 
       results.initPathChangeTracker(clonedContentItem);
@@ -227,18 +281,18 @@ export function createReplaceEditor(
         componentPathsPerId[contentId] !== null
           ? componentPathsPerId[contentId]
           : (components
-              .map(
-                (component) =>
-                  component.type === targetComponentType &&
-                  (component[targetComponentType] || {}).descriptor === oldDescriptor &&
-                  component?.path,
-              )
-              .filter((path) => !!path) as string[]);
+            .map(
+              (component) =>
+                component.type === targetComponentType &&
+                (component[targetComponentType] || {}).descriptor === oldDescriptor &&
+                component?.path,
+            )
+            .filter((path) => !!path) as string[]);
 
       const newComponents: { [path: string]: Component } = {};
       components.forEach((component: Component) => {
         for (const targetComponentPath of targetComponentPaths) {
-          lastAttemptedComponentPath = verifyAndGetCompPath(component);
+          lastAttempted.componentPath = verifyAndGetCompPath(component);
 
           if (componentMatchesTarget(component, targetComponentType, oldDescriptor, targetComponentPath)) {
             // By now, established a match: type, descriptor and path of the current component matches the target. Deep-clone
@@ -256,7 +310,7 @@ export function createReplaceEditor(
             newComponents[componentClone.path as string] = componentClone;
           }
 
-          lastAttemptedComponentPath = null;
+          lastAttempted.componentPath = null;
         }
       });
 
@@ -264,7 +318,7 @@ export function createReplaceEditor(
 
       const origIndexConfigs: IndexConfigEntry[] = clonedContentItem?._indexConfig?.configs || [];
       for (const currentIndexConfig of origIndexConfigs) {
-        lastAttemptedComponentPath = currentIndexConfig.path + " (config path)";
+        lastAttempted.componentPath = currentIndexConfig.path + " (config path)";
 
         addIndexConfig(
           currentIndexConfig,
@@ -276,7 +330,7 @@ export function createReplaceEditor(
         );
       }
 
-      lastAttemptedComponentPath = null;
+      lastAttempted.componentPath = null;
 
       if (newIndexConfigs.length) {
         clonedContentItem._indexConfig.configs = newIndexConfigs;
@@ -284,31 +338,10 @@ export function createReplaceEditor(
 
       const postProcessors = preparePostprocessors(requestedPostprocessors);
 
-      const pathsSortedDesc = Object.keys(newComponents);
-      pathsSortedDesc.sort(sortComponentPaths);
+      const pathsSortedDesc: SortedArrayDescending<string> = sortComponentPathsDesc(Object.keys(newComponents));
 
-      // Let the actual processing begin: one component after another (in reverse order), by target path:
-      pathsSortedDesc.forEach((targetComponentPath) => {
-        lastAttemptedComponentPath = targetComponentPath;
-
-        // Duplicate for safer undo: inject the new/changed component before the original
-        contentRegionMutators.addComponent(
-          clonedContentItem,
-          newComponents[targetComponentPath],
-          results.pathTrackers[clonedContentItem._path],
-        );
-
-        runPostprocessors(
-          clonedContentItem,
-          postProcessors,
-          targetComponentPath,
-          targetComponentType,
-          newAppKeyDashed,
-          newComponentKey,
-        );
-
-        results.reportSuccess(clonedContentItem, targetComponentPath, "ADD");
-      });
+      // Let the actual processing begin!
+      processComponentsDescending(clonedContentItem, pathsSortedDesc, newComponents, targetComponentType, newAppKeyDashed, newComponentKey, postProcessors, lastAttempted, results);
 
       results.finalizeContentItem(clonedContentItem);
 
@@ -319,7 +352,7 @@ export function createReplaceEditor(
       return clonedContentItem;
     } catch (e) {
       // Mark and log any error on this content item, and return the original one. This keeps the original and wipes any changes.
-      results.markError(contentItem, lastAttemptedComponentPath, "ADD", e);
+      results.markError(contentItem, lastAttempted.componentPath, "ADD", e);
       return contentItem;
     }
   };

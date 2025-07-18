@@ -166,7 +166,7 @@
                     Usages:
                   [/#if]
                 </div>
-                <ul class="multi-usage-selectors">
+                <ul class="multi-usage-selectors[#if displaySummaryAndUndo] radio-rows[/#if]">
                   [#list content.multiUsage as usage]
                     [#if displaySummaryAndUndo]
                       [#if usage.error??]

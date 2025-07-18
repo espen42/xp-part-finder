@@ -220,3 +220,6 @@ table.table {
   display: block;
   color: darkred;
 }
+.multi-usage-selectors.radio-rows {
+    padding-top: 46px;
+}
