@@ -10,6 +10,7 @@ import {SIGNATURE_MARKER_KEY} from "/admin/tools/part-finder/part-finder";
 import {sortComponentPathsAsc, sortComponentPathsDesc, SortedArrayDescending} from "/lib/part-finder/utils/sorting";
 import {getLastAttemptTracker, LastAttemptTracker} from "/lib/part-finder/utils/lastAttemptTracker";
 import {prepareEditorResources} from "/lib/part-finder/utils/editorUtils";
+import {PREFIX_NEWCOMPONENT} from "/lib/part-finder/utils/pathChangeTracker";
 
 type ComponentPostProcessor = {
   label: string;

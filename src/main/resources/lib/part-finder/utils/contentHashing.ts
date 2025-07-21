@@ -22,9 +22,17 @@ import { ContentItem } from "/lib/part-finder/editors";
 // by any JS environment (which is 53 bits, not fully 64).
 const SEED = 0x1dc87f6bae9123;
 
+// In a few places in the contentitem data, the order of items in sub-arrays are not a relevant difference that should affect the hash.
+// Here, sort the items here to ensure normalization
+const SORT_ARRAYS_BELOW_THESE_KEYS = [
+  "._indexConfig.configs"
+]
+
 // Ensures it's the actual data that matters, not the order of keys of objects (the order of array items, however, does matter).
 // Return a determinstically normalized version of the object, with sorted keys.
-const normalize: <T>(obj: T) => T = (obj) => {
+const normalize = (obj, currentKey: string)=> {
+  const sortArr = SORT_ARRAYS_BELOW_THESE_KEYS.indexOf(currentKey) > -1;
+
   if (obj == null || typeof obj !== "object") {
     return obj;
   }
@@ -32,23 +40,30 @@ const normalize: <T>(obj: T) => T = (obj) => {
   if (obj instanceof Map) {
     const entries = Array.from(obj.entries())
       .sort(([k1], [k2]) => (k1 < k2 ? -1 : k1 > k2 ? 1 : 0))
-      .map(([k, v]) => [k, normalize(v)]);
+      .map(([k, v]) => [k, normalize(v, currentKey + "." + k)]);
     return Object.fromEntries(entries);
   }
 
   if (Array.isArray(obj)) {
-    return obj.map((item) => normalize(item));
+    if (sortArr) {
+      obj.sort((a, b) => (JSON.stringify(a)).localeCompare(JSON.stringify(b)))
+    }
+    return obj.map((item, i) => normalize(item, currentKey+"."+i));
   }
 
   if (obj instanceof Set) {
-    return Array.from(obj).map((item) => normalize(item));
+    const arr = Array.from(obj);
+    if (sortArr) {
+      arr.sort((a, b) => (JSON.stringify(a)).localeCompare(JSON.stringify(b)))
+    }
+    return arr.map((item, i) => normalize(item, currentKey+"."+i));
   }
 
   // Check for Enonic XP proxy objects using their Java class signatures
   const objectType = Object.prototype.toString.call(obj);
   if (objectType.startsWith("[object com.enonic.xp.")) {
     try {
-      return normalize(JSON.parse(obj.toString()));
+      return normalize(JSON.parse(obj.toString()), currentKey);
     } catch (e) {
       log.debug(e);
       return obj.toString();
@@ -60,14 +75,15 @@ const normalize: <T>(obj: T) => T = (obj) => {
   sortedKeys.sort();
   const result = {};
   for (const key of sortedKeys) {
-    result[key] = normalize(obj[key]);
+    result[key] = normalize(obj[key], currentKey+"."+key);
   }
   return result;
 };
 
 const getHash = (map): string => {
-  const norMap = normalize(map);
+  const norMap = normalize(map, "");
   return xxh.h64(JSON.stringify(norMap), SEED).toString(16); // 16-char hex
+
 };
 
 export const hashContentItem = (contentItem: ContentItem): string => {

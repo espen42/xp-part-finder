@@ -24,14 +24,16 @@ type ParamsForCleanupProcessing = {
   displayUnusedParam: string;
 };
 
+const deleteOldOrNewPrefix = /^delete-(old|new)--/;
 export const getParamsForCleanup = (req): ParamsForCleanupProcessing => {
 
   const componentType = getParamString(req, "type");
   const sourceKey = trimString(req.params.key);
   const newKey = trimString(req.params.new_part_ref);
   const targetIds: string[] = Object.keys(req.params)
-    .filter((k) => k.startsWith("select-item--"))
-    .map((k) => req.params[k] || "");
+    .filter((k) => k.startsWith("radio--"))
+    .map((k) => req.params[k] || "")
+    .map(value => value.replace(deleteOldOrNewPrefix, ""))
 
   const requiredArgs: { [key: string]: string } = {
     key: sourceKey,
@@ -46,7 +48,6 @@ export const getParamsForCleanup = (req): ParamsForCleanupProcessing => {
     throw Error("Missing POST parameters: " + JSON.stringify(missingArgs));
   }
 
-  //const [oldAppKey, oldComponentKey] = sourceKey.split(":");
   const [newAppKey, newComponentKey] = newKey.split(":");
 
   const repoParam = getRepoParam(req);
