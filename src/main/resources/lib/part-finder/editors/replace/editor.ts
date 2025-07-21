@@ -272,7 +272,12 @@ const postprocess = (
 
 ) => {
   const postProcessors = preparePostprocessors(requestedPostprocessors);
-  targetComponentPaths.forEach((targetComponentPath) => {
+
+  const pathTracker = results.pathTrackers[clonedContentItem._path]
+
+  targetComponentPaths.forEach((oldTargetPath) => {
+    const targetComponentPath = pathTracker.paths[`${PREFIX_NEWCOMPONENT}${oldTargetPath}`|| oldTargetPath];
+
     lastAttempted.componentPath = targetComponentPath;
 
     runPostprocessors(

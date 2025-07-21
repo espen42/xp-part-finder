@@ -1,6 +1,8 @@
 import {ContentItem} from "/lib/part-finder/editors";
 import {Component} from "@enonic-types/lib-content";
 
+export const PREFIX_NEWCOMPONENT = "::new::";
+
 export const init = (contentItem: ContentItem): Record<string, string> => {
   const pathChanges: Record<string, string> = {};
   (contentItem.components || []).forEach((component, i) => {
@@ -66,7 +68,7 @@ export class PathChangeTracker {
         }
       }
     );
-    this.paths[`new::${newPath}`] = newPath;
+    this.paths[`${PREFIX_NEWCOMPONENT}${newPath}`] = newPath;
   };
 
 

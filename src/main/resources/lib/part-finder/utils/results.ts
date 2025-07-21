@@ -1,6 +1,6 @@
 import type { ContentUsage, MultiUsageInstance, Operation } from "/admin/tools/part-finder/part-finder.freemarker";
 import { getToolUrl } from "/lib/xp/admin";
-import { PathChangeTracker } from "/lib/part-finder/utils/pathChangeTracker";
+import {PathChangeTracker, PREFIX_NEWCOMPONENT} from "/lib/part-finder/utils/pathChangeTracker";
 import { ContentItem } from "/lib/part-finder/editors";
 import { SortedArrayAscending, sortResultsByPathAsc } from "/lib/part-finder/utils/sorting";
 import { hashContentItem } from "/lib/part-finder/utils/contentHashing";
@@ -104,10 +104,20 @@ const getUsage = (componentPath: string, error?: string): MultiUsageInstance => 
   return usage;
 };
 
+const newPathPattern = new RegExp(`^${PREFIX_NEWCOMPONENT}`);
 const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracker): void => {
   if (!usage.error) {
-    usage.oldPath = pathTracker.paths[usage.path]; // Tracked path of the original component, kept unchanged
-    usage.newPath = pathTracker.paths[`new::${usage.path}`]; // Tracked path of the changed component
+    const pathsAtAdditionTime = Object.keys(pathTracker.paths)
+      .filter((pathAtAdditionTime) => pathTracker.paths[pathAtAdditionTime]===usage.path)
+
+                              log.info(`     pathAtAdditionTime: ${JSON.stringify(pathsAtAdditionTime, null, 2)}`);
+    if (pathsAtAdditionTime.length > 1 || !(pathsAtAdditionTime[0] || "").match(newPathPattern)) {
+      throw Error(`Unexpected state - trying to retrace an added component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths)}`);
+    }
+    const pathAtAdditionTime = pathsAtAdditionTime[0].replace(newPathPattern, "");
+    usage.oldPath = pathTracker.paths[pathAtAdditionTime]; // Tracked path of the original component
+    usage.newPath = usage.path // Changed component
+    usage.path = pathAtAdditionTime // The path of the original at the time of the addition - now displayed in the GUI
   }
 };
 
@@ -170,8 +180,7 @@ export class Results {
 
   reportSuccess(contentItem, componentPath, operation: Operation) {
     this.results.push(new EditorResult(this.repoName, contentItem?._id, contentItem, operation, componentPath));
-
-    log.info(
+                                                                                                                        log.info(
       `OK: ${operation} operation succeeded ${this.targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
         componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
       }), from '${this.sourceKey}' to '${this.newKey}'`,
