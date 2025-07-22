@@ -110,9 +110,8 @@ const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracke
     const pathsAtAdditionTime = Object.keys(pathTracker.paths)
       .filter((pathAtAdditionTime) => pathTracker.paths[pathAtAdditionTime]===usage.path)
 
-                              log.info(`     pathAtAdditionTime: ${JSON.stringify(pathsAtAdditionTime, null, 2)}`);
     if (pathsAtAdditionTime.length > 1 || !(pathsAtAdditionTime[0] || "").match(newPathPattern)) {
-      throw Error(`Unexpected state - trying to retrace an added component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths)}`);
+      throw Error(`Unexpected state - trying to retrace an added component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths, null, 2)}`);
     }
     const pathAtAdditionTime = pathsAtAdditionTime[0].replace(newPathPattern, "");
     usage.oldPath = pathTracker.paths[pathAtAdditionTime]; // Tracked path of the original component

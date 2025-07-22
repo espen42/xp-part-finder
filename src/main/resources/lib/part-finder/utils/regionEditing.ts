@@ -3,8 +3,8 @@ import {ContentItem} from "/lib/part-finder/editors";
 import {PathChangeTracker} from "/lib/part-finder/utils/pathChangeTracker";
 import {
   SortedArrayDescending,
-  sortByPathAttributeDesc,
-  sortByPathAttributeAsc,
+  sortComponentsByPathDesc,
+  sortComponentsByPathAsc,
   SortedArrayAscending
 } from "/lib/part-finder/utils/sorting";
 
@@ -93,6 +93,29 @@ const prepareForIteration = (
     }
 }
 
+// When a component has been added, we need to update the paths of all components below it in the same region - in DESCENDING order to avoid path collisions. This enforces that.
+const updateAndTrackComponentsBelowAdded = (
+  targetComponentPath: string,
+  belowInSameRegion: SortedArrayDescending<Component>,
+  targetPathIndex: number,
+  pathTracker: PathChangeTracker
+) => {
+  // Change the others below the updated one first, to make room then insert the new component.
+  for (const component of belowInSameRegion) {
+    const [regionPath, pathIndex] = getRootAndIndex(component.path as string);
+
+    if (pathIndex !== null && targetPathIndex != null && pathIndex >= targetPathIndex) {
+      const previousPath = component.path as string
+      component.path = (component.path as string).replace(
+        `${regionPath}${pathIndex}`,
+        `${regionPath}${pathIndex + 1}`,
+      );
+      pathTracker.trackPathChange(previousPath, component.path);
+    }
+  }
+  pathTracker.trackInsertion(targetComponentPath);
+}
+
 // Enforces that components are handled in descending order, the algorithm depends on that.
 const insertComponent = (
   sortedComponentsDesc: SortedArrayDescending<Component>,
@@ -147,23 +170,41 @@ const insertComponent = (
 
     // If the component was added, we need to update the paths of all components in the same region that have a path index greater than the new component's index.
     if (hasDone) {
-      for (const component of belowInSameRegion) {
-        const [regionPath, pathIndex] = getRootAndIndex(component.path as string);
-
-        if (pathIndex !== null && targetPathIndex != null && pathIndex >= targetPathIndex) {
-          const previousPath = component.path as string
-          component.path = (component.path as string).replace(
-            `${regionPath}${pathIndex}`,
-            `${regionPath}${pathIndex + 1}`,
-          );
-          pathTracker.trackPathChange(previousPath, component.path);
-        }
-      }
-      pathTracker.trackInsertion(newComponent.path as string);
+      const belowInSameRegionDesc = sortComponentsByPathDesc(belowInSameRegion);
+      updateAndTrackComponentsBelowAdded(newComponent.path as string, belowInSameRegionDesc, targetPathIndex, pathTracker);
     }
 }
 
 
+// When we know the components below the deleted component in the same region, their paths must be updated in ASCENDING order to avoid path collisions. This enforces that.
+const updateAndTrackComponentsBelowDeleted = (
+  targetComponentPath: string,
+  belowInSameRegion: SortedArrayAscending<Component>,
+  targetPathIndex: number,
+  pathTracker: PathChangeTracker,
+) => {
+
+  // Delete first to make room, then change the others below
+  pathTracker.trackDelete(targetComponentPath)
+  for (const component of belowInSameRegion) {
+    const [regionPath, pathIndex] = getRootAndIndex(component.path as string);
+
+    if (pathIndex != null && targetPathIndex != null && pathIndex >= targetPathIndex) {
+      const previousPath = component.path as string
+      const newPathIndex = pathIndex - 1;
+      if (newPathIndex < 0) {
+        throw Error(
+          `Unexpected state (newPathIndex = ${newPathIndex}}) - trying to update a component path as if an earlier component was deleted before index 0, which should be impossible.`,
+        );
+      }
+      component.path = (component.path as string).replace(
+        `${regionPath}${pathIndex}`,
+        `${regionPath}${newPathIndex}`,
+      );
+      pathTracker.trackPathChange(previousPath, component.path);
+    }
+  }
+}
 
 // Enforces that components are handled in descending order, the algorithm depends on that.
 const deleteComponent = (
@@ -194,24 +235,9 @@ const deleteComponent = (
 
     // If the component was deleted, we need to decrement the paths of all components in the same region that have a path index greater than the new component's index.
     if (hasDone) {
-      for (const component of belowInSameRegion) {
-        const [regionPath, pathIndex] = getRootAndIndex(component.path as string);
 
-        if (pathIndex !== null && targetPathIndex != null && pathIndex >= targetPathIndex) {
-          const previousPath = component.path as string
-          const newPathIndex = pathIndex - 1;
-          if (newPathIndex < 0) {
-            throw Error(
-              `Unexpected state (newPathIndex = ${newPathIndex}}) - trying to update a component path as if an earlier component was deleted before index 0, which should be impossible.`,
-            );
-          }
-          component.path = (component.path as string).replace(
-            `${regionPath}${pathIndex}`,
-            `${regionPath}${newPathIndex}`,
-          );
-          pathTracker.trackPathChange(previousPath, component.path);
-        }
-      }
+      const belowInSameRegionAsc = sortComponentsByPathAsc(belowInSameRegion);
+      updateAndTrackComponentsBelowDeleted(targetComponentPath, belowInSameRegionAsc, targetPathIndex, pathTracker);
 
     } else {
       // If the component hasn't been added by now, there was no match found. There should have been.
@@ -219,25 +245,10 @@ const deleteComponent = (
     }
 }
 
-const verifyAndGetSortedComponents = (
-  contentItem: ContentItem,
-  newComponent?: Component
-  ): SortedArrayDescending<Component> => {
-
-
+const getVerifiedSortedComponents = (contentItem: ContentItem): SortedArrayDescending<Component> => {
     // After this, we know every old and new component has a path, hence the "as string"'s below
     verifyContentItem(contentItem);
-    if (newComponent) {
-      verifyNewComponent(newComponent);
-    }
-
-    // In order to avoid path collisions on insertion/deletion and path tracking, components MUST be sorted by their path attribute in descending order.
-    const sortedComponentsDesc: SortedArrayDescending<Component> = sortByPathAttributeDesc(
-      contentItem.components || [],
-      "path",
-    );
-
-    return sortedComponentsDesc
+    return sortComponentsByPathDesc(contentItem.components);
 }
 
 
@@ -259,11 +270,14 @@ export const contentRegionMutators = {
       path: overrideAddAtPath || componentToAdd.path,
     } as Component;
 
-    const sortedComponentsDesc = verifyAndGetSortedComponents(contentItem, newComponent);
+    verifyNewComponent(newComponent);
+
+    // In order to avoid path collisions on insertion/deletion and path tracking, this ensures component are sorted by their path attribute in descending order
+    const sortedComponentsDesc = getVerifiedSortedComponents(contentItem);
 
     insertComponent(sortedComponentsDesc, newComponent, pathTracker);
 
-    contentItem.components = sortByPathAttributeAsc(sortedComponentsDesc, "path");
+    contentItem.components = sortComponentsByPathAsc(sortedComponentsDesc);
   },
 
   removeComponent: (
@@ -272,10 +286,11 @@ export const contentRegionMutators = {
     pathTracker: PathChangeTracker,
   ) => {
 
-    const sortedComponentsDesc = verifyAndGetSortedComponents(contentItem);
+    // In order to avoid path collisions on insertion/deletion and path tracking, this ensures components are sorted by their path attribute in descending order
+    const sortedComponentsDesc = getVerifiedSortedComponents(contentItem);
 
     deleteComponent(sortedComponentsDesc, targetPath, pathTracker);
 
-    contentItem.components = sortByPathAttributeAsc(sortedComponentsDesc, "path");
+    contentItem.components = sortComponentsByPathAsc(sortedComponentsDesc);
   }
 };

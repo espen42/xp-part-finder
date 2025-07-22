@@ -1,5 +1,4 @@
 import {ContentItem} from "/lib/part-finder/editors";
-import {Component} from "@enonic-types/lib-content";
 
 export const PREFIX_NEWCOMPONENT = "::new::";
 
@@ -40,7 +39,7 @@ export class PathChangeTracker {
     );
     if (trackedToCurrentPath.length > 1) {
       throw Error(
-        `Unexpected state - it seems more than one component has been tracked to path ${JSON.stringify(previousPath)}. Those components has these original paths: ${JSON.stringify(trackedToCurrentPath)}`,
+        `Unexpected state - it seems more than one component has been tracked to path ${JSON.stringify(previousPath)}: ${JSON.stringify(this.paths, null, 2)}`,
       );
     }
     if (trackedToCurrentPath.length) {
@@ -72,67 +71,25 @@ export class PathChangeTracker {
   };
 
 
-  /**
-   * Tracks a deletion, where one component is being removed from a region, pulling all components in the same region up
-   * - and therefore decrementing the path index of the components below (but not other components).
-   * Invariants: THIS APPROACH DEPENDS ON:
-   * - COMPONENT ARRAY MUST BE SORTED BY PATH, ASCENDING: top -> down in the region.
-   * - DELETION MUST HAPPEN IN FORWARD COMPONENT ORDER: top -> down in the region
-   */
+
   trackDelete = (
-    sortedComponents: Component[],
-    inTargetRegionPattern: RegExp,
-    pathTargetIndex: number | null,
-    newComponentIndex: number,
+    targetPath: string,
   ) => {
-    for (let i = 0; i < sortedComponents.length; i++) {
-      const currentComponent = sortedComponents[i] as { path: string };
-
-      // Uses the two regex groups in the inSameRegionPattern to not only check if the component is in the same region,
-      // but also to get the region's path and the component's index within the region
-      const targetRegionMatch = currentComponent.path.match(inTargetRegionPattern);
-      if (targetRegionMatch) {
-        const regionPath = targetRegionMatch[1]; // eg. "/main/2/leftRegion/"
-        const currentPathIndex = parseInt(targetRegionMatch[2], 10); // eg. 3
-
-        if (currentPathIndex != null && pathTargetIndex !== null && currentPathIndex >= pathTargetIndex) {
-          if (i === newComponentIndex) {
-            this.trackSingleDelete(currentComponent.path);
-          } else {
-            if (currentPathIndex < 1) {
-              throw Error(
-                `Unexpected state (currentPathIndex = ${currentPathIndex}}) - trying to update a component path as if an earlier component was deleted before index 0, which should be impossible.`,
-              );
-            }
-            const newPath = currentComponent.path.replace(
-              `${regionPath}${currentPathIndex}`,
-              `${regionPath}${currentPathIndex - 1}`,
-            );
-            this.trackSingleDelete(currentComponent.path, newPath);
-            currentComponent.path = newPath;
-          }
-        }
+    let wasDeleted = false;
+    Object.keys(this.paths).forEach((originalPath) => {
+      if (this.paths[originalPath] === targetPath) {
+        this.paths[originalPath] = "--deleted--";
+        wasDeleted = true;
       }
-    }
-  };
-
-  trackSingleDelete = (currentPath: string, newPath?: string) => {
-    const trackedToCurrentPath = Object.keys(this.paths).filter(
-      (originalPath) => this.paths[originalPath] === currentPath,
-    );
-    if (trackedToCurrentPath.length > 1) {
-      throw Error(
-        `Unexpected state - it seems more than one component has been tracked to path ${JSON.stringify(currentPath)}. Those components has these original paths: ${JSON.stringify(trackedToCurrentPath)}`,
-      );
-    }
-    if (trackedToCurrentPath.length) {
-      this.paths[trackedToCurrentPath[0]] = newPath || "--deleted--";
+    });
+    if (!wasDeleted) {
+      throw Error(`Unexpected state - trying to track a deletion of a component tracked to path ${JSON.stringify(targetPath)}, but no component is tracked to that path. Current paths: ${JSON.stringify(this.paths)}`);
     }
   };
 
   toString = () =>
     Object.keys(this.paths)
       .filter((path) => this.paths[path] !== path)
-      .map((path) => `${path} --> ${this.paths[path]}`)
+      //.map((path) => `${path} --> ${this.paths[path]}`)
       .join("\n\t\t");
 }

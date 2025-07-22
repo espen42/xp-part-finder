@@ -21,7 +21,7 @@ const verifyUnchangedContent = (contentItem: ContentItem, controlHashes: Record<
  * This is to avoid path collisions when adding new components.
  *
  * @param clonedContentItem - The content item being processed.
- * @param targetComponentPaths - Component paths to delete, sorted in descending order.
+ * @param targetComponentPaths - Component paths to delete, sorted in descending order - avoids path collisions (since components that follow below the deleted component in the same region must have their paths updated)
  * @param lastAttempted - Tracker for the last attempted component path, in case of errors.
  * @param results - Report success or errors and summarize in the end.
  */
@@ -101,9 +101,6 @@ export function createCleanupEditor(
 
       // Changes have been made, so mark the content item for a "modifier" signature.
       clonedContentItem[SIGNATURE_MARKER_KEY] = true;
-
-
-
 
       // Return the CLONED and changed content item. This writes the changes.
       return clonedContentItem;
