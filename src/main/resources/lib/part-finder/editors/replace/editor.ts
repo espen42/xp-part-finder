@@ -1,16 +1,16 @@
-import {Results} from "/lib/part-finder/utils/results";
-import {find} from "/lib/part-finder/utils/utils";
+import { Results } from "/lib/part-finder/utils/results";
+import { find } from "/lib/part-finder/utils/utils";
 
-import {Component} from "@enonic-types/lib-content";
-import {contentRegionMutators} from "/lib/part-finder/utils/regionEditing";
-import {ContentItem, EditorFunc, IndexConfigEntry} from "/lib/part-finder/editors";
-import {ContentitemMutatingPostprocessorFunc, POSTPROCESSORS} from "/lib/part-finder/editors/replace/postprocessors";
+import { Component } from "@enonic-types/lib-content";
+import { contentRegionMutators } from "/lib/part-finder/utils/regionEditing";
+import { ContentItem, EditorFunc, IndexConfigEntry } from "/lib/part-finder/editors";
+import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/lib/part-finder/editors/replace/postprocessors";
 import clone from "../../../../../../../node_modules/just-clone";
-import {SIGNATURE_MARKER_KEY} from "/admin/tools/part-finder/part-finder";
-import {sortComponentPathsAsc, sortComponentPathsDesc, SortedArrayDescending} from "/lib/part-finder/utils/sorting";
-import {getLastAttemptTracker, LastAttemptTracker} from "/lib/part-finder/utils/lastAttemptTracker";
-import {prepareEditorResources} from "/lib/part-finder/utils/editorUtils";
-import {PREFIX_NEWCOMPONENT} from "/lib/part-finder/utils/pathChangeTracker";
+import { SIGNATURE_MARKER_KEY } from "/admin/tools/part-finder/part-finder";
+import { sortComponentPathsAsc, sortComponentPathsDesc, SortedArrayDescending } from "/lib/part-finder/utils/sorting";
+import { getLastAttemptTracker, LastAttemptTracker } from "/lib/part-finder/utils/lastAttemptTracker";
+import { prepareEditorResources } from "/lib/part-finder/utils/editorUtils";
+import { PREFIX_NEWCOMPONENT } from "/lib/part-finder/utils/pathChangeTracker";
 
 type ComponentPostProcessor = {
   label: string;
@@ -170,7 +170,7 @@ const addComponentsToContentItem = (
   targetComponentPaths: SortedArrayDescending<string>,
   newComponents: { [path: string]: Component },
   lastAttempted: LastAttemptTracker,
-  results: Results
+  results: Results,
 ) => {
 
   // Let the actual processing begin: one component after another
@@ -200,66 +200,78 @@ const createReplacementComponents = (
   configSearchPattern: RegExp,
   configReplacePattern: RegExp,
   configReplaceTarget: string,
-  lastAttempted: LastAttemptTracker
-): {[path:string]: Component} => {
-      const components = clonedContentItem.components || [];
-      const newComponents: { [path: string]: Component } = {};
-      components.forEach((component: Component) => {
-        for (const targetComponentPath of targetComponentPaths) {
-          lastAttempted.componentPath = verifyAndGetCompPath(component);
+  lastAttempted: LastAttemptTracker,
+): { [path: string]: Component } => {
+  //  // if none are specifically targeted: all available component paths where type and descriptor match
+  //  if (targetComponentPaths == null) {
+  //    targetComponentPaths = components.map(
+  //              (component) =>
+  //                component.type === targetComponentType &&
+  //                (component[targetComponentType] || {}).descriptor === oldDescriptor &&
+  //                component?.path,
+  //            )
+  //            .filter((path) => !!path) as string[]
+  //  }
+  //
+  const components = clonedContentItem.components || [];
+  const newComponents: { [path: string]: Component } = {};
+  components.forEach((component: Component) => {
+    for (const targetComponentPath of targetComponentPaths) {
+      lastAttempted.componentPath = verifyAndGetCompPath(component);
 
-          if (componentMatchesTarget(component, targetComponentType, oldDescriptor, targetComponentPath)) {
-            // By now, established a match: type, descriptor and path of the current component matches the target. Deep-clone
-            // the component data to avoid mutation, and add the clone to the collection of data to store later, with path as key
-            const componentClone = clone(component);
+      if (componentMatchesTarget(component, targetComponentType, oldDescriptor, targetComponentPath)) {
+        // By now, established a match: type, descriptor and path of the current component matches the target. Deep-clone
+        // the component data to avoid mutation, and add the clone to the collection of data to store later, with path as key
+        const componentClone = clone(component);
 
-            replaceComponentDescriptor(
-              componentClone,
-              targetComponentType,
-              oldAppKeyDashed,
-              oldComponentKey,
-              newAppKey,
-              newAppKeyDashed,
-              newComponentKey,
-            );
-            newComponents[componentClone.path as string] = componentClone;
-          }
-
-          lastAttempted.componentPath = null;
-        }
-      });
-
-      verifyAllChangesWereMade(newComponents, targetComponentPaths);
-
-      const origIndexConfigs: IndexConfigEntry[] = clonedContentItem?._indexConfig?.configs || [];
-
-
-      const newIndexConfigs: IndexConfigEntry[] = [];
-
-      for (const currentIndexConfig of origIndexConfigs) {
-        lastAttempted.componentPath = currentIndexConfig.path + " (config path)";
-
-        addIndexConfig(
-          currentIndexConfig,
-          newIndexConfigs,
-          origIndexConfigs,
-          configSearchPattern,
-          configReplacePattern,
-          configReplaceTarget,
+        replaceComponentDescriptor(
+          componentClone,
+          targetComponentType,
+          oldAppKeyDashed,
+          oldComponentKey,
+          newAppKey,
+          newAppKeyDashed,
+          newComponentKey,
         );
+        newComponents[componentClone.path as string] = componentClone;
       }
 
       lastAttempted.componentPath = null;
+    }
+  });
 
-      if (newIndexConfigs.length) {
-        if (!clonedContentItem._indexConfig) {
-          throw Error(`Content item ${clonedContentItem._path} has no _indexConfig, but index configs were found: ${JSON.stringify(newIndexConfigs)}`);
-        }
-        clonedContentItem._indexConfig.configs = newIndexConfigs;
-      }
+  verifyAllChangesWereMade(newComponents, targetComponentPaths);
 
-  return newComponents
-}
+  const origIndexConfigs: IndexConfigEntry[] = clonedContentItem?._indexConfig?.configs || [];
+
+  const newIndexConfigs: IndexConfigEntry[] = [];
+
+  for (const currentIndexConfig of origIndexConfigs) {
+    lastAttempted.componentPath = currentIndexConfig.path + " (config path)";
+
+    addIndexConfig(
+      currentIndexConfig,
+      newIndexConfigs,
+      origIndexConfigs,
+      configSearchPattern,
+      configReplacePattern,
+      configReplaceTarget,
+    );
+  }
+
+  lastAttempted.componentPath = null;
+
+  if (newIndexConfigs.length) {
+    if (!clonedContentItem._indexConfig) {
+      throw Error(
+        `Content item ${clonedContentItem._path} has no _indexConfig, but index configs were found: ${JSON.stringify(newIndexConfigs)}`,
+      );
+    }
+    clonedContentItem._indexConfig.configs = newIndexConfigs;
+  }
+
+  return newComponents;
+};
 
 const postprocess = (
   clonedContentItem: ContentItem,
@@ -269,30 +281,29 @@ const postprocess = (
   newAppKeyDashed: string,
   newComponentKey: string,
   lastAttempted: LastAttemptTracker,
-  results: Results
-
+  results: Results,
 ) => {
   const postProcessors = preparePostprocessors(requestedPostprocessors);
 
-  const pathTracker = results.pathTrackers[clonedContentItem._path]
+  const pathTracker = results.pathTrackers[clonedContentItem._path];
 
   targetComponentPaths.forEach((oldTargetPath) => {
-    const targetComponentPath = pathTracker.paths[`${PREFIX_NEWCOMPONENT}${oldTargetPath}`|| oldTargetPath];
+    const trackedComponentPath = pathTracker.paths[`${PREFIX_NEWCOMPONENT}${oldTargetPath}` || oldTargetPath];
 
-    lastAttempted.componentPath = targetComponentPath;
+    lastAttempted.componentPath = trackedComponentPath;
 
     runPostprocessors(
       clonedContentItem,
       postProcessors,
-      targetComponentPath,
+      trackedComponentPath,
       targetComponentType,
       newAppKeyDashed,
       newComponentKey,
     );
 
-    results.reportSuccess(clonedContentItem, targetComponentPath, "ADD");
-  })
-}
+    results.reportSuccess(clonedContentItem, trackedComponentPath, oldTargetPath);
+  });
+};
 
 export function createReplaceEditor(
   oldAppKey: string,
@@ -354,11 +365,8 @@ export function createReplaceEditor(
           } */
 
 
-
-
-
-  // For tracing and reporting errors
-    const lastAttempted = getLastAttemptTracker()
+    // For tracing and reporting errors
+    const lastAttempted = getLastAttemptTracker();
 
     try {
       const { targetComponentPaths, clonedContentItem } = prepareEditorResources(
@@ -381,7 +389,7 @@ export function createReplaceEditor(
         configSearchPattern,
         configReplacePattern,
         configReplaceTarget,
-        lastAttempted
+        lastAttempted,
       );
 
       const pathsSortedDesc: SortedArrayDescending<string> = sortComponentPathsDesc(Object.keys(newComponents));
@@ -396,10 +404,10 @@ export function createReplaceEditor(
         newAppKeyDashed,
         newComponentKey,
         lastAttempted,
-        results
+        results,
       );
 
-      results.finalizeContentItem(clonedContentItem);
+      results.hashContentItem(clonedContentItem);
 
       // Changes have been made, so mark the content item for a "modifier" signature.
       clonedContentItem[SIGNATURE_MARKER_KEY] = true;
@@ -409,7 +417,7 @@ export function createReplaceEditor(
 
     } catch (e) {
       // Mark and log any error on this content item, and return the original one. This keeps the original and wipes any changes.
-      results.markError(contentItem, lastAttempted.componentPath, "ADD", e);
+      results.markError(contentItem, lastAttempted.componentPath, e);
       return contentItem;
     }
   };

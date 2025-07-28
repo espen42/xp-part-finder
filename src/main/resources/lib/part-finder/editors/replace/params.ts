@@ -9,9 +9,12 @@ import {
 import { parseComponentPathsPerId } from "/lib/part-finder/utils/componentPathsPerId";
 import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
 
+import { Operation, registerOperationAndGetIds } from "/lib/part-finder/utils/plannedOperations";
+
 type ParamsForReplacementProcessing = {
   requestedPostprocessors: string[];
   componentPathsPerId: Record<string, string[] | null>;
+  plannedOperations: Record<string, Operation>;
   oldAppKey: string;
   oldComponentKey: string;
   newAppKey: string;
@@ -25,14 +28,19 @@ type ParamsForReplacementProcessing = {
   repoIds: string[];
 };
 
+const PREFIX_SELECTORS = /^select-item--/;
+
 export const getParamsForReplacing = (req): ParamsForReplacementProcessing => {
 
   const componentType = getParamString(req, "type");
   const sourceKey = trimString(req.params.key);
   const newKey = trimString(req.params.new_part_ref);
-  const targetIds: string[] = Object.keys(req.params)
-    .filter((k) => k.startsWith("select-item--"))
+  const selectorIds: string[] = Object.keys(req.params)
+    .filter((k) => k.match(PREFIX_SELECTORS))
     .map((k) => req.params[k] || "");
+
+  const plannedOperations = {};
+  const targetIds = registerOperationAndGetIds(selectorIds, Operation.Add, plannedOperations);
 
   const requiredArgs: { [key: string]: string } = {
     key: sourceKey,
@@ -59,6 +67,7 @@ export const getParamsForReplacing = (req): ParamsForReplacementProcessing => {
       .filter((processorName) => processorName.trim())
       .filter((processorName) => processorName !== "undefined"),
     componentPathsPerId: parseComponentPathsPerId(targetIds),
+    plannedOperations,
     oldAppKey,
     oldComponentKey,
     newAppKey,

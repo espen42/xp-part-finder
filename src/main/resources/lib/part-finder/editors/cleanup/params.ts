@@ -7,12 +7,14 @@ import {
   getSortParam,
   trimString,
 } from "/lib/part-finder/utils/params";
-import {parseComponentPathsPerId} from "/lib/part-finder/utils/componentPathsPerId";
-import {getCMSRepoIds} from "/lib/part-finder/utils/repoIds";
+import { parseComponentPathsPerId } from "/lib/part-finder/utils/componentPathsPerId";
+import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
+import { Operation, registerOperationAndGetIds } from "/lib/part-finder/utils/plannedOperations";
 
 type ParamsForCleanupProcessing = {
-  controlHashes: Record<string, string>,
-  componentPathsPerId: Record<string, string[] | null>,
+  controlHashes: Record<string, string>;
+  componentPathsPerId: Record<string, string[] | null>;
+  plannedOperations: Record<string, Operation>;
   sourceKey: string;
   newKey: string;
   componentType: string;
@@ -24,29 +26,28 @@ type ParamsForCleanupProcessing = {
   displayUnusedParam: string;
 };
 
-const deleteOldOrNewPrefix = /^delete-(old|new)--/;
+const PREFIX_RADIOBUTTONGROUP = /^radio--/;
+const PREFIX_DELETE_OLD = /^delete-old--/;
+const PREFIX_DELETE_NEW = /^delete-new--/;
+
 export const getParamsForCleanup = (req): ParamsForCleanupProcessing => {
 
   const componentType = getParamString(req, "type");
   const sourceKey = trimString(req.params.key);
   const newKey = trimString(req.params.new_part_ref);
-  const targetIds: string[] = Object.keys(req.params)
-    .filter((k) => k.startsWith("radio--"))
-    .map((k) => req.params[k] || "")
-    .map(value => value.replace(deleteOldOrNewPrefix, ""))
 
-  const requiredArgs: { [key: string]: string } = {
-    key: sourceKey,
-    new_part_ref: newKey,
-    type: componentType,
-  };
-  const missingArgs = Object.keys(requiredArgs)
-    .filter((key) => !requiredArgs[key])
-    .map((key) => key);
+  const radiobuttonIds: string[] = Object.keys(req.params)
+    .filter((k) => k.match(PREFIX_RADIOBUTTONGROUP))
+    .map((k) => req.params[k] || "");
 
-  if (missingArgs.length > 0) {
-    throw Error("Missing POST parameters: " + JSON.stringify(missingArgs));
-  }
+  const plannedOperations = {};
+  const deleteOldIds = registerOperationAndGetIds(
+    radiobuttonIds,
+    Operation.Accept,
+    plannedOperations,
+    PREFIX_DELETE_OLD,
+  );
+  const deleteNewIds = registerOperationAndGetIds(radiobuttonIds, Operation.Undo, plannedOperations, PREFIX_DELETE_NEW);
 
   const [newAppKey, newComponentKey] = newKey.split(":");
 
@@ -55,7 +56,8 @@ export const getParamsForCleanup = (req): ParamsForCleanupProcessing => {
 
   return {
     controlHashes: getControlHashesParam(req),
-    componentPathsPerId: parseComponentPathsPerId(targetIds),
+    componentPathsPerId: parseComponentPathsPerId([...deleteOldIds, ...deleteNewIds]),
+    plannedOperations,
     sourceKey,
     newKey,
     componentType,
@@ -65,16 +67,5 @@ export const getParamsForCleanup = (req): ParamsForCleanupProcessing => {
     sortParam: sort ? `&sort=${req.params.sort}` : "",
     displayArchiveParam: getDisplayArchiveParam(req) ? "&archive=true" : "",
     displayUnusedParam: getDisplayUnusedParam(req) ? "&unused=true" : "",
-    //oldAppKey,
-
-
-    //oldComponentKey,
-
-
-    //,
-
-
-
-
   };
 };

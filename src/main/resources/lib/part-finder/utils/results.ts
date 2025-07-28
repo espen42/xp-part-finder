@@ -1,9 +1,10 @@
-import type { ContentUsage, MultiUsageInstance, Operation } from "/admin/tools/part-finder/part-finder.freemarker";
+import type { ContentUsage, MultiUsageInstance } from "/admin/tools/part-finder/part-finder.freemarker";
 import { getToolUrl } from "/lib/xp/admin";
-import {PathChangeTracker, PREFIX_NEWCOMPONENT} from "/lib/part-finder/utils/pathChangeTracker";
+import { PathChangeTracker, PREFIX_NEWCOMPONENT } from "/lib/part-finder/utils/pathChangeTracker";
 import { ContentItem } from "/lib/part-finder/editors";
 import { SortedArrayAscending, sortResultsByPathAsc } from "/lib/part-finder/utils/sorting";
 import { hashContentItem } from "/lib/part-finder/utils/contentHashing";
+import { Operation } from "/lib/part-finder/utils/plannedOperations";
 
 export class EditorResult {
   id: string;
@@ -65,7 +66,7 @@ const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
  * into the ContentUsage (which corresponds to one content item) they belong in.
  * Creates and registers a new ContentUsage in the 'contents' map if it doesn't exist yet.
  */
-const summarizeResults = (
+const summarizeResultsIntoContents = (
   results: SortedArrayAscending<EditorResult>,
   contents: Record<string, ContentUsage>,
   controlHashes: Record<string, string | null>,
@@ -90,59 +91,126 @@ const summarizeResults = (
       contents[result.id] = currentContent;
     }
 
-    setMultiUsageAddition(currentContent, result, pathTracker);
+    if (result.operation === Operation.Add) {
+      setMultiUsage(currentContent, result, pathTracker);
+    }
   });
 };
 
-const getUsage = (componentPath: string, error?: string): MultiUsageInstance => {
+const getUsage = (result: EditorResult, overrideComponentPath?: string): MultiUsageInstance => {
   const usage: MultiUsageInstance = {
-    path: componentPath,
+    path: overrideComponentPath || (result.componentPath as string),
+    operation: result.operation,
   };
-  if (error) {
-    usage.error = error;
+  if (result.error) {
+    usage.error = result.error;
   }
   return usage;
 };
 
 const newPathPattern = new RegExp(`^${PREFIX_NEWCOMPONENT}`);
+
 const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracker): void => {
   if (!usage.error) {
-    const pathsAtAdditionTime = Object.keys(pathTracker.paths)
-      .filter((pathAtAdditionTime) => pathTracker.paths[pathAtAdditionTime]===usage.path)
+    const pathsAtAdditionTime = Object.keys(pathTracker.paths).filter(
+      (pathAtAdditionTime) => pathTracker.paths[pathAtAdditionTime] === usage.path,
+    );
 
     if (pathsAtAdditionTime.length > 1 || !(pathsAtAdditionTime[0] || "").match(newPathPattern)) {
-      throw Error(`Unexpected state - trying to retrace an added component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths, null, 2)}`);
+      throw Error(
+        `Unexpected state - trying to retrace a replaced component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths, null, 2)}`,
+      );
     }
     const pathAtAdditionTime = pathsAtAdditionTime[0].replace(newPathPattern, "");
     usage.oldPath = pathTracker.paths[pathAtAdditionTime]; // Tracked path of the original component
-    usage.newPath = usage.path // Changed component
-    usage.path = pathAtAdditionTime // The path of the original at the time of the addition - now displayed in the GUI
+    usage.newPath = usage.path; // Changed component
+    usage.path = pathAtAdditionTime; // The path of the original at the time of the addition - now displayed in the GUI
   }
 };
 
-const setMultiUsageAddition = (currentContent: ContentUsage, result: EditorResult, pathTracker: PathChangeTracker) => {
-  if ("string" === typeof result.componentPath) {
-    const usage: MultiUsageInstance = getUsage(result.componentPath, result.error);
-    trackAddedPath(usage, pathTracker);
+const trackCleanupPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracker): void => {
+  if (!usage.error) {
+    const pathsAtAdditionTime = Object.keys(pathTracker.paths).filter(
+      (pathAtAdditionTime) => pathTracker.paths[pathAtAdditionTime] === usage.path,
+    );
 
-    currentContent.multiUsage.push(usage);
-    setHasMultiUsage(currentContent, true);
-  } else if (Array.isArray(result.componentPath)) {
-    const usages: MultiUsageInstance[] = result.componentPath.map((componentPath) => {
-      const usage = getUsage(componentPath, result.error);
-      trackAddedPath(usage, pathTracker);
-      return usage;
-    });
-
-    currentContent.multiUsage.push(...usages);
-    setHasMultiUsage(currentContent, true);
-  } else if (result.componentPath === null) {
-    if (result.error) {
-      currentContent.error = result.error;
+    if (pathsAtAdditionTime.length > 1 || !(pathsAtAdditionTime[0] || "").match(newPathPattern)) {
+      throw Error(
+        `Unexpected state - trying to retrace an added component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths, null, 2)}`,
+      );
     }
-
-    setHasMultiUsage(currentContent, true);
+    const pathAtAdditionTime = pathsAtAdditionTime[0].replace(newPathPattern, "");
+    usage.oldPath = pathTracker.paths[pathAtAdditionTime]; // Tracked path of the original component
+    usage.newPath = usage.path; // Changed component
+    usage.path = pathAtAdditionTime; // The path of the original at the time of the addition - now displayed in the GUI
   }
+};
+
+enum ComponentPathType {
+  String,
+  Array,
+  Null,
+}
+const getComponenPathType = (result: EditorResult) => {
+  if ("string" === typeof result.componentPath) {
+    return ComponentPathType.String;
+  } else if (result.componentPath == null) {
+    return ComponentPathType.Null;
+  } else if (Array.isArray(result.componentPath && typeof result.componentPath[0] === "string")) {
+    return ComponentPathType.Array;
+  }
+
+  throw Error(
+    `Unexpected type '${typeof result.componentPath}' of result.componentPath. Result: ${JSON.stringify(result, null, 2)}`,
+  );
+};
+
+const setMultiUsage = (currentContent: ContentUsage, result: EditorResult, pathTracker: PathChangeTracker) => {
+  const doTrackFunc = result.operation === Operation.Add ? trackAddedPath : trackCleanupPath;
+
+  switch (getComponenPathType(result)) {
+    case ComponentPathType.String:
+      const usage: MultiUsageInstance = getUsage(result);
+      doTrackFunc(usage, pathTracker);
+      currentContent.multiUsage.push(usage);
+      setHasMultiUsage(currentContent, true);
+
+      break;
+
+    case ComponentPathType.Array:
+      const usages: MultiUsageInstance[] = (result.componentPath as string[]).map((componentPath) => {
+        const usage = getUsage(result, componentPath);
+        doTrackFunc(usage, pathTracker);
+        return usage;
+      });
+
+      currentContent.multiUsage.push(...usages);
+      setHasMultiUsage(currentContent, true);
+
+      break;
+
+    case ComponentPathType.Null:
+      if (result.error) {
+        currentContent.error = result.error;
+      }
+
+      setHasMultiUsage(currentContent, true);
+      break;
+  }
+};
+
+const parsePlannedOperationsPerId = (
+  plannedOperations: Record<string, Operation>,
+): Record<string, Record<string, Operation>> => {
+  const plannedOperationsPerId: Record<string, Record<string, Operation>> = {};
+  Object.keys(plannedOperations).forEach((contentItemId__componentPath) => {
+    const [contentItemId, componentPath] = contentItemId__componentPath.split("__");
+    if (!plannedOperationsPerId[contentItemId]) {
+      plannedOperationsPerId[contentItemId] = {};
+    }
+    plannedOperationsPerId[contentItemId][componentPath] = plannedOperations[contentItemId__componentPath];
+  });
+  return plannedOperationsPerId;
 };
 
 export class Results {
@@ -151,6 +219,8 @@ export class Results {
   newKey: string;
   repoName: string;
   targetComponentType: string;
+  operationInGeneral: Operation;
+  plannedOperationsPerId: Record<string, Record<string, Operation>>; // Nested map: contentItemId -> componentPath -> operation enum (Add, Undo, or Accept)
 
   // If a component is added or deleted, other components in the same region will be pushed up or down, so their paths will change.
   // his keeps track of that throughout the batch: for each contentItem (the toplevel key) by mapping originalPath -> newPath of changed components:
@@ -159,7 +229,13 @@ export class Results {
   // Maps a contentItem-path to a hash of its post-change content, to verify that the content item was not changed in the meantime before the review. See contentHashing.ts.
   contentHashes: Record<string, string | null>;
 
-  constructor(sourceKey: string, newKey: string, targetComponentType: string) {
+  constructor(
+    sourceKey: string,
+    newKey: string,
+    targetComponentType: string,
+    plannedOperations: Record<string, Operation>,
+    operationInGeneral: Operation,
+  ) {
     this.results = [];
     this.repoName = ".setRepoContext hasn't run yet";
     this.sourceKey = sourceKey;
@@ -167,6 +243,8 @@ export class Results {
     this.targetComponentType = targetComponentType;
     this.pathTrackers = {};
     this.contentHashes = {};
+    this.plannedOperationsPerId = parsePlannedOperationsPerId(plannedOperations);
+    this.operationInGeneral = operationInGeneral;
   }
 
   setRepoContext(repoName: string) {
@@ -177,18 +255,19 @@ export class Results {
     this.pathTrackers[contentItem._path] = new PathChangeTracker(contentItem);
   }
 
-  reportSuccess(contentItem, componentPath, operation: Operation) {
-    this.results.push(new EditorResult(this.repoName, contentItem?._id, contentItem, operation, componentPath));
-                                                                                                                        log.info(
-      `OK: ${operation} operation succeeded ${this.targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
-        componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
+  reportSuccess(contentItem: ContentItem, trackedComponentPath: string, oldComponentPath: string) {
+    const operation = this.plannedOperationsPerId[contentItem._id][oldComponentPath];
+    this.results.push(new EditorResult(this.repoName, contentItem?._id, contentItem, operation, trackedComponentPath));
+    log.info(
+      `OK: ${operation} operation succeeded on ${this.targetComponentType} component, on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+        trackedComponentPath !== null ? ", path: " + JSON.stringify(trackedComponentPath) : ""
       }), from '${this.sourceKey}' to '${this.newKey}'`,
     );
   }
 
   // On errors, log them, and since nothing should be changed in the data for that contentItem (atomic change: the original contentitem should
   // be returned), overwrite previous success results for that contentItem.
-  markError(contentItem, componentPath: string | null, operation: Operation, error: unknown, knownId?: string) {
+  markError(contentItem, componentPath: string | null, error: unknown, knownId?: string) {
     const newError =
       error instanceof Error ? error.message : "string" === typeof error ? error : "Unknown error, see log";
     this.results = this.results.filter((result) => result.id !== contentItem._id);
@@ -197,14 +276,14 @@ export class Results {
         this.repoName,
         contentItem?._id || knownId || "",
         contentItem,
-        operation,
+        this.operationInGeneral,
         componentPath,
         newError,
       ),
     );
 
     log.warning(
-      `Failed: ${operation} operation ${this.targetComponentType} on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+      `Failed: ${this.operationInGeneral} operation on '${this.targetComponentType}' component, on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
         componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
       }), from '${this.sourceKey}}' to '${this.newKey}':`,
     );
@@ -212,7 +291,7 @@ export class Results {
     log.error(error);
   }
 
-  finalizeContentItem = (contentItem: ContentItem): void => {
+  hashContentItem = (contentItem: ContentItem): void => {
     this.contentHashes[contentItem._id] = hashContentItem(contentItem);
   };
 
@@ -223,8 +302,9 @@ export class Results {
     const sortedResults = sortResultsByPathAsc(this.results);
 
     // summarize the results for output
-    summarizeResults(sortedResults, contents, this.contentHashes, this.pathTrackers);
+    summarizeResultsIntoContents(sortedResults, contents, this.contentHashes, this.pathTrackers);
 
+    // Aggregate the usages into one ContentUsage, which corresponds to one contentItem with usage of components in it, and results for each of those (or an error for the whole contentItem).
     const contentResult: ContentUsage[] = Object.keys(contents).map((contentId) => {
       const currentContent = contents[contentId];
       if (currentContent.multiUsage.length === 0) {

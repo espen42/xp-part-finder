@@ -431,7 +431,7 @@
 
         const submitButtonElement = document.getElementById("btn_execute_review")
         if (submitButtonElement) {
-          submitButtonElement.disabled = (markedCount === 0)
+          submitButtonElement.disabled = (unmarkedCount > 0)
         }
 
         const unmarkedInfoElem = document.getElementById("unmarked-info")

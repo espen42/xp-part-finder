@@ -1,4 +1,4 @@
-import {ContentItem} from "/lib/part-finder/editors";
+import { ContentItem } from "/lib/part-finder/editors";
 
 export const PREFIX_NEWCOMPONENT = "::new::";
 
@@ -30,10 +30,7 @@ export class PathChangeTracker {
    * and updates the value to the new path
    * (keeping the key, since that points to the ORIGINAL path - which may not be the same as the previous path, if a component has had its path updated more than once).
    */
-  trackPathChange = (
-    previousPath: string,
-    newPath: string
-  ) => {
+  trackPathChange = (previousPath: string, newPath: string) => {
     const trackedToCurrentPath = Object.keys(this.paths).filter(
       (originalPath) => this.paths[originalPath] === previousPath,
     );
@@ -52,29 +49,21 @@ export class PathChangeTracker {
   /**
    * Tracks an insertion: one component was inserted into a region.
    */
-  trackInsertion = (
-    newPath: string
-  ) => {
+  trackInsertion = (newPath: string) => {
     // Before trackInsertion was called, all components below it in the same region (but no other components) should have
     // been pushed down (ie. updated with an incremented path), so that there should no longer be any component
     // tracked to the path of the inserted component.
-    Object.keys(this.paths).forEach(
-      (originalPath) => {
-        if (this.paths[originalPath] === newPath) {
-          throw Error(
-            `Unexpected state, something's wrong with the tracked paths - a component at path ${JSON.stringify(originalPath)} is already tracked to newPath ${JSON.stringify(newPath)}: can't track component insertion.`
-          );
-        }
+    Object.keys(this.paths).forEach((originalPath) => {
+      if (this.paths[originalPath] === newPath) {
+        throw Error(
+          `Unexpected state, something's wrong with the tracked paths - a component at path ${JSON.stringify(originalPath)} is already tracked to newPath ${JSON.stringify(newPath)}: can't track component insertion.`,
+        );
       }
-    );
+    });
     this.paths[`${PREFIX_NEWCOMPONENT}${newPath}`] = newPath;
   };
 
-
-
-  trackDelete = (
-    targetPath: string,
-  ) => {
+  trackDelete = (targetPath: string) => {
     let wasDeleted = false;
     Object.keys(this.paths).forEach((originalPath) => {
       if (this.paths[originalPath] === targetPath) {
@@ -83,7 +72,9 @@ export class PathChangeTracker {
       }
     });
     if (!wasDeleted) {
-      throw Error(`Unexpected state - trying to track a deletion of a component tracked to path ${JSON.stringify(targetPath)}, but no component is tracked to that path. Current paths: ${JSON.stringify(this.paths)}`);
+      throw Error(
+        `Unexpected state - trying to track a deletion of a component tracked to path ${JSON.stringify(targetPath)}, but no component is tracked to that path. Current paths: ${JSON.stringify(this.paths)}`,
+      );
     }
   };
 

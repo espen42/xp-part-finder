@@ -72,17 +72,11 @@ export const sortComponentPathsDesc = (paths: string[]): SortedArrayDescending<s
   return [...paths].sort(sorterFunc) as SortedArrayDescending<string>;
 };
 
-export const sortComponentsByPathAsc = (
-  arrayOfObjects: Component[],
-): SortedArrayAscending<Component> => {
+export const sortComponentsByPathAsc = (arrayOfObjects: Component[]): SortedArrayAscending<Component> => {
   const sorterFunc = getComponentPathSorterFunc();
-  return [...arrayOfObjects].sort((a, b) =>
-    sorterFunc(a.path || "", b.path || ""),
-  ) as SortedArrayAscending<Component>;
+  return [...arrayOfObjects].sort((a, b) => sorterFunc(a.path || "", b.path || "")) as SortedArrayAscending<Component>;
 };
-export const sortComponentsByPathDesc = (
-  arrayOfObjects: Component[]
-): SortedArrayDescending<Component> => {
+export const sortComponentsByPathDesc = (arrayOfObjects: Component[]): SortedArrayDescending<Component> => {
   const sorterFunc = getComponentPathSorterFunc();
   return [...arrayOfObjects].sort(
     (b, a) => sorterFunc(a.path || "", b.path || ""), // Just flipping the order for descending sort - instead of an extra, redundant function wrap layer

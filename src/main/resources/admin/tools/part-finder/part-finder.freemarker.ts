@@ -1,4 +1,5 @@
 import { ComponentNavLinkList } from "/admin/views/navigation/navigation.freemarker";
+import { Operation } from "/lib/part-finder/utils/plannedOperations";
 
 export type ComponentList = {
   itemLists: ComponentNavLinkList[];
@@ -36,8 +37,6 @@ export type ContentUsage = {
   multiUsage: MultiUsageInstance[];
 };
 
-export type Operation = "ADD" | "DELETE";
-
 export type MultiUsageInstance = {
   path: string;
   error?: string;
@@ -45,6 +44,7 @@ export type MultiUsageInstance = {
   hideSelector?: boolean;
   oldPath?: string;
   newPath?: string;
+  operation?: Operation;
 };
 
 type UsagePaths = Record<string, UsagePathSubvalue[] | null>;

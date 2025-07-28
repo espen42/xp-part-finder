@@ -26,7 +26,7 @@ import type { SortDirection } from "@enonic-types/core";
 import { createReplaceEditor } from "/lib/part-finder/editors/replace/editor";
 
 import { Results } from "/lib/part-finder/utils/results";
-import { ComponentItem, ComponentList, Operation } from "/admin/tools/part-finder/part-finder.freemarker";
+import { ComponentItem, ComponentList } from "/admin/tools/part-finder/part-finder.freemarker";
 import { processMultiUsage } from "/admin/tools/part-finder/usagePaths";
 import { ContentItem, EditorFunc } from "/lib/part-finder/editors";
 import {
@@ -41,8 +41,9 @@ import {
 import { getParamsForReplacing } from "/lib/part-finder/editors/replace/params";
 import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
 import { listContentIdsAndUsagePaths } from "/lib/part-finder/utils/contentIdSummary";
-import {createCleanupEditor} from "/lib/part-finder/editors/cleanup/editor";
-import {getParamsForCleanup} from "/lib/part-finder/editors/cleanup/params";
+import { createCleanupEditor } from "/lib/part-finder/editors/cleanup/editor";
+import { getParamsForCleanup } from "/lib/part-finder/editors/cleanup/params";
+import { Operation } from "/lib/part-finder/utils/plannedOperations";
 
 export type PartFinderQueryParams = {
   key: string;
@@ -108,7 +109,6 @@ const parseTargetConfig = (getConfigString) => {
       if (targetValue === "undefined") {
         targetValue = undefined;
       }
-      log.info(`Fallback: handling URI parameter getconfig target as raw string instead of JSON: '${targetValue}'`);
     } catch (e2: unknown) {
       if (e2 instanceof Error) {
         log.warning(e2.message);
@@ -328,7 +328,6 @@ const runEditor = (
   editorFunc: EditorFunc,
   repoIds: string[],
   componentPathsPerId: Record<string, string[] | null>,
-  operation: Operation,
   results: Results,
 ) => {
   const aliasOrUserKey = getAliasOrUserKey();
@@ -371,7 +370,7 @@ const runEditor = (
               });
             }
           } catch (e) {
-            results.markError(item, null, operation, e, key);
+            results.markError(item, null, e, key);
           }
         });
       },
@@ -390,6 +389,7 @@ export function post(req: XP.Request): XP.Response {
   let model;
 
   const isReview = getParamBool(req, "review");
+
   if (!isReview) {
     const {
       oldAppKey,
@@ -397,6 +397,7 @@ export function post(req: XP.Request): XP.Response {
       newAppKey,
       newComponentKey,
       componentPathsPerId,
+      plannedOperations,
       requestedPostprocessors,
       sortParam,
       sourceKey,
@@ -407,7 +408,7 @@ export function post(req: XP.Request): XP.Response {
       displayUnusedParam,
     } = getParamsForReplacing(req);
 
-    const results = new Results(sourceKey, newKey, componentType);
+    const results = new Results(sourceKey, newKey, componentType, plannedOperations, Operation.Add);
 
     const replaceEditor = createReplaceEditor(
       oldAppKey,
@@ -420,7 +421,7 @@ export function post(req: XP.Request): XP.Response {
       requestedPostprocessors,
     );
 
-    runEditor(replaceEditor, repoIds, componentPathsPerId, "ADD", results);
+    runEditor(replaceEditor, repoIds, componentPathsPerId, results);
 
     const taskSummary = `${sourceKey} → ${newKey}`;
     const appKey = getAppKey(newComponentKey);
@@ -470,6 +471,7 @@ export function post(req: XP.Request): XP.Response {
     const {
       controlHashes,
       componentPathsPerId,
+      plannedOperations,
       sourceKey,
       newKey,
       componentType,
@@ -478,18 +480,14 @@ export function post(req: XP.Request): XP.Response {
       newComponentKey,
       sortParam,
       displayArchiveParam,
-      displayUnusedParam
+      displayUnusedParam,
     } = getParamsForCleanup(req);
 
-    const results = new Results(sourceKey, newKey, componentType);
+    const results = new Results(sourceKey, newKey, componentType, plannedOperations, Operation.Cleanup);
 
-    const cleanupEditor = createCleanupEditor(
-      controlHashes,
-      results,
-      componentPathsPerId,
-    );
+    const cleanupEditor = createCleanupEditor(controlHashes, results, componentPathsPerId);
 
-    runEditor(cleanupEditor, repoIds, componentPathsPerId, "DELETE", results);
+    runEditor(cleanupEditor, repoIds, componentPathsPerId, results);
 
     const taskSummary = `${sourceKey} → ${newKey}`;
     const appKey = getAppKey(newComponentKey);

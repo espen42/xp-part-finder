@@ -1,11 +1,11 @@
-import {Component} from "@enonic-types/lib-content";
-import {ContentItem} from "/lib/part-finder/editors";
-import {PathChangeTracker} from "/lib/part-finder/utils/pathChangeTracker";
+import { Component } from "@enonic-types/lib-content";
+import { ContentItem } from "/lib/part-finder/editors";
+import { PathChangeTracker } from "/lib/part-finder/utils/pathChangeTracker";
 import {
   SortedArrayDescending,
   sortComponentsByPathDesc,
   sortComponentsByPathAsc,
-  SortedArrayAscending
+  SortedArrayAscending,
 } from "/lib/part-finder/utils/sorting";
 
 const getRootAndIndex = (path: string): [string, number] => {
@@ -22,7 +22,7 @@ const getRootAndIndex = (path: string): [string, number] => {
       throw Error(`Invalid or missing numeral index in path: ${path}`);
     }
   } catch (e) {
-    log.warning(e)
+    log.warning(e);
     throw Error(`Failed to parse a numeral last index from path ${JSON.stringify(path)}`);
   }
 
@@ -45,7 +45,7 @@ const verifyContentItem = (contentItem: ContentItem) => {
   ) {
     throw new Error("Content item does not have a page component at the root path");
   }
-}
+};
 
 const verifyNewComponent = (newComponent: Component) => {
   // Verify that the component to be added is of a valid type and has a path and a descriptor.
@@ -67,54 +67,50 @@ const verifyNewComponent = (newComponent: Component) => {
   }
 };
 
-const prepareForIteration = (
-  targetComponentPath: string,
-  operationLabel: string): {
-    targetRegionPath: string,
-    targetPathIndex: number,
-    hasDone: boolean,
-    belowInSameRegion: Component[],
-    inTargetRegionPattern: RegExp
-  } => {
+type PreppedIterationParams = {
+  targetRegionPath: string;
+  targetPathIndex: number;
+  hasDone: boolean;
+  belowInSameRegion: Component[];
+  inTargetRegionPattern: RegExp;
+};
 
-    // eslint-disable-next-line prefer-const
-    let [targetRegionPath, targetPathIndex] = getRootAndIndex(targetComponentPath as string);
+const prepareForIteration = (targetComponentPath: string, operationLabel: string): PreppedIterationParams => {
+  // eslint-disable-next-line prefer-const
+  let [targetRegionPath, targetPathIndex] = getRootAndIndex(targetComponentPath as string);
 
-    if (targetRegionPath === "/") {
-      throw new Error(`Can't ${operationLabel} a component at the root path '/'.`);
-    }
+  if (targetRegionPath === "/") {
+    throw new Error(`Can't ${operationLabel} a component at the root path '/'.`);
+  }
 
-    return {
-      targetRegionPath,
-      targetPathIndex,
-      hasDone: false,
-      belowInSameRegion: [],
-      inTargetRegionPattern: new RegExp(`^(${targetRegionPath})(\\d+)`)
-    }
-}
+  return {
+    targetRegionPath,
+    targetPathIndex,
+    hasDone: false,
+    belowInSameRegion: [],
+    inTargetRegionPattern: new RegExp(`^(${targetRegionPath})(\\d+)`),
+  };
+};
 
 // When a component has been added, we need to update the paths of all components below it in the same region - in DESCENDING order to avoid path collisions. This enforces that.
 const updateAndTrackComponentsBelowAdded = (
   targetComponentPath: string,
   belowInSameRegion: SortedArrayDescending<Component>,
   targetPathIndex: number,
-  pathTracker: PathChangeTracker
+  pathTracker: PathChangeTracker,
 ) => {
   // Change the others below the updated one first, to make room then insert the new component.
   for (const component of belowInSameRegion) {
     const [regionPath, pathIndex] = getRootAndIndex(component.path as string);
 
     if (pathIndex !== null && targetPathIndex != null && pathIndex >= targetPathIndex) {
-      const previousPath = component.path as string
-      component.path = (component.path as string).replace(
-        `${regionPath}${pathIndex}`,
-        `${regionPath}${pathIndex + 1}`,
-      );
+      const previousPath = component.path as string;
+      component.path = (component.path as string).replace(`${regionPath}${pathIndex}`, `${regionPath}${pathIndex + 1}`);
       pathTracker.trackPathChange(previousPath, component.path);
     }
   }
   pathTracker.trackInsertion(targetComponentPath);
-}
+};
 
 // Enforces that components are handled in descending order, the algorithm depends on that.
 const insertComponent = (
@@ -122,59 +118,66 @@ const insertComponent = (
   newComponent: Component,
   pathTracker: PathChangeTracker,
 ) => {
-    // eslint-disable-next-line prefer-const
-    let {targetRegionPath, targetPathIndex, hasDone, belowInSameRegion, inTargetRegionPattern} = prepareForIteration(newComponent.path as string, "add");
+  // eslint-disable-next-line prefer-const
+  let { targetRegionPath, targetPathIndex, hasDone, belowInSameRegion, inTargetRegionPattern } = prepareForIteration(
+    newComponent.path as string,
+    "add",
+  );
+  let highestPathIndexSeen = -1;
+  let newComponentIndex = -1;
 
-    let highestPathIndexSeen = -1;
-    let newComponentIndex = -1;
+  // Iterate through components to find the insertion point, as defined by `addAtPath`.
+  for (let i = 0; i < sortedComponentsDesc.length; i++) {
+    const currentComponent = sortedComponentsDesc[i];
+    if (currentComponent.path === newComponent.path) {
+      belowInSameRegion.push(currentComponent);
+      sortedComponentsDesc.splice(i, 0, newComponent); // Insert the new component (that already has the specified path)
+      hasDone = true;
+      newComponentIndex = i;
 
-    // Iterate through components to find the insertion point, as defined by `addAtPath`.
-    for (let i = 0; i < sortedComponentsDesc.length; i++) {
-      const currentComponent = sortedComponentsDesc[i];
-      if (currentComponent.path === newComponent.path) {
-        belowInSameRegion.push(currentComponent)
-        sortedComponentsDesc.splice(i, 0, newComponent); // Insert the new component (that already has the specified path)
-        hasDone = true;
-        newComponentIndex = i;
-        break;
-      } else {
-        const isInTargetRegion = (currentComponent.path as string).match(inTargetRegionPattern);
-        if (isInTargetRegion) {
-          belowInSameRegion.push(currentComponent)
+      break;
+    } else {
+      const isInTargetRegion = (currentComponent.path as string).match(inTargetRegionPattern);
+      if (isInTargetRegion) {
+        belowInSameRegion.push(currentComponent);
 
-          const [, pathIndex] = getRootAndIndex(currentComponent.path as string);
-          if (pathIndex !== null && pathIndex > highestPathIndexSeen) {
-            highestPathIndexSeen = pathIndex;
-            newComponentIndex = i;
-          }
+        const [, pathIndex] = getRootAndIndex(currentComponent.path as string);
+        if (pathIndex !== null && pathIndex > highestPathIndexSeen) {
+          highestPathIndexSeen = pathIndex;
+          newComponentIndex = i;
         }
       }
     }
+  }
 
-    // If the component hasn't been added by now, there was no match found.
-    // If highestPathIndexSeen is above -1, then the same path as the target path has at least been seen, so we can insert the new component at the end of the region.
-    if (!hasDone) {
-      if (highestPathIndexSeen >= 0) {
-        highestPathIndexSeen++;
-        newComponentIndex++;
-        newComponent.path = `${targetRegionPath}${highestPathIndexSeen + 1}`;
-        targetPathIndex = highestPathIndexSeen + 1;
+  // If the component hasn't been added by now, there was no match found.
+  // If highestPathIndexSeen is above -1, then the same path as the target path has at least been seen, so we can insert the new component at the end of the region.
+  if (!hasDone) {
+    if (highestPathIndexSeen >= 0) {
+      highestPathIndexSeen++;
+      newComponentIndex++;
+      newComponent.path = `${targetRegionPath}${highestPathIndexSeen + 1}`;
+      targetPathIndex = highestPathIndexSeen + 1;
 
-        sortedComponentsDesc.splice(newComponentIndex, 0, newComponent);
-        hasDone = true;
-      } else {
-        throw new Error(`No matching region found for path: ${newComponent.path}`);
-        // TODO: or just add the component at the end of the components array? What happens if a component is in data, but doesn't match any existing region path from the schema?
-      }
+      sortedComponentsDesc.splice(newComponentIndex, 0, newComponent);
+      hasDone = true;
+    } else {
+      throw new Error(`No matching region found for path: ${newComponent.path}`);
+      // TODO: or just add the component at the end of the components array? What happens if a component is in data, but doesn't match any existing region path from the schema?
     }
+  }
 
-    // If the component was added, we need to update the paths of all components in the same region that have a path index greater than the new component's index.
-    if (hasDone) {
-      const belowInSameRegionDesc = sortComponentsByPathDesc(belowInSameRegion);
-      updateAndTrackComponentsBelowAdded(newComponent.path as string, belowInSameRegionDesc, targetPathIndex, pathTracker);
-    }
-}
-
+  // If the component was added, we need to update the paths of all components in the same region that have a path index greater than the new component's index.
+  if (hasDone) {
+    const belowInSameRegionDesc = sortComponentsByPathDesc(belowInSameRegion);
+    updateAndTrackComponentsBelowAdded(
+      newComponent.path as string,
+      belowInSameRegionDesc,
+      targetPathIndex,
+      pathTracker,
+    );
+  }
+};
 
 // When we know the components below the deleted component in the same region, their paths must be updated in ASCENDING order to avoid path collisions. This enforces that.
 const updateAndTrackComponentsBelowDeleted = (
@@ -183,28 +186,24 @@ const updateAndTrackComponentsBelowDeleted = (
   targetPathIndex: number,
   pathTracker: PathChangeTracker,
 ) => {
-
   // Delete first to make room, then change the others below
-  pathTracker.trackDelete(targetComponentPath)
+  pathTracker.trackDelete(targetComponentPath);
   for (const component of belowInSameRegion) {
     const [regionPath, pathIndex] = getRootAndIndex(component.path as string);
 
     if (pathIndex != null && targetPathIndex != null && pathIndex >= targetPathIndex) {
-      const previousPath = component.path as string
+      const previousPath = component.path as string;
       const newPathIndex = pathIndex - 1;
       if (newPathIndex < 0) {
         throw Error(
           `Unexpected state (newPathIndex = ${newPathIndex}}) - trying to update a component path as if an earlier component was deleted before index 0, which should be impossible.`,
         );
       }
-      component.path = (component.path as string).replace(
-        `${regionPath}${pathIndex}`,
-        `${regionPath}${newPathIndex}`,
-      );
+      component.path = (component.path as string).replace(`${regionPath}${pathIndex}`, `${regionPath}${newPathIndex}`);
       pathTracker.trackPathChange(previousPath, component.path);
     }
   }
-}
+};
 
 // Enforces that components are handled in descending order, the algorithm depends on that.
 const deleteComponent = (
@@ -212,48 +211,46 @@ const deleteComponent = (
   targetComponentPath: string,
   pathTracker: PathChangeTracker,
 ) => {
-    // eslint-disable-next-line prefer-const
-    let {targetRegionPath, targetPathIndex, hasDone, belowInSameRegion, inTargetRegionPattern} = prepareForIteration(targetComponentPath, "delete");
+  // eslint-disable-next-line prefer-const
+  let { targetRegionPath, targetPathIndex, hasDone, belowInSameRegion, inTargetRegionPattern } =
+    prepareForIteration(targetComponentPath, "delete");
 
-    // Iterate through components to find the delete point, as defined by `targetComponentPath`.
-    // Components below it in the same region will have their paths updated, so we track of them with 'belowInSameRegion'.
-    // Since the components are sorted in descending path order,
-    // we can just splice the component out of the array and stop iterating once it's found.
-    for (let i = 0; i < sortedComponentsDesc.length; i++) {
-      const currentComponent = sortedComponentsDesc[i];
-      if (currentComponent.path === targetComponentPath) {
-        sortedComponentsDesc.splice(i, 1); // Delete the target component
-        hasDone = true;
-        break;
-      } else {
-        const isInTargetRegion = (currentComponent.path as string).match(inTargetRegionPattern);
-        if (isInTargetRegion) {
-          belowInSameRegion.push(currentComponent)
-        }
+  // Iterate through components to find the delete point, as defined by `targetComponentPath`.
+  // Components below it in the same region will have their paths updated, so we track of them with 'belowInSameRegion'.
+  // Since the components are sorted in descending path order,
+  // we can just splice the component out of the array and stop iterating once it's found.
+  for (let i = 0; i < sortedComponentsDesc.length; i++) {
+    const currentComponent = sortedComponentsDesc[i];
+    if (currentComponent.path === targetComponentPath) {
+      sortedComponentsDesc.splice(i, 1); // Delete the target component
+      hasDone = true;
+
+      break;
+    } else {
+      const isInTargetRegion = (currentComponent.path as string).match(inTargetRegionPattern);
+      if (isInTargetRegion) {
+        belowInSameRegion.push(currentComponent);
       }
     }
+  }
 
-    // If the component was deleted, we need to decrement the paths of all components in the same region that have a path index greater than the new component's index.
-    if (hasDone) {
-
-      const belowInSameRegionAsc = sortComponentsByPathAsc(belowInSameRegion);
-      updateAndTrackComponentsBelowDeleted(targetComponentPath, belowInSameRegionAsc, targetPathIndex, pathTracker);
-
-    } else {
-      // If the component hasn't been added by now, there was no match found. There should have been.
-        throw new Error(`No matching region found for path: ${targetComponentPath}`);
-    }
-}
+  // If the component was deleted, we need to decrement the paths of all components in the same region that have a path index greater than the new component's index.
+  if (hasDone) {
+    const belowInSameRegionAsc = sortComponentsByPathAsc(belowInSameRegion);
+    updateAndTrackComponentsBelowDeleted(targetComponentPath, belowInSameRegionAsc, targetPathIndex, pathTracker);
+  } else {
+    // If the component hasn't been added by now, there was no match found. There should have been.
+    throw new Error(`No matching region found for path: ${targetComponentPath}`);
+  }
+};
 
 const getVerifiedSortedComponents = (contentItem: ContentItem): SortedArrayDescending<Component> => {
-    // After this, we know every old and new component has a path, hence the "as string"'s below
-    verifyContentItem(contentItem);
-    return sortComponentsByPathDesc(contentItem.components);
-}
-
+  // After this, we know every old and new component has a path, hence the "as string"'s below
+  verifyContentItem(contentItem);
+  return sortComponentsByPathDesc(contentItem.components);
+};
 
 export const contentRegionMutators = {
-
   /** Updates the contentItem's components when adding a new component to a region.
    * Specifically, add the component data to the .components array, and update the path of the new component and all components below it in the same region.
    */
@@ -269,7 +266,6 @@ export const contentRegionMutators = {
       ...componentToAdd,
       path: overrideAddAtPath || componentToAdd.path,
     } as Component;
-
     verifyNewComponent(newComponent);
 
     // In order to avoid path collisions on insertion/deletion and path tracking, this ensures component are sorted by their path attribute in descending order
@@ -280,11 +276,7 @@ export const contentRegionMutators = {
     contentItem.components = sortComponentsByPathAsc(sortedComponentsDesc);
   },
 
-  removeComponent: (
-    contentItem: ContentItem,
-    targetPath: string,
-    pathTracker: PathChangeTracker,
-  ) => {
+  removeComponent: (contentItem: ContentItem, targetPath: string, pathTracker: PathChangeTracker) => {
 
     // In order to avoid path collisions on insertion/deletion and path tracking, this ensures components are sorted by their path attribute in descending order
     const sortedComponentsDesc = getVerifiedSortedComponents(contentItem);
@@ -292,5 +284,5 @@ export const contentRegionMutators = {
     deleteComponent(sortedComponentsDesc, targetPath, pathTracker);
 
     contentItem.components = sortComponentsByPathAsc(sortedComponentsDesc);
-  }
+  },
 };
