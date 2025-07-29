@@ -17,10 +17,7 @@ export const prepareEditorResources = (
 
   results.initPathChangeTracker(clonedContentItem);
   const targetComponentPaths = stringSortFunc(
-    (componentPathsPerId[contentId] || [])
-      .filter(
-        (path) => !!((path || "") + "").trim()
-      )
+    (componentPathsPerId[contentId] || []).filter((path) => !!((path || "") + "").trim()),
   );
 
   return {

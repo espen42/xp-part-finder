@@ -34,9 +34,12 @@ import {
   getDisplayReplacerParam,
   getDisplayUnusedParam,
   getParamBool,
-  //getParamBool,
   getRepoParam,
   getSortParam,
+  PartFinderQueryParams,
+  PARAM_VAL,
+  PARAM,
+  PREFIX,
 } from "/lib/part-finder/utils/params";
 import { getParamsForReplacing } from "/lib/part-finder/editors/replace/params";
 import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
@@ -44,20 +47,6 @@ import { listContentIdsAndUsagePaths } from "/lib/part-finder/utils/contentIdSum
 import { createCleanupEditor } from "/lib/part-finder/editors/cleanup/editor";
 import { getParamsForCleanup } from "/lib/part-finder/editors/cleanup/params";
 import { Operation } from "/lib/part-finder/utils/plannedOperations";
-
-export type PartFinderQueryParams = {
-  key: string;
-  type: ComponentDescriptorType;
-  sort?: string;
-  dir?: string;
-  replace?: string;
-  getconfig?: string;
-  repo?: string;
-};
-
-export const PART_KEY = "PART";
-export const LAYOUT_KEY = "LAYOUT";
-export const PAGE_KEY = "PAGE";
 
 const PAGE_TITLE = "Part finder";
 const TARGET_BRANCH = "draft";
@@ -79,21 +68,21 @@ export function wrapInHtml({ markup, title }: { markup: string; title: string })
 function parseComponentType(str: string = ""): ComponentDescriptorType | undefined {
   const uppercasedStr = str.toUpperCase();
 
-  if (uppercasedStr === PAGE_KEY || uppercasedStr === LAYOUT_KEY || uppercasedStr === PART_KEY) {
+  if (uppercasedStr === PARAM_VAL.PAGE || uppercasedStr === PARAM_VAL.LAYOUT || uppercasedStr === PARAM_VAL.PART) {
     return uppercasedStr;
   }
 
   return undefined;
 }
 
-const getConfigRequest = (req): undefined | string => {
+const getConfigRequest = (req: XP.Request<PartFinderQueryParams>): undefined | string => {
   const getConfigParam = (req.params.getconfig || "").trim();
-  return getConfigParam === "undefined" || getConfigParam === "false" || getConfigParam === ""
+  return getConfigParam === PARAM_VAL.undefined || getConfigParam === PARAM_VAL.false || getConfigParam === ""
     ? undefined
     : getConfigParam;
 };
 
-const parseTargetConfig = (getConfigString) => {
+const parseTargetConfig = (getConfigString: string): string => {
   let targetValue;
   try {
     targetValue = JSON.parse(getConfigString.substring(getConfigString.indexOf("=") + 1));
@@ -106,7 +95,7 @@ const parseTargetConfig = (getConfigString) => {
 
     try {
       targetValue = getConfigString.substring(getConfigString.indexOf("=") + 1);
-      if (targetValue === "undefined") {
+      if (targetValue === PARAM_VAL.undefined) {
         targetValue = undefined;
       }
     } catch (e2: unknown) {
@@ -163,9 +152,9 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
 
     return {
       redirect: getPartFinderUrl({
-        key: firstComponent.key,
-        type: firstComponent.type,
-        repo: req.params.repo || "",
+        [PARAM.key]: firstComponent.key,
+        [PARAM.type]: firstComponent.type,
+        [PARAM.repo]: req.params.repo || "",
       }),
     };
   }
@@ -212,9 +201,13 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   if (req.headers["turbo-frame"] === "content-view") {
     const model: ComponentViewParams = {
       currentItem,
-      displayReplacer: currentItemType === PART_KEY || currentItemType === LAYOUT_KEY ? displayReplacer : "false",
+      displayReplacer:
+        currentItemType === PARAM_VAL.PART || currentItemType === PARAM_VAL.LAYOUT ? displayReplacer : PARAM_VAL.false,
       displaySummaryAndUndo: false,
       allIds: JSON.stringify(listContentIdsAndUsagePaths(currentItem)),
+      PARAM,
+      PARAM_VAL,
+      PREFIX,
     };
     if (getConfigParam) {
       model.getconfig = getConfigParam;
@@ -249,14 +242,14 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
       text: app.key,
       url: firstComponent
         ? getPartFinderUrl({
-            key: firstComponent.key,
-            type: firstComponent.type,
-            repo: repoParam,
-            getconfig: getConfigParam || "",
-            replace: displayReplacer,
-            archive: displayArchives,
-            sort: sortParam,
-            unused: displayUnused,
+            [PARAM.key]: firstComponent.key,
+            [PARAM.type]: firstComponent.type,
+            [PARAM.repo]: repoParam,
+            [PARAM.getconfig]: getConfigParam || "",
+            [PARAM.replace]: displayReplacer,
+            [PARAM.archive]: displayArchives,
+            [PARAM.sort]: sortParam,
+            [PARAM.unused]: displayUnused,
           })
         : "",
     };
@@ -277,6 +270,9 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
     unusedItems: unused,
     hasUnused: unused.length > 0,
     allIds: JSON.stringify(listContentIdsAndUsagePaths(currentItem)),
+    PARAM,
+    PARAM_VAL,
+    PREFIX,
   };
 
   if (getConfigParam) {
@@ -298,15 +294,15 @@ function listAppsWithComponents(): Application[] {
 function getFirstComponent(app: Application): ComponentDescriptor | undefined {
   return (
     listComponents({
-      type: PART_KEY,
+      type: PARAM_VAL.PART,
       application: app.key,
     })[0] ??
     listComponents({
-      type: LAYOUT_KEY,
+      type: PARAM_VAL.LAYOUT,
       application: app.key,
     })[0] ??
     listComponents({
-      type: PAGE_KEY,
+      type: PARAM_VAL.PAGE,
       application: app.key,
     })[0]
   );
@@ -388,7 +384,7 @@ export function post(req: XP.Request): XP.Response {
 
   let model;
 
-  const isReview = getParamBool(req, "review");
+  const isReview = getParamBool(req, PARAM.review);
 
   if (!isReview) {
     const {
@@ -428,7 +424,7 @@ export function post(req: XP.Request): XP.Response {
     const type = componentType.toUpperCase();
 
     const currentItem = {
-      url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
+      url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?${PARAM.key}=${newAppKey}%3A${newComponentKey}&${PARAM.type}=${type}`,
       key: newKey,
       type: componentType,
       contents: results.buildContentResult(),
@@ -461,12 +457,15 @@ export function post(req: XP.Request): XP.Response {
       displayReplacer: "",
       displaySummaryAndUndo: true,
       oldItemKey: `${sourceKey}`,
-      newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${sortParam}${displayArchiveParam}${displayUnusedParam}`,
+      newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?${PARAM.key}=${newAppKey}%3A${newComponentKey}&${PARAM.type}=${type}&${PARAM.replace}=${PARAM_VAL.true}${sortParam}${displayArchiveParam}${displayUnusedParam}`,
       currentItem,
       allIds,
+      PARAM,
+      PARAM_VAL,
+      PREFIX,
     };
 
-  //////////////////////////////////////////////
+    //////////////////////////////////////////////
   } else {
     const {
       controlHashes,
@@ -494,7 +493,7 @@ export function post(req: XP.Request): XP.Response {
     const type = componentType.toUpperCase();
 
     const currentItem = {
-      url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?key=${newAppKey}%3A${newComponentKey}&type=${type}`,
+      url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?${PARAM.key}=${newAppKey}%3A${newComponentKey}&${PARAM.type}=${type}`,
       key: newKey,
       type: componentType,
       contents: results.buildContentResult(),
@@ -527,14 +526,18 @@ export function post(req: XP.Request): XP.Response {
       displayReplacer: "",
       displaySummaryAndUndo: true,
       oldItemKey: `${sourceKey}`,
-      newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?key=${newAppKey}%3A${newComponentKey}&type=${type}&replace=true${sortParam}${displayArchiveParam}${displayUnusedParam}`,
+      newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?${PARAM.key}=${newAppKey}%3A${newComponentKey}&${PARAM.type}=${type}&${PARAM.replace}=${PARAM_VAL.true}${sortParam}${displayArchiveParam}${displayUnusedParam}`,
       currentItem,
       allIds,
+      PARAM,
+      PARAM_VAL,
+      PREFIX,
     };
   }
 
   return {
     // TODO: Should make dedicated view for this, diffierent from the main part finder view (which should in turn be split into replace=true view and the old regular "finder" view).
+    // TODO: Type the render (parameterized, see the render for .get above) to enforce the model attributes
     body: render(COMPONENT_VIEW, model),
   };
 }

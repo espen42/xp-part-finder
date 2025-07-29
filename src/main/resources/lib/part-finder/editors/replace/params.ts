@@ -5,6 +5,11 @@ import {
   getRepoParam,
   getSortParam,
   trimString,
+  PREFIX,
+  PartFinderQueryParams,
+  PARAM,
+  PARAM_VAL,
+  addUriParam,
 } from "/lib/part-finder/utils/params";
 import { parseComponentPathsPerId } from "/lib/part-finder/utils/componentPathsPerId";
 import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
@@ -28,15 +33,14 @@ type ParamsForReplacementProcessing = {
   repoIds: string[];
 };
 
-const PREFIX_SELECTORS = /^select-item--/;
+const RX_STARTSWITH_SELECTITEM = new RegExp(`^${PREFIX.selectItem}`);
 
-export const getParamsForReplacing = (req): ParamsForReplacementProcessing => {
-
-  const componentType = getParamString(req, "type");
+export const getParamsForReplacing = (req: XP.Request<PartFinderQueryParams>): ParamsForReplacementProcessing => {
+  const componentType = getParamString(req, PARAM.type);
   const sourceKey = trimString(req.params.key);
   const newKey = trimString(req.params.new_part_ref);
   const selectorIds: string[] = Object.keys(req.params)
-    .filter((k) => k.match(PREFIX_SELECTORS))
+    .filter((k) => k.match(RX_STARTSWITH_SELECTITEM))
     .map((k) => req.params[k] || "");
 
   const plannedOperations = {};
@@ -58,26 +62,25 @@ export const getParamsForReplacing = (req): ParamsForReplacementProcessing => {
   const [oldAppKey, oldComponentKey] = sourceKey.split(":");
   const [newAppKey, newComponentKey] = newKey.split(":");
 
-  const repoParam = getRepoParam(req);
-  const sort = getSortParam(req);
-
   return {
     requestedPostprocessors: trimString(req.params.postprocessors)
       .split(/\s*,\s*/g)
       .filter((processorName) => processorName.trim())
-      .filter((processorName) => processorName !== "undefined"),
+      .filter((processorName) => processorName !== PARAM_VAL.undefined),
     componentPathsPerId: parseComponentPathsPerId(targetIds),
     plannedOperations,
     oldAppKey,
     oldComponentKey,
-    newAppKey,
-    newComponentKey,
+    componentType,
+
+    // Common:
     sourceKey,
     newKey,
-    componentType,
-    sortParam: sort ? `&sort=${req.params.sort}` : "",
-    displayArchiveParam: getDisplayArchiveParam(req) ? "&archive=true" : "",
-    displayUnusedParam: getDisplayUnusedParam(req) ? "&unused=true" : "",
-    repoIds: getCMSRepoIds(repoParam),
+    newAppKey,
+    newComponentKey,
+    repoIds: getCMSRepoIds(getRepoParam(req)),
+    sortParam: addUriParam(PARAM.sort, req.params.sort, !!getSortParam(req)),
+    displayArchiveParam: addUriParam(PARAM.archive, PARAM_VAL.true, !!getDisplayArchiveParam(req)),
+    displayUnusedParam: addUriParam(PARAM.unused, PARAM_VAL.true, !!getDisplayUnusedParam(req)),
   };
 };

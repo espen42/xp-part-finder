@@ -1,23 +1,22 @@
 import { ComponentNavLink } from "/admin/views/navigation/navigation.freemarker";
 import { EditorResult } from "/lib/part-finder/utils/results";
 import { Component } from "@enonic-types/lib-content";
+import { SortParam } from "/lib/part-finder/utils/params";
 
-export const SORT_FUNCS: Record<
-  "alphaasc" | "alphadesc" | "countasc" | "countdesc",
-  (a: ComponentNavLink, b: ComponentNavLink) => number
-> = {
-  alphaasc: (a, b) => a.key.localeCompare(b.key),
-  alphadesc: (a, b) => b.key.localeCompare(a.key),
-  countasc: (a, b) => a.docCount - b.docCount,
-  countdesc: (a, b) => b.docCount - a.docCount,
-};
+type SortFunc<T> = (a: T, b: T) => number;
 
 // Use branding / opaque type, to make TS enforce already-sorted and sort direction for algorithms that require pre-sorted arrays (such as the pathChangeTracker).
 declare const ascending: unique symbol;
 declare const descending: unique symbol;
 export type SortedArrayAscending<T> = T[] & { readonly [ascending]: void };
 export type SortedArrayDescending<T> = T[] & { readonly [descending]: void };
-type SortFunc<T> = (a: T, b: T) => number;
+
+export const SORT_FUNCS: Record<SortParam, SortFunc<ComponentNavLink>> = {
+  alphaasc: (a, b) => a.key.localeCompare(b.key),
+  alphadesc: (a, b) => b.key.localeCompare(a.key),
+  countasc: (a, b) => a.docCount - b.docCount,
+  countdesc: (a, b) => b.docCount - a.docCount,
+};
 
 const sortComponentPaths: SortFunc<string> = (pathA, pathB) => {
   if (pathA === pathB) {

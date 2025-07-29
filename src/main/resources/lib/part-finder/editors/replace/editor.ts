@@ -10,7 +10,7 @@ import { SIGNATURE_MARKER_KEY } from "/admin/tools/part-finder/part-finder";
 import { sortComponentPathsAsc, sortComponentPathsDesc, SortedArrayDescending } from "/lib/part-finder/utils/sorting";
 import { getLastAttemptTracker, LastAttemptTracker } from "/lib/part-finder/utils/lastAttemptTracker";
 import { prepareEditorResources } from "/lib/part-finder/utils/editorUtils";
-import { PREFIX_NEWCOMPONENT } from "/lib/part-finder/utils/pathChangeTracker";
+import { PREFIX_TRACKED_NEWCOMPONENT } from "/lib/part-finder/utils/pathChangeTracker";
 
 type ComponentPostProcessor = {
   label: string;
@@ -54,7 +54,7 @@ const addIndexConfig = (
     const newPath = currentOrigConfig.path.replace(configReplacePattern, configReplaceTarget);
     const alreadyPresent = find<{ path: string }>(origIndexConfigs, (config) => config.path === newPath);
     if (!alreadyPresent) {
-      // avoid mutation
+      // avoid accidental mutation: deep clone, not just spread
       const newConfig = clone(currentOrigConfig);
       newConfig.path = newPath;
       newIndexConfigs.push(newConfig);
@@ -172,7 +172,6 @@ const addComponentsToContentItem = (
   lastAttempted: LastAttemptTracker,
   results: Results,
 ) => {
-
   // Let the actual processing begin: one component after another
   // (sorted in "reverse order" by path to avoid path collisions: so 'descending' means from the bottom and up in the region)
   targetComponentPaths.forEach((targetComponentPath) => {
@@ -288,7 +287,7 @@ const postprocess = (
   const pathTracker = results.pathTrackers[clonedContentItem._path];
 
   targetComponentPaths.forEach((oldTargetPath) => {
-    const trackedComponentPath = pathTracker.paths[`${PREFIX_NEWCOMPONENT}${oldTargetPath}` || oldTargetPath];
+    const trackedComponentPath = pathTracker.paths[`${PREFIX_TRACKED_NEWCOMPONENT}${oldTargetPath}` || oldTargetPath];
 
     lastAttempted.componentPath = trackedComponentPath;
 
@@ -364,7 +363,6 @@ export function createReplaceEditor(
             "marginBottom": false
           } */
 
-
     // For tracing and reporting errors
     const lastAttempted = getLastAttemptTracker();
 
@@ -414,7 +412,6 @@ export function createReplaceEditor(
 
       // Return the CLONED and changed content item. This writes the changes.
       return clonedContentItem;
-
     } catch (e) {
       // Mark and log any error on this content item, and return the original one. This keeps the original and wipes any changes.
       results.markError(contentItem, lastAttempted.componentPath, e);

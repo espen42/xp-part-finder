@@ -1,6 +1,6 @@
 import type { ContentUsage, MultiUsageInstance } from "/admin/tools/part-finder/part-finder.freemarker";
 import { getToolUrl } from "/lib/xp/admin";
-import { PathChangeTracker, PREFIX_NEWCOMPONENT } from "/lib/part-finder/utils/pathChangeTracker";
+import { PathChangeTracker, PREFIX_TRACKED_NEWCOMPONENT } from "/lib/part-finder/utils/pathChangeTracker";
 import { ContentItem } from "/lib/part-finder/editors";
 import { SortedArrayAscending, sortResultsByPathAsc } from "/lib/part-finder/utils/sorting";
 import { hashContentItem } from "/lib/part-finder/utils/contentHashing";
@@ -108,7 +108,7 @@ const getUsage = (result: EditorResult, overrideComponentPath?: string): MultiUs
   return usage;
 };
 
-const newPathPattern = new RegExp(`^${PREFIX_NEWCOMPONENT}`);
+const newPathPattern = new RegExp(`^${PREFIX_TRACKED_NEWCOMPONENT}`);
 
 const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracker): void => {
   if (!usage.error) {
@@ -118,7 +118,7 @@ const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracke
 
     if (pathsAtAdditionTime.length > 1 || !(pathsAtAdditionTime[0] || "").match(newPathPattern)) {
       throw Error(
-        `Unexpected state - trying to retrace a replaced component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths, null, 2)}`,
+        `Unexpected state - trying to retrace a replaced component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_TRACKED_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths, null, 2)}`,
       );
     }
     const pathAtAdditionTime = pathsAtAdditionTime[0].replace(newPathPattern, "");
@@ -136,7 +136,7 @@ const trackCleanupPath = (usage: MultiUsageInstance, pathTracker: PathChangeTrac
 
     if (pathsAtAdditionTime.length > 1 || !(pathsAtAdditionTime[0] || "").match(newPathPattern)) {
       throw Error(
-        `Unexpected state - trying to retrace an added component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths, null, 2)}`,
+        `Unexpected state - trying to retrace an added component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_TRACKED_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths, null, 2)}`,
       );
     }
     const pathAtAdditionTime = pathsAtAdditionTime[0].replace(newPathPattern, "");
@@ -210,6 +210,7 @@ const parsePlannedOperationsPerId = (
     }
     plannedOperationsPerId[contentItemId][componentPath] = plannedOperations[contentItemId__componentPath];
   });
+
   return plannedOperationsPerId;
 };
 

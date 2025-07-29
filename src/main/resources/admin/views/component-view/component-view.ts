@@ -4,6 +4,8 @@ import { getPartFinderUrl } from "/lib/part-finder/utils/utils";
 import type { AriaSortDirection, ComponentView, Heading } from "./component-view.freemarker";
 import type { Content, SortDirection, SortDsl } from "@enonic-types/core";
 import { getUsagePaths } from "/admin/tools/part-finder/usagePaths";
+import { PARAM } from "/lib/part-finder/utils/params";
+import type { ComponentDescriptorType } from "/lib/xp/schema";
 
 const TABLE_HEADINGS: Omit<Heading, "url">[] = [
   {
@@ -26,7 +28,7 @@ const ARIA_SORT_DIRECTION: Record<SortDirection, AriaSortDirection> = {
 } as const;
 
 export function getComponentUsagesInRepo(
-  component: { key: string; type: string },
+  component: { key: string; type: ComponentDescriptorType },
   repositories: string[],
   sort: Partial<SortDsl>,
   getconfigParam: string | undefined,
@@ -73,14 +75,14 @@ export function getComponentUsagesInRepo(
     headings: TABLE_HEADINGS.map((heading) => ({
       ...heading,
       url: getPartFinderUrl({
-        key: component.key,
-        type: component.type,
-        replace: replaceParam + "",
-        archive: archiveParam + "",
-        getconfig: getconfigParam || "",
-        repoParam: repoParam || "",
-        sort: heading.name,
-        dir:
+        [PARAM.key]: component.key,
+        [PARAM.type]: component.type,
+        [PARAM.replace]: replaceParam + "",
+        [PARAM.archive]: archiveParam + "",
+        [PARAM.getconfig]: getconfigParam || "",
+        [PARAM.repo]: repoParam || "",
+        [PARAM.sort]: heading.name,
+        [PARAM.dir]:
           heading.name === sort.field
             ? // if current, use opposite direction
               sort.direction == "ASC"

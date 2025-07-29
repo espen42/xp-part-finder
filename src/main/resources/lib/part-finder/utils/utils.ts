@@ -1,5 +1,6 @@
 import { run, type ContextParams } from "/lib/xp/context";
 import { getToolUrl } from "/lib/xp/admin";
+import { PartFinderQueryParams } from "/lib/part-finder/utils/params";
 
 export function notNullOrUndefined<T>(val: T | null | undefined): val is T {
   return val !== null && val !== undefined;
@@ -63,10 +64,10 @@ export function runAsAdmin<T>(callback: () => T, params: ContextParams = {}): T 
 
 export const hasStringValue = (value) => value != null && (value + "").trim();
 
-export function getPartFinderUrl(params: Record<string, string>): string {
+export function getPartFinderUrl(params: PartFinderQueryParams): string {
   const queryParams = objectKeys(params)
     .filter((key) => hasStringValue(key) && hasStringValue(params[key]))
-    .map((key) => `${key}=${encodeURIComponent(params[key])}`)
+    .map((key) => `${key}=${encodeURIComponent((params[key] || "").trim())}`)
     .join("&");
 
   return `${getToolUrl("no.item.partfinder", "part-finder")}?${queryParams}`;

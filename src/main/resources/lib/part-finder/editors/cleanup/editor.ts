@@ -33,6 +33,7 @@ const removeComponentsFromContentItem = (
 ) => {
   targetComponentPaths.forEach((targetPath: string) => {
     lastAttempted.componentPath = targetPath;
+
     contentRegionMutators.removeComponent(clonedContentItem, targetPath, results.pathTrackers[clonedContentItem._path]);
 
     results.reportSuccess(
@@ -103,7 +104,6 @@ export function createCleanupEditor(
 
       // Return the CLONED and changed content item. This writes the changes.
       return clonedContentItem;
-
     } catch (e) {
       // Mark and log any error on this content item, and return the original one. This keeps the original and wipes any changes.
       results.markError(contentItem, lastAttempted.componentPath, e);
@@ -113,4 +113,3 @@ export function createCleanupEditor(
 
   return editor;
 }
-

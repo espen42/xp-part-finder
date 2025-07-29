@@ -1,6 +1,7 @@
 import { ContentItem } from "/lib/part-finder/editors";
 
-export const PREFIX_NEWCOMPONENT = "::new::";
+export const PREFIX_TRACKED_NEWCOMPONENT = "::new::";
+const DELETED_MARKER = "--deleted--";
 
 export const init = (contentItem: ContentItem): Record<string, string> => {
   const pathChanges: Record<string, string> = {};
@@ -60,17 +61,19 @@ export class PathChangeTracker {
         );
       }
     });
-    this.paths[`${PREFIX_NEWCOMPONENT}${newPath}`] = newPath;
+    this.paths[`${PREFIX_TRACKED_NEWCOMPONENT}${newPath}`] = newPath;
   };
 
   trackDelete = (targetPath: string) => {
     let wasDeleted = false;
+
     Object.keys(this.paths).forEach((originalPath) => {
       if (this.paths[originalPath] === targetPath) {
-        this.paths[originalPath] = "--deleted--";
+        this.paths[originalPath] = DELETED_MARKER;
         wasDeleted = true;
       }
     });
+
     if (!wasDeleted) {
       throw Error(
         `Unexpected state - trying to track a deletion of a component tracked to path ${JSON.stringify(targetPath)}, but no component is tracked to that path. Current paths: ${JSON.stringify(this.paths)}`,

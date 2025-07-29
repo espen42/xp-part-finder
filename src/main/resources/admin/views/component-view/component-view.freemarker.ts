@@ -1,3 +1,5 @@
+import { PARAM, PARAM_VAL, PREFIX } from "/lib/part-finder/utils/params";
+
 export type ComponentView = {
   key: string;
   type: string;
@@ -21,6 +23,9 @@ export type ComponentViewParams = {
   displayReplacer?: string;
   displaySummaryAndUndo?: boolean;
   allIds?: string;
+  PARAM: typeof PARAM;
+  PARAM_VAL: typeof PARAM_VAL;
+  PREFIX: typeof PREFIX;
 };
 
 export type Usage = {

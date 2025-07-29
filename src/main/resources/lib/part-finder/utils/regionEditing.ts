@@ -75,12 +75,12 @@ type PreppedIterationParams = {
   inTargetRegionPattern: RegExp;
 };
 
-const prepareForIteration = (targetComponentPath: string, operationLabel: string): PreppedIterationParams => {
+const prepareForIteration = (targetComponentPath: string, operationErrorLabel: string): PreppedIterationParams => {
   // eslint-disable-next-line prefer-const
   let [targetRegionPath, targetPathIndex] = getRootAndIndex(targetComponentPath as string);
 
   if (targetRegionPath === "/") {
-    throw new Error(`Can't ${operationLabel} a component at the root path '/'.`);
+    throw new Error(`Can't ${operationErrorLabel} a component at the root path '/'.`);
   }
 
   return {
@@ -123,6 +123,7 @@ const insertComponent = (
     newComponent.path as string,
     "add",
   );
+
   let highestPathIndexSeen = -1;
   let newComponentIndex = -1;
 
@@ -212,7 +213,7 @@ const deleteComponent = (
   pathTracker: PathChangeTracker,
 ) => {
   // eslint-disable-next-line prefer-const
-  let { targetRegionPath, targetPathIndex, hasDone, belowInSameRegion, inTargetRegionPattern } =
+  let { /*targetRegionPath,*/ targetPathIndex, hasDone, belowInSameRegion, inTargetRegionPattern } =
     prepareForIteration(targetComponentPath, "delete");
 
   // Iterate through components to find the delete point, as defined by `targetComponentPath`.
@@ -277,7 +278,6 @@ export const contentRegionMutators = {
   },
 
   removeComponent: (contentItem: ContentItem, targetPath: string, pathTracker: PathChangeTracker) => {
-
     // In order to avoid path collisions on insertion/deletion and path tracking, this ensures components are sorted by their path attribute in descending order
     const sortedComponentsDesc = getVerifiedSortedComponents(contentItem);
 

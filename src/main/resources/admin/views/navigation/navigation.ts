@@ -10,10 +10,10 @@ import { getPartFinderUrl, startsWith } from "/lib/part-finder/utils/utils";
 import { listComponents } from "/lib/xp/schema";
 
 import type { ComponentNavLink, ComponentNavLinkList } from "./navigation.freemarker";
-import { LAYOUT_KEY, PAGE_KEY, PART_KEY } from "/admin/tools/part-finder/part-finder";
+
 import { AggregationsToAggregationResults, LayoutDescriptor, PageDescriptor, PartDescriptor } from "@enonic-types/core";
 import { SORT_FUNCS } from "/lib/part-finder/utils/sorting";
-import { UriParams } from "/lib/part-finder/utils/params";
+import { UriParams, PARAM_VAL, SortParam } from "/lib/part-finder/utils/params";
 
 type CompTypeAggregation = {
   terms: {
@@ -138,9 +138,9 @@ const handleUppercasedAndNoSchemaKeys = (
   displayUnused,
 ) => {
   const caseSensitiveKeysInApp = {
-    part: listCompsInCurrentApp(currentAppKey, PART_KEY),
-    layout: listCompsInCurrentApp(currentAppKey, LAYOUT_KEY),
-    page: listCompsInCurrentApp(currentAppKey, PAGE_KEY),
+    part: listCompsInCurrentApp(currentAppKey, PARAM_VAL.PART),
+    layout: listCompsInCurrentApp(currentAppKey, PARAM_VAL.LAYOUT),
+    page: listCompsInCurrentApp(currentAppKey, PARAM_VAL.PAGE),
   };
 
   const processedResultKeys = {};
@@ -208,7 +208,7 @@ export function getComponentNavLinkList(
   getconfigParam: string | undefined,
   repoParam: string,
   displayArchives: string,
-  sortParam: keyof typeof SORT_FUNCS | "",
+  sortParam: SortParam | "",
   displayUnused: string,
 ): ComponentNavLinkLists {
   const connection = multiRepoConnect({
@@ -280,20 +280,20 @@ export function getComponentNavLinkList(
 
   const resultingItemLists: ComponentNavLinkLists = {
     active: [
-      getItemList("Parts", "part", PART_KEY),
-      getItemList("Layouts", "layout", LAYOUT_KEY),
-      getItemList("Pages", "page", PAGE_KEY),
+      getItemList("Parts", "part", PARAM_VAL.PART),
+      getItemList("Layouts", "layout", PARAM_VAL.LAYOUT),
+      getItemList("Pages", "page", PARAM_VAL.PAGE),
     ],
     noSchema: [
-      getItemList("Parts", NOSCHEMA_TYPES.part, PART_KEY),
-      getItemList("Layouts", NOSCHEMA_TYPES.layout, LAYOUT_KEY),
-      getItemList("Pages", NOSCHEMA_TYPES.page, PAGE_KEY),
+      getItemList("Parts", NOSCHEMA_TYPES.part, PARAM_VAL.PART),
+      getItemList("Layouts", NOSCHEMA_TYPES.layout, PARAM_VAL.LAYOUT),
+      getItemList("Pages", NOSCHEMA_TYPES.page, PARAM_VAL.PAGE),
     ],
     unused: displayUnused
       ? [
-          getItemList("Parts", UNUSED_TYPES.part, PART_KEY),
-          getItemList("Layouts", UNUSED_TYPES.layout, LAYOUT_KEY),
-          getItemList("Pages", UNUSED_TYPES.page, PAGE_KEY),
+          getItemList("Parts", UNUSED_TYPES.part, PARAM_VAL.PART),
+          getItemList("Layouts", UNUSED_TYPES.layout, PARAM_VAL.LAYOUT),
+          getItemList("Pages", UNUSED_TYPES.page, PARAM_VAL.PAGE),
         ]
       : [],
   };

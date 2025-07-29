@@ -6,6 +6,11 @@ import {
   getRepoParam,
   getSortParam,
   trimString,
+  PREFIX,
+  PARAM,
+  PARAM_VAL,
+  addUriParam,
+  PartFinderQueryParams,
 } from "/lib/part-finder/utils/params";
 import { parseComponentPathsPerId } from "/lib/part-finder/utils/componentPathsPerId";
 import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
@@ -26,18 +31,17 @@ type ParamsForCleanupProcessing = {
   displayUnusedParam: string;
 };
 
-const PREFIX_RADIOBUTTONGROUP = /^radio--/;
-const PREFIX_DELETE_OLD = /^delete-old--/;
-const PREFIX_DELETE_NEW = /^delete-new--/;
+const RX_STARTSWITH_RADIOBUTTONGROUP = new RegExp(`^${PREFIX.radioButtonGroup}`);
+const RX_STARTSWITH_DELETE_OLD = new RegExp(`^${PREFIX.deleteOld}`);
+const RX_STARTSWITH_DELETE_NEW = new RegExp(`^${PREFIX.deleteNew}`);
 
-export const getParamsForCleanup = (req): ParamsForCleanupProcessing => {
-
-  const componentType = getParamString(req, "type");
+export const getParamsForCleanup = (req: XP.Request<PartFinderQueryParams>): ParamsForCleanupProcessing => {
+  const componentType = getParamString(req, PARAM.type);
   const sourceKey = trimString(req.params.key);
   const newKey = trimString(req.params.new_part_ref);
 
   const radiobuttonIds: string[] = Object.keys(req.params)
-    .filter((k) => k.match(PREFIX_RADIOBUTTONGROUP))
+    .filter((k) => k.match(RX_STARTSWITH_RADIOBUTTONGROUP))
     .map((k) => req.params[k] || "");
 
   const plannedOperations = {};
@@ -45,27 +49,31 @@ export const getParamsForCleanup = (req): ParamsForCleanupProcessing => {
     radiobuttonIds,
     Operation.Accept,
     plannedOperations,
-    PREFIX_DELETE_OLD,
+    RX_STARTSWITH_DELETE_OLD,
   );
-  const deleteNewIds = registerOperationAndGetIds(radiobuttonIds, Operation.Undo, plannedOperations, PREFIX_DELETE_NEW);
+  const deleteNewIds = registerOperationAndGetIds(
+    radiobuttonIds,
+    Operation.Undo,
+    plannedOperations,
+    RX_STARTSWITH_DELETE_NEW,
+  );
 
   const [newAppKey, newComponentKey] = newKey.split(":");
-
-  const repoParam = getRepoParam(req);
-  const sort = getSortParam(req);
 
   return {
     controlHashes: getControlHashesParam(req),
     componentPathsPerId: parseComponentPathsPerId([...deleteOldIds, ...deleteNewIds]),
     plannedOperations,
+
+    // Common:
     sourceKey,
     newKey,
     componentType,
-    repoIds: getCMSRepoIds(repoParam),
     newAppKey,
     newComponentKey,
-    sortParam: sort ? `&sort=${req.params.sort}` : "",
-    displayArchiveParam: getDisplayArchiveParam(req) ? "&archive=true" : "",
-    displayUnusedParam: getDisplayUnusedParam(req) ? "&unused=true" : "",
+    repoIds: getCMSRepoIds(getRepoParam(req)),
+    sortParam: addUriParam(PARAM.sort, req.params.sort, !!getSortParam(req)),
+    displayArchiveParam: addUriParam(PARAM.archive, PARAM_VAL.true, !!getDisplayArchiveParam(req)),
+    displayUnusedParam: addUriParam(PARAM.unused, PARAM_VAL.true, !!getDisplayUnusedParam(req)),
   };
 };
