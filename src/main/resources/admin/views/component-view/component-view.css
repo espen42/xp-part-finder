@@ -165,7 +165,7 @@ table.table {
   padding-left: 33px;
 }
 
-.getconfig {
+.get-config {
   font-family: monospace;
   background-color: rgba(210, 210, 210, 0.5);
   font-size: 12px;
@@ -173,7 +173,7 @@ table.table {
   color: #000;
 }
 
-.part-selectall-col .getconfig {
+.part-selectall-col .get-config {
   display: block;
   font-weight: normal;
 }

@@ -76,7 +76,7 @@ function parseComponentType(str: string = ""): ComponentDescriptorType | undefin
 }
 
 const getConfigRequest = (req: XP.Request<PartFinderQueryParams>): undefined | string => {
-  const getConfigParam = (req.params.getconfig || "").trim();
+  const getConfigParam = (req.params[PARAM.getConfig] || "").trim();
   return getConfigParam === PARAM_VAL.undefined || getConfigParam === PARAM_VAL.false || getConfigParam === ""
     ? undefined
     : getConfigParam;
@@ -105,7 +105,7 @@ const parseTargetConfig = (getConfigString: string): string => {
         log.warning(e1);
       }
 
-      throw Error(`Couldn't parse requested getconfig: '${getConfigString}'`);
+      throw Error(`Couldn't parse requested ${PARAM.getConfig}: '${getConfigString}'`);
     }
   }
 
@@ -134,8 +134,8 @@ const filterSelectorsByMatchingGetConfig = (currentItem: ComponentItem | undefin
 };
 
 export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
-  const currentItemType = parseComponentType(req.params.type);
-  const currentItemKey = req.params.key;
+  const currentItemType = parseComponentType(req.params[PARAM.type]);
+  const currentItemKey = req.params[PARAM.key];
   const installedApps = listAppsWithComponents();
 
   if (installedApps.length === 0) {
@@ -154,7 +154,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
       redirect: getPartFinderUrl({
         [PARAM.key]: firstComponent.key,
         [PARAM.type]: firstComponent.type,
-        [PARAM.repo]: req.params.repo || "",
+        [PARAM.repo]: req.params[PARAM.repo] || "",
       }),
     };
   }
@@ -176,8 +176,8 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
         },
         cmsRepoIds,
         {
-          field: req.params.sort ?? "_path",
-          direction: parseSortDirection(req.params.dir),
+          field: req.params[PARAM.sort] ?? "_path",
+          direction: parseSortDirection(req.params[PARAM.dir]),
         },
         getConfigParam,
         displayReplacer,
@@ -210,7 +210,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
       PREFIX,
     };
     if (getConfigParam) {
-      model.getconfig = getConfigParam;
+      model.configQuery = getConfigParam;
     }
     if (repoParam) {
       model.repoParam = repoParam;
@@ -245,7 +245,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
             [PARAM.key]: firstComponent.key,
             [PARAM.type]: firstComponent.type,
             [PARAM.repo]: repoParam,
-            [PARAM.getconfig]: getConfigParam || "",
+            [PARAM.getConfig]: getConfigParam || "",
             [PARAM.replace]: displayReplacer,
             [PARAM.archive]: displayArchives,
             [PARAM.sort]: sortParam,
@@ -276,7 +276,7 @@ export function get(req: XP.Request<PartFinderQueryParams>): XP.Response {
   };
 
   if (getConfigParam) {
-    model.getconfig = getConfigParam;
+    model.configQuery = getConfigParam;
   }
   if (repoParam) {
     model.repoParam = repoParam;

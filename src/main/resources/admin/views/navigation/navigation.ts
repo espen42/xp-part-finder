@@ -13,7 +13,7 @@ import type { ComponentNavLink, ComponentNavLinkList } from "./navigation.freema
 
 import { AggregationsToAggregationResults, LayoutDescriptor, PageDescriptor, PartDescriptor } from "@enonic-types/core";
 import { SORT_FUNCS } from "/lib/part-finder/utils/sorting";
-import { UriParams, PARAM_VAL, SortParam } from "/lib/part-finder/utils/params";
+import { UriParams, PARAM_VAL, SortParam, SortKey, PARAM } from "/lib/part-finder/utils/params";
 
 type CompTypeAggregation = {
   terms: {
@@ -231,22 +231,22 @@ export function getComponentNavLinkList(
 
   const getDecoratedUrl = (params: UriParams): string => {
     if (displayReplacer) {
-      params.replace = displayReplacer;
+      params[PARAM.replace] = displayReplacer;
     }
     if (displayArchives) {
-      params.archive = displayArchives;
+      params[PARAM.archive] = displayArchives;
     }
     if (getconfigParam) {
-      params.getconfig = getconfigParam;
+      params[PARAM.getConfig] = getconfigParam;
     }
     if (repoParam) {
-      params.repo = repoParam;
+      params[PARAM.repo] = repoParam;
     }
     if (sortParam && SORT_FUNCS[sortParam]) {
-      params.sort = sortParam;
+      params[PARAM.sort] = sortParam;
     }
     if (displayUnused) {
-      params.unused = displayUnused;
+      params[PARAM.unused] = displayUnused;
     }
 
     const url = getPartFinderUrl(params);
@@ -273,7 +273,7 @@ export function getComponentNavLinkList(
         })),
     };
 
-    itemList.items.sort(SORT_FUNCS[sortParam] || SORT_FUNCS.alphaasc);
+    itemList.items.sort(SORT_FUNCS[sortParam] || SORT_FUNCS[SortKey.alphaAsc]);
 
     return itemList;
   };

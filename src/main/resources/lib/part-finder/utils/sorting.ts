@@ -1,7 +1,7 @@
 import { ComponentNavLink } from "/admin/views/navigation/navigation.freemarker";
 import { EditorResult } from "/lib/part-finder/utils/results";
 import { Component } from "@enonic-types/lib-content";
-import { SortParam } from "/lib/part-finder/utils/params";
+import { SortKey, SortParam } from "/lib/part-finder/utils/params";
 
 type SortFunc<T> = (a: T, b: T) => number;
 
@@ -12,10 +12,10 @@ export type SortedArrayAscending<T> = T[] & { readonly [ascending]: void };
 export type SortedArrayDescending<T> = T[] & { readonly [descending]: void };
 
 export const SORT_FUNCS: Record<SortParam, SortFunc<ComponentNavLink>> = {
-  alphaasc: (a, b) => a.key.localeCompare(b.key),
-  alphadesc: (a, b) => b.key.localeCompare(a.key),
-  countasc: (a, b) => a.docCount - b.docCount,
-  countdesc: (a, b) => b.docCount - a.docCount,
+  [SortKey.alphaAsc]: (a, b) => a.key.localeCompare(b.key),
+  [SortKey.alphaDesc]: (a, b) => b.key.localeCompare(a.key),
+  [SortKey.countAsc]: (a, b) => a.docCount - b.docCount,
+  [SortKey.countDesc]: (a, b) => b.docCount - a.docCount,
 };
 
 const sortComponentPaths: SortFunc<string> = (pathA, pathB) => {

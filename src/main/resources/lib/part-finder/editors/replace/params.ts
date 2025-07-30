@@ -37,8 +37,8 @@ const RX_STARTSWITH_SELECTITEM = new RegExp(`^${PREFIX.selectItem}`);
 
 export const getParamsForReplacing = (req: XP.Request<PartFinderQueryParams>): ParamsForReplacementProcessing => {
   const componentType = getParamString(req, PARAM.type);
-  const sourceKey = trimString(req.params.key);
-  const newKey = trimString(req.params.new_part_ref);
+  const sourceKey = trimString(req.params[PARAM.key]);
+  const newKey = trimString(req.params[PARAM.newPartName]);
   const selectorIds: string[] = Object.keys(req.params)
     .filter((k) => k.match(RX_STARTSWITH_SELECTITEM))
     .map((k) => req.params[k] || "");
@@ -48,7 +48,7 @@ export const getParamsForReplacing = (req: XP.Request<PartFinderQueryParams>): P
 
   const requiredArgs: { [key: string]: string } = {
     key: sourceKey,
-    new_part_ref: newKey,
+    newPartName: newKey,
     type: componentType,
   };
   const missingArgs = Object.keys(requiredArgs)
@@ -63,7 +63,7 @@ export const getParamsForReplacing = (req: XP.Request<PartFinderQueryParams>): P
   const [newAppKey, newComponentKey] = newKey.split(":");
 
   return {
-    requestedPostprocessors: trimString(req.params.postprocessors)
+    requestedPostprocessors: trimString(req.params[PARAM.postprocessors])
       .split(/\s*,\s*/g)
       .filter((processorName) => processorName.trim())
       .filter((processorName) => processorName !== PARAM_VAL.undefined),
@@ -79,7 +79,7 @@ export const getParamsForReplacing = (req: XP.Request<PartFinderQueryParams>): P
     newAppKey,
     newComponentKey,
     repoIds: getCMSRepoIds(getRepoParam(req)),
-    sortParam: addUriParam(PARAM.sort, req.params.sort, !!getSortParam(req)),
+    sortParam: addUriParam(PARAM.sort, req.params[PARAM.sort], !!getSortParam(req)),
     displayArchiveParam: addUriParam(PARAM.archive, PARAM_VAL.true, !!getDisplayArchiveParam(req)),
     displayUnusedParam: addUriParam(PARAM.unused, PARAM_VAL.true, !!getDisplayUnusedParam(req)),
   };

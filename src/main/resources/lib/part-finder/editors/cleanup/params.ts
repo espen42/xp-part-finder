@@ -37,8 +37,8 @@ const RX_STARTSWITH_DELETE_NEW = new RegExp(`^${PREFIX.deleteNew}`);
 
 export const getParamsForCleanup = (req: XP.Request<PartFinderQueryParams>): ParamsForCleanupProcessing => {
   const componentType = getParamString(req, PARAM.type);
-  const sourceKey = trimString(req.params.key);
-  const newKey = trimString(req.params.new_part_ref);
+  const sourceKey = trimString(req.params[PARAM.key]);
+  const newKey = trimString(req.params[PARAM.newPartName]);
 
   const radiobuttonIds: string[] = Object.keys(req.params)
     .filter((k) => k.match(RX_STARTSWITH_RADIOBUTTONGROUP))
@@ -72,7 +72,7 @@ export const getParamsForCleanup = (req: XP.Request<PartFinderQueryParams>): Par
     newAppKey,
     newComponentKey,
     repoIds: getCMSRepoIds(getRepoParam(req)),
-    sortParam: addUriParam(PARAM.sort, req.params.sort, !!getSortParam(req)),
+    sortParam: addUriParam(PARAM.sort, req.params[PARAM.sort], !!getSortParam(req)),
     displayArchiveParam: addUriParam(PARAM.archive, PARAM_VAL.true, !!getDisplayArchiveParam(req)),
     displayUnusedParam: addUriParam(PARAM.unused, PARAM_VAL.true, !!getDisplayUnusedParam(req)),
   };

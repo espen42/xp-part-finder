@@ -3,11 +3,15 @@
 [#-- @ftlvariable name="currentItem.type" type="String" --]
 [#-- @ftlvariable name="currentItem.headings" type="java.util.ArrayList" --]
 [#-- @ftlvariable name="currentItem.contents" type="java.util.ArrayList" --]
+[#-- @ftlvariable name="configQuery" type="String" --]
+[#-- @ftlvariable name="PARAM" type="Object" --]
+[#-- @ftlvariable name="PARAM_VAL" type="Object" --]
+[#-- @ftlvariable name="PREFIX" type="Object" --]
 <turbo-frame id="content-view">
   [#if displayReplacer != '' || displaySummaryAndUndo]
-    <form action="./part-finder?key=${currentItem.key}&type=${currentItem.type}" method="post">
+    <form action="./part-finder?${PARAM.key}=${currentItem.key}&${PARAM.type}=${currentItem.type}" method="post">
     [#if displaySummaryAndUndo]
-      <input type="hidden" name="review" value="true"></input>
+      <input type="hidden" name="${PARAM.review}" value="${PARAM_VAL.true}"></input>
     [/#if]
   [/#if]
 
@@ -60,9 +64,9 @@
                   Select all
                 </label>
               </div>
-              [#if getconfig??]
-                <span class="getconfig">
-                    (${getconfig})
+              [#if configQuery??]
+                <span class="get-config">
+                    (${configQuery})
                   </span>
               [/#if]
 
@@ -108,7 +112,7 @@
             [#if displaySummaryAndUndo]
               <div>${content.displayName}<br /><span class="repo-name">Repo: ${content.repo}</span></div>
               [#if (content.id?? && content.controlHash??)]
-                <input type="hidden" name="contenthash__${content.id}" value="${content.controlHash}">
+                <input type="hidden" name="${PREFIX.contentHash}${content.id}" value="${content.controlHash}">
               [/#if]
               <ul class="multi-usage-selectors">
                 [#list content.multiUsage as usage]
@@ -186,23 +190,23 @@
                         <div class="review-radio-row">
                           <span class="part-accept">
                             <input type="radio"
-                                   id="delete-old--${content.id}__${usage.oldPath}"
-                                   name="radio--${content.id}__${usage.path}"
-                                   value="delete-old--${content.id}__${usage.oldPath}"
+                                   id="${PREFIX.deleteOld}${content.id}__${usage.oldPath}"
+                                   name="${PREFIX.radioButtonGroup}${content.id}__${usage.path}"
+                                   value="${PREFIX.deleteOld}${content.id}__${usage.oldPath}"
                                    class="part-select-radio"
                             />
-                            <label for="delete-old--${content.id}__${usage.oldPath}">
+                            <label for="${PREFIX.deleteOld}${content.id}__${usage.oldPath}">
                               <strong>✓</strong>&nbsp;&nbsp;${usage.newPath}
                             </label>
                           </span>
                           <span class="part-undo">
-                            <label for="delete-new--${content.id}__${usage.newPath}"
+                            <label for="${PREFIX.deleteNew}${content.id}__${usage.newPath}"
                                    class="part-undo-label">❌
                             </label>
                             <input type="radio"
-                                   id="delete-new--${content.id}__${usage.newPath}"
-                                   name="radio--${content.id}__${usage.path}"
-                                   value="delete-new--${content.id}__${usage.newPath}"
+                                   id="${PREFIX.deleteNew}${content.id}__${usage.newPath}"
+                                   name="${PREFIX.radioButtonGroup}${content.id}__${usage.path}"
+                                   value="${PREFIX.deleteNew}${content.id}__${usage.newPath}"
                                    class="part-select-radio"
                             />
                           </span>
@@ -211,13 +215,17 @@
                     [#else]
                       [#if !(usage.hideSelector?? && usage.hideSelector)]
                         <input type="checkbox"
-                               id="select-item--${content.id}__${usage.path}"
-                               name="select-item--${content.id}__${usage.path}"
+                               id="${PREFIX.selectItem}${content.id}__${usage.path}"
+                               name="${PREFIX.selectItem}${content.id}__${usage.path}"
                                value="${content.id}__${usage.path}"
                                class="part-select-check"
                         />
                       [/#if]
-                      <label for="select-item--${content.id}__${usage.path}" class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]">${usage.path}[#if getconfig?? && usage.getconfig??] <span class="getconfig">(${usage.getconfig})</span>[/#if]</label>
+                      <label for="${PREFIX.selectItem}${content.id}__${usage.path}"
+                             class="part-select-label[#if displaySummaryAndUndo && usage.error??] part-error[/#if]"
+                      >${usage.path
+                         }[#if configQuery?? && usage.compConfig??] <span class="get-config">(${usage.compConfig})</span>[/#if]
+                      </label>
                     [/#if]
                     </li>
                   [/#list]
@@ -239,12 +247,12 @@
                 <td>
               [/#if]
               <input type="checkbox"
-                     id="select-item--${content.id}"
-                     name="select-item--${content.id}"
+                     id="${PREFIX.selectItem}${content.id}"
+                     name="${PREFIX.selectItem}${content.id}"
                      value="${content.id}"
                      class="part-select-check"
               />
-              <label for="select-item--${content.id}" class="part-select-label" />
+              <label for="${PREFIX.selectItem}${content.id}" class="part-select-label" />
               </td>
             [/#if]
           [/#if]
@@ -255,30 +263,30 @@
 
 
       [#if displayReplacer != '']
-        <label for="new_part_ref"
+        <label for="${PARAM.newPartName}"
                class="new-part-label inline-pre"
         >
           Replace ${currentItem.type}
           <pre style="cursor:pointer;display:inline"
-               onclick="document.getElementById('new_part_ref').value='${currentItem.key}'"
+               onclick="document.getElementById('${PARAM.newPartName}').value='${currentItem.key}'"
           >${currentItem.key}</pre>
            with:
         </label>
         <input type="text"
-               placeholder="Format: full.app.key:part-name" id="new_part_ref"
-               name="new_part_ref"
-               id="new_part_ref"
+               placeholder="Format: full.app.key:part-name" id="${PARAM.newPartName}"
+               name="${PARAM.newPartName}"
+               id="${PARAM.newPartName}"
                class="new-part-textfield"
                value=${displayReplacer?replace("^true$", "", "ir")}
         >
 
-        <label for="postprocessors" class="new-part-label inline-pre">
+        <label for="${PARAM.postprocessors}" class="new-part-label inline-pre">
           Run postprocessors (comma-separated, eg. <pre>logconfig,throwerror</pre>)<br/>Available names: see src/main/resources/admin/tools/part-finder/editor/postprocessors/index.ts
         </label>
         <input type="text"
-               placeholder="Postprocessor name(s)" id="postprocessors"
-               name="postprocessors"
-               id="postprocessors"
+               placeholder="Postprocessor name(s)"
+               name="${PARAM.postprocessors}"
+               id="${PARAM.postprocessors}"
                class="new-part-textfield"
         >
 
@@ -306,7 +314,7 @@
             <p>Navigating away (or closing this tab) will wipe this list and the opportunity to undo!</p>
           </div>
 
-          <input type="hidden" name="new_part_ref" id="new_part_ref" value="${oldItemKey}"/>
+          <input type="hidden" name="${PARAM.newPartName}" id="${PARAM.newPartName}" value="${oldItemKey}"/>
 
           <input type="submit"
                  id="btn_execute_review"
@@ -376,7 +384,7 @@
       pf.selectAllElem = document.getElementById("_select_change_all_");
       pf.acceptAllElem = document.getElementById("_select_accept_all_");
       pf.undoAllElem = document.getElementById("_select_undo_all_");
-      pf.targetPartNameElem = document.getElementById("new_part_ref");
+      pf.targetPartNameElem = document.getElementById("${PARAM.newPartName}");
 
       [#--
         For the radio buttons, add event listeners for checking/unchecking events:
@@ -447,12 +455,12 @@
         [#--
           For each select-item checkbox, add an event listener for checking/unchecking events:
         --]
-        const checkbox = document.getElementById("select-item--" + id)
+        const checkbox = document.getElementById("${PREFIX.selectItem}" + id)
         if (checkbox) {
           checkbox.addEventListener("change", function() {
 
             [#-- Toggle the corresponding id in the selectedIds array --]
-            const elem = document.getElementById("select-item--" + id);
+            const elem = document.getElementById("${PREFIX.selectItem}" + id);
             const isSelected = pf.selectedIds.indexOf(id) !== -1
             if (elem.checked && !isSelected) {
               pf.selectedIds.push(id);
@@ -480,9 +488,9 @@
 
             const previousSelection = pf.selectionInRow[rowName]
             if (previousSelection) {
-              if (previousSelection.startsWith("delete-old--")) {
+              if (previousSelection.startsWith("${PREFIX.deleteOld}")) {
                 pf.acceptIds = pf.acceptIds.filter(id => id !== previousSelection)
-              } else if (previousSelection.startsWith("delete-new--")) {
+              } else if (previousSelection.startsWith("${PREFIX.deleteNew}")) {
                 pf.undoIds = pf.undoIds.filter(id => id !== previousSelection)
               }
             }
@@ -490,9 +498,9 @@
             const newSelection = e.target.value
             if (newSelection) {
               pf.selectionInRow[rowName] = newSelection
-              if (newSelection.startsWith("delete-old--")) {
+              if (newSelection.startsWith("${PREFIX.deleteOld}")) {
                 pf.acceptIds.push(newSelection)
-              } else if (newSelection.startsWith("delete-new--")) {
+              } else if (newSelection.startsWith("${PREFIX.deleteNew}")) {
                 pf.undoIds.push(newSelection)
               }
             }
@@ -557,7 +565,7 @@
           }
 
           pf.allIds.forEach(id => {
-            document.getElementById("select-item--" + id).checked = (pf.selectedIds.indexOf(id) !== -1);
+            document.getElementById("${PREFIX.selectItem}" + id).checked = (pf.selectedIds.indexOf(id) !== -1);
           });
 
           pf.checkSelection();

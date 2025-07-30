@@ -7,7 +7,7 @@ export function processMultiUsage(currentItem) {
         const relevantUsages = content?.usagePaths[currentItem.key] || [];
         content.multiUsage = relevantUsages.map((item) => ({
           ...item,
-          getconfig: JSON.stringify(item.targetSubValue),
+          compConfig: JSON.stringify(item.targetSubValue),
         }));
         if (relevantUsages.length > 0) {
           content.hasMultiUsage = true;

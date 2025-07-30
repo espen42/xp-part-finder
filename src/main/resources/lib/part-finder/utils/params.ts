@@ -2,53 +2,67 @@ import { SORT_FUNCS } from "/lib/part-finder/utils/sorting";
 import type { ComponentDescriptorType } from "/lib/xp/schema";
 
 export type UriParams = {
-  key: string;
-  type: ComponentDescriptorType;
-  repo?: string;
-  replace?: string;
-  getconfig?: string;
-  archive?: string;
-  sort?: SortParam;
-  unused?: string;
+  [PARAM.key]: string;
+  [PARAM.type]: ComponentDescriptorType;
+  [PARAM.repo]?: string;
+  [PARAM.replace]?: string;
+  [PARAM.getConfig]?: string;
+  [PARAM.archive]?: string;
+  [PARAM.sort]?: SortParam;
+  [PARAM.unused]?: string;
 };
 
 export type PartFinderQueryParams = {
-  key: string;
-  type: ComponentDescriptorType;
-  new_part_ref?: string;
-  postprocessors?: string;
-  sort?: string;
-  dir?: string;
-  replace?: string;
-  getconfig?: string;
-  repo?: string;
-  archive?: string;
-  unused?: string;
-  review?: string;
+  [PARAM.key]: string;
+  [PARAM.type]: ComponentDescriptorType;
+  [PARAM.newPartName]?: string;
+  [PARAM.postprocessors]?: string;
+  [PARAM.sort]?: string;
+  [PARAM.dir]?: string;
+  [PARAM.replace]?: string;
+  [PARAM.getConfig]?: string;
+  [PARAM.repo]?: string;
+  [PARAM.archive]?: string;
+  [PARAM.unused]?: string;
+  [PARAM.review]?: string;
 };
 
 export const PARAM = {
   replace: "replace",
-  getconfig: "getconfig",
+  getConfig: "getconfig",
   archive: "archive",
   sort: "sort",
   key: "key",
   unused: "unused",
   repo: "repo",
   type: "type",
-  new_part_ref: "new_part_ref",
+  newPartName: "newpartname",
   postprocessors: "postprocessors",
   dir: "dir",
   review: "review",
-} as const satisfies Record<keyof PartFinderQueryParams, string>;
+} as const satisfies Record<
+  string,
+  | "replace"
+  | "getconfig"
+  | "archive"
+  | "sort"
+  | "key"
+  | "unused"
+  | "repo"
+  | "type"
+  | "newpartname"
+  | "postprocessors"
+  | "dir"
+  | "review"
+>;
 
 export const PREFIX = {
-  contentHash: "contenthash__",
+  contentHash: "contenthash--",
   radioButtonGroup: "radio--",
   deleteOld: "delete-old--",
   deleteNew: "delete-new--",
   selectItem: "select-item--",
-} as const satisfies Record<string, "contenthash__" | "radio--" | "delete-old--" | "delete-new--" | "select-item--">;
+} as const satisfies Record<string, "contenthash--" | "radio--" | "delete-old--" | "delete-new--" | "select-item--">;
 
 const ComponentKey = {
   PART: "PART",

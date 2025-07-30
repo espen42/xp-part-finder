@@ -79,7 +79,7 @@ export function getComponentUsagesInRepo(
         [PARAM.type]: component.type,
         [PARAM.replace]: replaceParam + "",
         [PARAM.archive]: archiveParam + "",
-        [PARAM.getconfig]: getconfigParam || "",
+        [PARAM.getConfig]: getconfigParam || "",
         [PARAM.repo]: repoParam || "",
         [PARAM.sort]: heading.name,
         [PARAM.dir]:

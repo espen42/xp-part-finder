@@ -1,12 +1,14 @@
+import { PARAM } from "/lib/part-finder/utils/params";
+
 export type ComponentNavLinkList = {
   title: string;
   items: ComponentNavLink[];
 };
 
 export type ComponentNavLink = {
-  key: string;
+  [PARAM.key]: string;
   url: string;
-  replace?: string;
-  getconfig?: string;
+  [PARAM.replace]?: string;
+  [PARAM.getConfig]?: string;
   docCount: number;
 };
