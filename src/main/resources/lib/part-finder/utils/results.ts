@@ -1,7 +1,7 @@
 import type { ContentUsage, MultiUsageInstance } from "/admin/tools/part-finder/part-finder.freemarker";
 import { getToolUrl } from "/lib/xp/admin";
 import { PathChangeTracker, PREFIX_TRACKED_NEWCOMPONENT } from "/lib/part-finder/utils/pathChangeTracker";
-import { ContentItem } from "/lib/part-finder/editors";
+import { ContentItem } from "/lib/part-finder/stages";
 import { SortedArrayAscending, sortResultsByPathAsc } from "/lib/part-finder/utils/sorting";
 import { hashContentItem } from "/lib/part-finder/utils/contentHashing";
 import { Operation } from "/lib/part-finder/utils/plannedOperations";

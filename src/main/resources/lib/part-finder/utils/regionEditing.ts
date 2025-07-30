@@ -1,5 +1,5 @@
 import { Component } from "@enonic-types/lib-content";
-import { ContentItem } from "/lib/part-finder/editors";
+import { ContentItem } from "/lib/part-finder/stages";
 import { PathChangeTracker } from "/lib/part-finder/utils/pathChangeTracker";
 import {
   SortedArrayDescending,

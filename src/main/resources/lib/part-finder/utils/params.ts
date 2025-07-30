@@ -1,6 +1,11 @@
 import { SORT_FUNCS } from "/lib/part-finder/utils/sorting";
 import type { ComponentDescriptorType } from "/lib/xp/schema";
+import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
+import { parseComponentPathsPerId } from "/lib/part-finder/utils/componentPathsPerId";
 
+// TODO: Before which stage/screen(s) does the server receive these for handling and rendering?
+// Finder? Replace? Cleanup? All of them? Some common, some not?
+// Sort out and rename to clarify.
 export type UriParams = {
   [PARAM.key]: string;
   [PARAM.type]: ComponentDescriptorType;
@@ -24,7 +29,7 @@ export type PartFinderQueryParams = {
   [PARAM.repo]?: string;
   [PARAM.archive]?: string;
   [PARAM.unused]?: string;
-  [PARAM.review]?: string;
+  [PARAM.cleanup]?: string;
 };
 
 export const PARAM = {
@@ -39,7 +44,7 @@ export const PARAM = {
   newPartName: "newpartname",
   postprocessors: "postprocessors",
   dir: "dir",
-  review: "review",
+  cleanup: "cleanup",
 } as const satisfies Record<
   string,
   | "replace"
@@ -53,7 +58,7 @@ export const PARAM = {
   | "newpartname"
   | "postprocessors"
   | "dir"
-  | "review"
+  | "cleanup"
 >;
 
 export const PREFIX = {
@@ -134,3 +139,50 @@ export const getSortParam = (req: XP.Request<PartFinderQueryParams>): SortParam 
 };
 
 export const getDisplayUnusedParam = (req) => getParamBool(req, PARAM.unused);
+
+export const getCommonParams = (
+  req: XP.Request<PartFinderQueryParams>,
+  targetIds: string[],
+): {
+  repoIds: string[];
+  sortParam: string;
+  displayArchiveParam: string;
+  displayUnusedParam: string;
+  componentType: string;
+  sourceKey: string;
+  newKey: string;
+  newAppKey: string;
+  newComponentKey: string;
+  componentPathsPerId: Record<string, string[] | null>;
+} => {
+  const sourceKey = trimString(req.params[PARAM.key]);
+  const newKey = trimString(req.params[PARAM.newPartName]);
+  const componentType = getParamString(req, PARAM.type);
+
+  const requiredArgs: { [key: string]: string } = {
+    [PARAM.key]: sourceKey,
+    [PARAM.newPartName]: newKey,
+    [PARAM.type]: componentType,
+  };
+  const missingArgs = Object.keys(requiredArgs)
+    .filter((key) => !requiredArgs[key])
+    .map((key) => key);
+  if (missingArgs.length > 0) {
+    throw Error("Missing POST parameters: " + JSON.stringify(missingArgs));
+  }
+
+  const [newAppKey, newComponentKey] = newKey.split(":");
+
+  return {
+    newKey,
+    newAppKey,
+    newComponentKey,
+    componentPathsPerId: parseComponentPathsPerId(targetIds),
+    componentType: getParamString(req, PARAM.type),
+    sourceKey: trimString(req.params[PARAM.key]),
+    repoIds: getCMSRepoIds(getRepoParam(req)),
+    sortParam: addUriParam(PARAM.sort, req.params[PARAM.sort], !!getSortParam(req)),
+    displayArchiveParam: addUriParam(PARAM.archive, PARAM_VAL.true, !!getDisplayArchiveParam(req)),
+    displayUnusedParam: addUriParam(PARAM.unused, PARAM_VAL.true, !!getDisplayUnusedParam(req)),
+  };
+};

@@ -3,14 +3,14 @@ import { find } from "/lib/part-finder/utils/utils";
 
 import { Component } from "@enonic-types/lib-content";
 import { contentRegionMutators } from "/lib/part-finder/utils/regionEditing";
-import { ContentItem, EditorFunc, IndexConfigEntry } from "/lib/part-finder/editors";
-import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/lib/part-finder/editors/replace/postprocessors";
+import { ContentItem, EditorFunc, IndexConfigEntry } from "/lib/part-finder/stages";
+import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/lib/part-finder/stages/replace/postprocessors";
 import clone from "../../../../../../../node_modules/just-clone";
-import { SIGNATURE_MARKER_KEY } from "/admin/tools/part-finder/part-finder";
 import { sortComponentPathsAsc, sortComponentPathsDesc, SortedArrayDescending } from "/lib/part-finder/utils/sorting";
 import { getLastAttemptTracker, LastAttemptTracker } from "/lib/part-finder/utils/lastAttemptTracker";
-import { prepareEditorResources } from "/lib/part-finder/utils/editorUtils";
+import { prepareEditorResources } from "/lib/part-finder/utils/editors";
 import { PREFIX_TRACKED_NEWCOMPONENT } from "/lib/part-finder/utils/pathChangeTracker";
+import { SIGNATURE_MARKER_KEY } from "/lib/part-finder/utils/aliasUser";
 
 type ComponentPostProcessor = {
   label: string;

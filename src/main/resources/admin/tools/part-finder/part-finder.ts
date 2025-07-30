@@ -1,34 +1,15 @@
-import { getToolUrl } from "/lib/xp/admin";
 import { list as listApps, type Application } from "/lib/xp/app";
-import { Content, get as getContent } from "/lib/xp/content";
-import { connect as nodeConnect } from "/lib/xp/node";
-import { run as runInContext } from "/lib/xp/context";
 import { hasRole as hasAuthRole } from "/lib/xp/auth";
 import { listComponents, type ComponentDescriptorType, type ComponentDescriptor } from "/lib/xp/schema";
-
-import { Node } from "@enonic-types/lib-node";
-import { getAliasOrUserKey } from "/lib/part-finder/utils/aliasUser";
-
 import { render } from "/lib/tineikt/freemarker";
-
-import {
-  stringAfterLast,
-  assertIsDefined,
-  getPartFinderUrl,
-  notNullOrUndefined,
-  runAsAdmin,
-} from "/lib/part-finder/utils/utils";
+import { assertIsDefined, getPartFinderUrl, notNullOrUndefined, runAsAdmin } from "/lib/part-finder/utils/utils";
 import { getComponentNavLinkList } from "../../views/navigation/navigation";
 import { getComponentUsagesInRepo } from "../../views/component-view/component-view";
 import type { ComponentViewParams } from "../../views/component-view/component-view.freemarker";
 import type { Header, Link } from "../../views/header/header.freemarker";
 import type { SortDirection } from "@enonic-types/core";
-import { createReplaceEditor } from "/lib/part-finder/editors/replace/editor";
-
-import { Results } from "/lib/part-finder/utils/results";
 import { ComponentItem, ComponentList } from "/admin/tools/part-finder/part-finder.freemarker";
 import { processMultiUsage } from "/admin/tools/part-finder/usagePaths";
-import { ContentItem, EditorFunc } from "/lib/part-finder/editors";
 import {
   getDisplayArchiveParam,
   getDisplayReplacerParam,
@@ -41,21 +22,15 @@ import {
   PARAM,
   PREFIX,
 } from "/lib/part-finder/utils/params";
-import { getParamsForReplacing } from "/lib/part-finder/editors/replace/params";
 import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
 import { listContentIdsAndUsagePaths } from "/lib/part-finder/utils/contentIdSummary";
-import { createCleanupEditor } from "/lib/part-finder/editors/cleanup/editor";
-import { getParamsForCleanup } from "/lib/part-finder/editors/cleanup/params";
-import { Operation } from "/lib/part-finder/utils/plannedOperations";
+import { runReplaceAndGetSummary } from "/lib/part-finder/stages/replace/post";
+import { runCleanupAndGetSummary } from "/lib/part-finder/stages/cleanup/post";
 
-const PAGE_TITLE = "Part finder";
-const TARGET_BRANCH = "draft";
-const PRINCIPAL_ADMIN = "role:system.admin";
+export const PAGE_TITLE = "Part finder";
 
 const VIEW = resolve("part-finder.ftl");
 const COMPONENT_VIEW = resolve("../../views/component-view/component-view.ftl");
-
-export const SIGNATURE_MARKER_KEY = "/\\$@:__ This contentitem was changed so sign it __:@/\\";
 
 export function getAppKey(key: string): string {
   return key.split(":")[0];
@@ -318,62 +293,9 @@ function parseSortDirection(str: string = ""): SortDirection | undefined {
   return undefined;
 }
 
-//-------------------------------
+//------------------------------- POST handler for the part mover stages -------------------------------
 
-const runEditor = (
-  editorFunc: EditorFunc,
-  repoIds: string[],
-  componentPathsPerId: Record<string, string[] | null>,
-  results: Results,
-) => {
-  const aliasOrUserKey = getAliasOrUserKey();
-
-  repoIds.forEach((targetRepo) => {
-    const repoName = stringAfterLast(targetRepo, ".");
-    results.setRepoContext(repoName);
-
-    const repo = nodeConnect({
-      repoId: targetRepo,
-      branch: TARGET_BRANCH,
-    });
-
-    runInContext(
-      {
-        repository: targetRepo,
-        branch: TARGET_BRANCH,
-        principals: [PRINCIPAL_ADMIN],
-      },
-      () => {
-        let item: Content | null;
-
-        Object.keys(componentPathsPerId).forEach((key) => {
-          item = null;
-          try {
-            item = getContent({ key });
-            if (item) {
-              repo.modify({
-                key,
-                editor: (contentItem: Node<ContentItem>) => {
-                  const modifiedContentItem = editorFunc(contentItem);
-
-                  // If the content item has been changed, sign the modified content item with the alias user or current user.
-                  if (modifiedContentItem[SIGNATURE_MARKER_KEY]) {
-                    delete modifiedContentItem[SIGNATURE_MARKER_KEY];
-                    modifiedContentItem.modifier = aliasOrUserKey;
-                  }
-                  return modifiedContentItem;
-                },
-              });
-            }
-          } catch (e) {
-            results.markError(item, null, e, key);
-          }
-        });
-      },
-    );
-  });
-};
-
+// TODO: parameterize the Request
 export function post(req: XP.Request): XP.Response {
   if (!hasAuthRole("system.admin")) {
     return {
@@ -382,161 +304,12 @@ export function post(req: XP.Request): XP.Response {
     };
   }
 
-  let model;
-
-  const isReview = getParamBool(req, PARAM.review);
-
-  if (!isReview) {
-    const {
-      oldAppKey,
-      oldComponentKey,
-      newAppKey,
-      newComponentKey,
-      componentPathsPerId,
-      plannedOperations,
-      requestedPostprocessors,
-      sortParam,
-      sourceKey,
-      newKey,
-      componentType,
-      repoIds,
-      displayArchiveParam,
-      displayUnusedParam,
-    } = getParamsForReplacing(req);
-
-    const results = new Results(sourceKey, newKey, componentType, plannedOperations, Operation.Add);
-
-    const replaceEditor = createReplaceEditor(
-      oldAppKey,
-      oldComponentKey,
-      newAppKey,
-      newComponentKey,
-      componentType,
-      results,
-      componentPathsPerId,
-      requestedPostprocessors,
-    );
-
-    runEditor(replaceEditor, repoIds, componentPathsPerId, results);
-
-    const taskSummary = `${sourceKey} → ${newKey}`;
-    const appKey = getAppKey(newComponentKey);
-    const type = componentType.toUpperCase();
-
-    const currentItem = {
-      url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?${PARAM.key}=${newAppKey}%3A${newComponentKey}&${PARAM.type}=${type}`,
-      key: newKey,
-      type: componentType,
-      contents: results.buildContentResult(),
-      headings: [
-        {
-          text: "Display name",
-          name: "displayName",
-          url: "#",
-        },
-        {
-          text: "Content type",
-          name: "type",
-          url: "#",
-        },
-        {
-          text: "Path",
-          name: "_path",
-          url: "#",
-        },
-      ],
-    };
-
-    const allIds = JSON.stringify(listContentIdsAndUsagePaths(currentItem));
-
-    model = {
-      title: `${PAGE_TITLE} - REPLACEMENT SUMMARY: ${taskSummary}`,
-      displayName: PAGE_TITLE,
-      currentItemKey: newKey,
-      currentAppKey: appKey,
-      displayReplacer: "",
-      displaySummaryAndUndo: true,
-      oldItemKey: `${sourceKey}`,
-      newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?${PARAM.key}=${newAppKey}%3A${newComponentKey}&${PARAM.type}=${type}&${PARAM.replace}=${PARAM_VAL.true}${sortParam}${displayArchiveParam}${displayUnusedParam}`,
-      currentItem,
-      allIds,
-      PARAM,
-      PARAM_VAL,
-      PREFIX,
-    };
-
-    //////////////////////////////////////////////
-  } else {
-    const {
-      controlHashes,
-      componentPathsPerId,
-      plannedOperations,
-      sourceKey,
-      newKey,
-      componentType,
-      repoIds,
-      newAppKey,
-      newComponentKey,
-      sortParam,
-      displayArchiveParam,
-      displayUnusedParam,
-    } = getParamsForCleanup(req);
-
-    const results = new Results(sourceKey, newKey, componentType, plannedOperations, Operation.Cleanup);
-
-    const cleanupEditor = createCleanupEditor(controlHashes, results, componentPathsPerId);
-
-    runEditor(cleanupEditor, repoIds, componentPathsPerId, results);
-
-    const taskSummary = `${sourceKey} → ${newKey}`;
-    const appKey = getAppKey(newComponentKey);
-    const type = componentType.toUpperCase();
-
-    const currentItem = {
-      url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?${PARAM.key}=${newAppKey}%3A${newComponentKey}&${PARAM.type}=${type}`,
-      key: newKey,
-      type: componentType,
-      contents: results.buildContentResult(),
-      headings: [
-        {
-          text: "Display name",
-          name: "displayName",
-          url: "#",
-        },
-        {
-          text: "Content type",
-          name: "type",
-          url: "#",
-        },
-        {
-          text: "Path",
-          name: "_path",
-          url: "#",
-        },
-      ],
-    };
-
-    const allIds = JSON.stringify(listContentIdsAndUsagePaths(currentItem));
-
-    model = {
-      title: `${PAGE_TITLE} - POST-CLEANUP SUMMARY: ${taskSummary}`,
-      displayName: PAGE_TITLE,
-      currentItemKey: newKey,
-      currentAppKey: appKey,
-      displayReplacer: "",
-      displaySummaryAndUndo: true,
-      oldItemKey: `${sourceKey}`,
-      newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?${PARAM.key}=${newAppKey}%3A${newComponentKey}&${PARAM.type}=${type}&${PARAM.replace}=${PARAM_VAL.true}${sortParam}${displayArchiveParam}${displayUnusedParam}`,
-      currentItem,
-      allIds,
-      PARAM,
-      PARAM_VAL,
-      PREFIX,
-    };
-  }
+  const isCleanupStage = getParamBool(req, PARAM.cleanup);
+  const model = !isCleanupStage ? runReplaceAndGetSummary(req) : runCleanupAndGetSummary(req);
 
   return {
-    // TODO: Should make dedicated view for this, diffierent from the main part finder view (which should in turn be split into replace=true view and the old regular "finder" view).
+    // TODO: Should use dedicated views for the different stages, diffierent from the main part finder view (which should in turn be split into replace=true view and the old regular "finder" view).
+
     // TODO: Type the render (parameterized, see the render for .get above) to enforce the model attributes
     body: render(COMPONENT_VIEW, model),
   };

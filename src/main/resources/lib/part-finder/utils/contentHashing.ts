@@ -15,7 +15,7 @@
  */
 
 import * as xxh from "../../../../../../node_modules/xxhashjs/build/xxhash.js";
-import { ContentItem } from "/lib/part-finder/editors";
+import { ContentItem } from "/lib/part-finder/stages";
 
 // Any huge number as long as it's fixed between both runs.
 // This one is larger than 32-bit space but still within the bit space that will be accurately interpreted and represented

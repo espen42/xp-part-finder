@@ -1,11 +1,11 @@
 import { Results } from "/lib/part-finder/utils/results";
-import { ContentItem, EditorFunc } from "/lib/part-finder/editors";
+import { ContentItem, EditorFunc } from "/lib/part-finder/stages";
 import { sortComponentPathsDesc, SortedArrayDescending } from "/lib/part-finder/utils/sorting";
-import { SIGNATURE_MARKER_KEY } from "/admin/tools/part-finder/part-finder";
 import { hashContentItem } from "/lib/part-finder/utils/contentHashing";
 import { getLastAttemptTracker, LastAttemptTracker } from "/lib/part-finder/utils/lastAttemptTracker";
 import { contentRegionMutators } from "/lib/part-finder/utils/regionEditing";
-import { prepareEditorResources } from "/lib/part-finder/utils/editorUtils";
+import { prepareEditorResources } from "/lib/part-finder/utils/editors";
+import { SIGNATURE_MARKER_KEY } from "/lib/part-finder/utils/aliasUser";
 
 const verifyUnchangedContent = (contentItem: ContentItem, controlHashes: Record<string, string>) => {
   const contentHash = hashContentItem(contentItem);

@@ -1,19 +1,4 @@
-import {
-  getControlHashesParam,
-  getDisplayArchiveParam,
-  getDisplayUnusedParam,
-  getParamString,
-  getRepoParam,
-  getSortParam,
-  trimString,
-  PREFIX,
-  PARAM,
-  PARAM_VAL,
-  addUriParam,
-  PartFinderQueryParams,
-} from "/lib/part-finder/utils/params";
-import { parseComponentPathsPerId } from "/lib/part-finder/utils/componentPathsPerId";
-import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
+import { getControlHashesParam, PREFIX, PartFinderQueryParams, getCommonParams } from "/lib/part-finder/utils/params";
 import { Operation, registerOperationAndGetIds } from "/lib/part-finder/utils/plannedOperations";
 
 type ParamsForCleanupProcessing = {
@@ -36,15 +21,12 @@ const RX_STARTSWITH_DELETE_OLD = new RegExp(`^${PREFIX.deleteOld}`);
 const RX_STARTSWITH_DELETE_NEW = new RegExp(`^${PREFIX.deleteNew}`);
 
 export const getParamsForCleanup = (req: XP.Request<PartFinderQueryParams>): ParamsForCleanupProcessing => {
-  const componentType = getParamString(req, PARAM.type);
-  const sourceKey = trimString(req.params[PARAM.key]);
-  const newKey = trimString(req.params[PARAM.newPartName]);
+  const plannedOperations = {};
 
   const radiobuttonIds: string[] = Object.keys(req.params)
     .filter((k) => k.match(RX_STARTSWITH_RADIOBUTTONGROUP))
     .map((k) => req.params[k] || "");
 
-  const plannedOperations = {};
   const deleteOldIds = registerOperationAndGetIds(
     radiobuttonIds,
     Operation.Accept,
@@ -58,22 +40,32 @@ export const getParamsForCleanup = (req: XP.Request<PartFinderQueryParams>): Par
     RX_STARTSWITH_DELETE_NEW,
   );
 
-  const [newAppKey, newComponentKey] = newKey.split(":");
+  const {
+    componentType,
+    sourceKey,
+    newKey,
+    newAppKey,
+    newComponentKey,
+    repoIds,
+    sortParam,
+    displayArchiveParam,
+    displayUnusedParam,
+    componentPathsPerId,
+  } = getCommonParams(req, [...deleteOldIds, ...deleteNewIds]);
+
 
   return {
     controlHashes: getControlHashesParam(req),
-    componentPathsPerId: parseComponentPathsPerId([...deleteOldIds, ...deleteNewIds]),
     plannedOperations,
-
-    // Common:
-    sourceKey,
-    newKey,
-    componentType,
+    componentPathsPerId,
     newAppKey,
     newComponentKey,
-    repoIds: getCMSRepoIds(getRepoParam(req)),
-    sortParam: addUriParam(PARAM.sort, req.params[PARAM.sort], !!getSortParam(req)),
-    displayArchiveParam: addUriParam(PARAM.archive, PARAM_VAL.true, !!getDisplayArchiveParam(req)),
-    displayUnusedParam: addUriParam(PARAM.unused, PARAM_VAL.true, !!getDisplayUnusedParam(req)),
+    componentType,
+    sourceKey,
+    newKey,
+    repoIds,
+    sortParam,
+    displayArchiveParam,
+    displayUnusedParam,
   };
 };

@@ -11,7 +11,8 @@
   [#if displayReplacer != '' || displaySummaryAndUndo]
     <form action="./part-finder?${PARAM.key}=${currentItem.key}&${PARAM.type}=${currentItem.type}" method="post">
     [#if displaySummaryAndUndo]
-      <input type="hidden" name="${PARAM.review}" value="${PARAM_VAL.true}"></input>
+      [!-- If the summary and undo mode is active, add a hidden input to trigger the cleanup stage on the next post request --]
+      <input type="hidden" name="${PARAM.cleanup}" value="${PARAM_VAL.true}"></input>
     [/#if]
   [/#if]
 

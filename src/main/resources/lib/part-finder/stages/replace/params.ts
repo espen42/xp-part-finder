@@ -1,18 +1,11 @@
 import {
-  getDisplayArchiveParam,
-  getDisplayUnusedParam,
-  getParamString,
-  getRepoParam,
-  getSortParam,
   trimString,
   PREFIX,
   PartFinderQueryParams,
   PARAM,
   PARAM_VAL,
-  addUriParam,
+  getCommonParams,
 } from "/lib/part-finder/utils/params";
-import { parseComponentPathsPerId } from "/lib/part-finder/utils/componentPathsPerId";
-import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
 
 import { Operation, registerOperationAndGetIds } from "/lib/part-finder/utils/plannedOperations";
 
@@ -36,51 +29,46 @@ type ParamsForReplacementProcessing = {
 const RX_STARTSWITH_SELECTITEM = new RegExp(`^${PREFIX.selectItem}`);
 
 export const getParamsForReplacing = (req: XP.Request<PartFinderQueryParams>): ParamsForReplacementProcessing => {
-  const componentType = getParamString(req, PARAM.type);
-  const sourceKey = trimString(req.params[PARAM.key]);
-  const newKey = trimString(req.params[PARAM.newPartName]);
+  const plannedOperations = {};
+
   const selectorIds: string[] = Object.keys(req.params)
     .filter((k) => k.match(RX_STARTSWITH_SELECTITEM))
     .map((k) => req.params[k] || "");
 
-  const plannedOperations = {};
   const targetIds = registerOperationAndGetIds(selectorIds, Operation.Add, plannedOperations);
 
-  const requiredArgs: { [key: string]: string } = {
-    key: sourceKey,
-    newPartName: newKey,
-    type: componentType,
-  };
-  const missingArgs = Object.keys(requiredArgs)
-    .filter((key) => !requiredArgs[key])
-    .map((key) => key);
-
-  if (missingArgs.length > 0) {
-    throw Error("Missing POST parameters: " + JSON.stringify(missingArgs));
-  }
-
+  const {
+    componentType,
+    sourceKey,
+    newKey,
+    newAppKey,
+    newComponentKey,
+    repoIds,
+    sortParam,
+    displayArchiveParam,
+    displayUnusedParam,
+    componentPathsPerId,
+  } = getCommonParams(req, targetIds);
   const [oldAppKey, oldComponentKey] = sourceKey.split(":");
-  const [newAppKey, newComponentKey] = newKey.split(":");
 
   return {
     requestedPostprocessors: trimString(req.params[PARAM.postprocessors])
       .split(/\s*,\s*/g)
       .filter((processorName) => processorName.trim())
       .filter((processorName) => processorName !== PARAM_VAL.undefined),
-    componentPathsPerId: parseComponentPathsPerId(targetIds),
+
+    componentPathsPerId,
     plannedOperations,
     oldAppKey,
     oldComponentKey,
     componentType,
-
-    // Common:
     sourceKey,
     newKey,
     newAppKey,
     newComponentKey,
-    repoIds: getCMSRepoIds(getRepoParam(req)),
-    sortParam: addUriParam(PARAM.sort, req.params[PARAM.sort], !!getSortParam(req)),
-    displayArchiveParam: addUriParam(PARAM.archive, PARAM_VAL.true, !!getDisplayArchiveParam(req)),
-    displayUnusedParam: addUriParam(PARAM.unused, PARAM_VAL.true, !!getDisplayUnusedParam(req)),
+    repoIds,
+    sortParam,
+    displayArchiveParam,
+    displayUnusedParam,
   };
 };

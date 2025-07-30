@@ -1,4 +1,4 @@
-import { ContentItem } from "/lib/part-finder/editors";
+import { ContentItem } from "/lib/part-finder/stages";
 
 export const PREFIX_TRACKED_NEWCOMPONENT = "::new::";
 const DELETED_MARKER = "--deleted--";

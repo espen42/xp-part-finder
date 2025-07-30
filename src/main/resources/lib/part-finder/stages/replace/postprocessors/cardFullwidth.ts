@@ -6,7 +6,7 @@ import {
   ContentitemMutatingPostprocessorFunc,
   postprocessAndMutateComponent,
   replaceComponentConfig,
-} from "/lib/part-finder/editors/replace/postprocessors";
+} from "/lib/part-finder/stages/replace/postprocessors";
 
 type CommonConfig = {
   // Text content

@@ -3,6 +3,8 @@ import { connect } from "/lib/xp/node";
 
 import { Node } from "@enonic-types/lib-node";
 
+export const SIGNATURE_MARKER_KEY = "/\\$@:__ This contentitem was changed so sign it __:@/\\";
+
 export const getAliasOrUserKey = (): `user:${string}:${string}` => {
   const user = getAuthUser();
 
