@@ -258,6 +258,10 @@ export class Results {
 
   reportSuccess(contentItem: ContentItem, trackedComponentPath: string, oldComponentPath: string) {
     const operation = this.plannedOperationsPerId[contentItem._id][oldComponentPath];
+    if (!operation) {
+      throw Error(`Unexpected state - the operation on component '${oldComponentPath}' (on content '${contentItem._path}') wasn't among the planned operaions: ${JSON.stringify(this.plannedOperationsPerId)}`);
+    }
+
     this.results.push(new EditorResult(this.repoName, contentItem?._id, contentItem, operation, trackedComponentPath));
     log.info(
       `OK: ${operation} operation succeeded on ${this.targetComponentType} component, on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${

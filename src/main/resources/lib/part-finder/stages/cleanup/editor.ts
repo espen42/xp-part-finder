@@ -31,15 +31,21 @@ const removeComponentsFromContentItem = (
   lastAttempted: LastAttemptTracker,
   results: Results,
 ) => {
+  const pathTracker = results.pathTrackers[clonedContentItem._path];
   targetComponentPaths.forEach((targetPath: string) => {
     lastAttempted.componentPath = targetPath;
 
     contentRegionMutators.removeComponent(clonedContentItem, targetPath, results.pathTrackers[clonedContentItem._path]);
 
+    const originalPath = pathTracker.getOriginalPath(targetPath);
+    if (originalPath === null) {
+      throw Error(`Unexpected state - lost track of component paths: handled the component most recently seen at '${targetPath}', but couldn't find its original path. PathTracker for content '${clonedContentItem._path}': ${JSON.stringify(pathTracker.paths)}`)
+    }
+
     results.reportSuccess(
       clonedContentItem,
+      originalPath,
       targetPath,
-      results.plannedOperationsPerId[clonedContentItem._id][targetPath],
     );
   });
 };

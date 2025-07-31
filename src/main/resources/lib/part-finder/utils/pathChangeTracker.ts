@@ -26,22 +26,31 @@ export class PathChangeTracker {
     this.paths = init(contentItem);
   }
 
+  getOriginalPath = (updatedPath: string): string | null => {
+    const trackedToCurrentPath = Object.keys(this.paths).filter(
+      (originalPath) => this.paths[originalPath] === updatedPath,
+    );
+    if (trackedToCurrentPath.length === 0) {
+      return null;
+    }
+    if (trackedToCurrentPath.length === 1) {
+      return trackedToCurrentPath[0];
+    }
+
+    throw Error(
+      `Unexpected state - it seems more than one component has been tracked to path ${JSON.stringify(updatedPath)}: ${JSON.stringify(this.paths, null, 2)}`,
+    );
+  }
+
   /**
    * Tracks that the path of a component has been changed: looks in the values of this.paths map for the previous path,
    * and updates the value to the new path
    * (keeping the key, since that points to the ORIGINAL path - which may not be the same as the previous path, if a component has had its path updated more than once).
    */
   trackPathChange = (previousPath: string, newPath: string) => {
-    const trackedToCurrentPath = Object.keys(this.paths).filter(
-      (originalPath) => this.paths[originalPath] === previousPath,
-    );
-    if (trackedToCurrentPath.length > 1) {
-      throw Error(
-        `Unexpected state - it seems more than one component has been tracked to path ${JSON.stringify(previousPath)}: ${JSON.stringify(this.paths, null, 2)}`,
-      );
-    }
-    if (trackedToCurrentPath.length) {
-      this.paths[trackedToCurrentPath[0]] = newPath;
+    const originalPath = this.getOriginalPath(previousPath);
+    if (originalPath !== null) {
+      this.paths[originalPath] = newPath;
     } else if (!this.paths[previousPath]) {
       this.paths[previousPath] = newPath;
     }
