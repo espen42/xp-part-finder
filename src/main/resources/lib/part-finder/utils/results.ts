@@ -91,9 +91,7 @@ const summarizeResultsIntoContents = (
       contents[result.id] = currentContent;
     }
 
-    if (result.operation === Operation.Add) {
-      setMultiUsage(currentContent, result, pathTracker);
-    }
+    setMultiUsage(currentContent, result, pathTracker);
   });
 };
 
@@ -112,16 +110,13 @@ const newPathPattern = new RegExp(`^${PREFIX_TRACKED_NEWCOMPONENT}`);
 
 const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracker): void => {
   if (!usage.error) {
-    const pathsAtAdditionTime = Object.keys(pathTracker.paths).filter(
-      (pathAtAdditionTime) => pathTracker.paths[pathAtAdditionTime] === usage.path,
-    );
-
-    if (pathsAtAdditionTime.length > 1 || !(pathsAtAdditionTime[0] || "").match(newPathPattern)) {
+    const prefixedPathAtAdditionTime = pathTracker.getOriginalPath(usage.path);
+    if (prefixedPathAtAdditionTime === null || !prefixedPathAtAdditionTime.match(newPathPattern)) {
       throw Error(
         `Unexpected state - trying to retrace a replaced component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_TRACKED_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths, null, 2)}`,
       );
     }
-    const pathAtAdditionTime = pathsAtAdditionTime[0].replace(newPathPattern, "");
+    const pathAtAdditionTime = prefixedPathAtAdditionTime.replace(newPathPattern, "");
     usage.oldPath = pathTracker.paths[pathAtAdditionTime]; // Tracked path of the original component
     usage.newPath = usage.path; // Changed component
     usage.path = pathAtAdditionTime; // The path of the original at the time of the addition - now displayed in the GUI
@@ -130,26 +125,23 @@ const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracke
 
 const trackCleanupPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracker): void => {
   if (!usage.error) {
-    const pathsAtAdditionTime = Object.keys(pathTracker.paths).filter(
-      (pathAtAdditionTime) => pathTracker.paths[pathAtAdditionTime] === usage.path,
-    );
+    const pathAtRemovalTime = pathTracker.getOriginalPath(usage.path);
 
-    if (pathsAtAdditionTime.length > 1 || !(pathsAtAdditionTime[0] || "").match(newPathPattern)) {
+    if (pathAtRemovalTime === null) {
       throw Error(
-        `Unexpected state - trying to retrace an added component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker with a key that starts with ${PREFIX_TRACKED_NEWCOMPONENT}: ${JSON.stringify(pathTracker.paths, null, 2)}`,
+        `Unexpected state - trying to retrace a deleted component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker.`,
       );
     }
-    const pathAtAdditionTime = pathsAtAdditionTime[0].replace(newPathPattern, "");
-    usage.oldPath = pathTracker.paths[pathAtAdditionTime]; // Tracked path of the original component
-    usage.newPath = usage.path; // Changed component
-    usage.path = pathAtAdditionTime; // The path of the original at the time of the addition - now displayed in the GUI
+    usage.oldPath = pathTracker.paths[pathAtRemovalTime];
+    usage.newPath = usage.path;
+    usage.path = pathAtRemovalTime;
   }
 };
 
 enum ComponentPathType {
-  String,
-  Array,
-  Null,
+  String = "String",
+  Array = "Array",
+  Null = "Null",
 }
 const getComponenPathType = (result: EditorResult) => {
   if ("string" === typeof result.componentPath) {
@@ -166,12 +158,12 @@ const getComponenPathType = (result: EditorResult) => {
 };
 
 const setMultiUsage = (currentContent: ContentUsage, result: EditorResult, pathTracker: PathChangeTracker) => {
-  const doTrackFunc = result.operation === Operation.Add ? trackAddedPath : trackCleanupPath;
+  const trackingFunciton = result.operation === Operation.Add ? trackAddedPath : trackCleanupPath;
 
   switch (getComponenPathType(result)) {
     case ComponentPathType.String:
       const usage: MultiUsageInstance = getUsage(result);
-      doTrackFunc(usage, pathTracker);
+      trackingFunciton(usage, pathTracker);
       currentContent.multiUsage.push(usage);
       setHasMultiUsage(currentContent, true);
 
@@ -180,7 +172,7 @@ const setMultiUsage = (currentContent: ContentUsage, result: EditorResult, pathT
     case ComponentPathType.Array:
       const usages: MultiUsageInstance[] = (result.componentPath as string[]).map((componentPath) => {
         const usage = getUsage(result, componentPath);
-        doTrackFunc(usage, pathTracker);
+        trackingFunciton(usage, pathTracker);
         return usage;
       });
 
@@ -256,16 +248,27 @@ export class Results {
     this.pathTrackers[contentItem._path] = new PathChangeTracker(contentItem);
   }
 
-  reportSuccess(contentItem: ContentItem, trackedComponentPath: string, oldComponentPath: string) {
-    const operation = this.plannedOperationsPerId[contentItem._id][oldComponentPath];
+  reportSuccess(contentItem: ContentItem, targetedComponentPath: string, trackedPath: string) {
+    const operation = this.plannedOperationsPerId[contentItem._id][targetedComponentPath];
+
     if (!operation) {
-      throw Error(`Unexpected state - the operation on component '${oldComponentPath}' (on content '${contentItem._path}') wasn't among the planned operaions: ${JSON.stringify(this.plannedOperationsPerId)}`);
+      throw Error(
+        `Unexpected state - the operation on component '${targetedComponentPath}' (on content '${contentItem._path}') wasn't among the planned operaions: ${JSON.stringify(this.plannedOperationsPerId)}`,
+      );
     }
 
-    this.results.push(new EditorResult(this.repoName, contentItem?._id, contentItem, operation, trackedComponentPath));
+    const result = new EditorResult(
+      this.repoName,
+      contentItem?._id,
+      contentItem,
+      operation,
+      operation === Operation.Add ? trackedPath : targetedComponentPath,
+    );
+    this.results.push(result);
+
     log.info(
       `OK: ${operation} operation succeeded on ${this.targetComponentType} component, on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
-        trackedComponentPath !== null ? ", path: " + JSON.stringify(trackedComponentPath) : ""
+        trackedPath !== null ? ", path: " + JSON.stringify(trackedPath) : ""
       }), from '${this.sourceKey}' to '${this.newKey}'`,
     );
   }
@@ -314,11 +317,14 @@ export class Results {
       const currentContent = contents[contentId];
       if (currentContent.multiUsage.length === 0) {
         currentContent.hasMultiUsage = false;
-        if (!currentContent.error && currentContent.multiUsage[0].error) {
+      } else if (!currentContent.error) {
+        const errorUsages = currentContent.multiUsage.filter((usage) => !!usage?.error);
+        if (errorUsages.length > 0) {
           currentContent.error = currentContent.multiUsage[0].error;
+          currentContent.multiUsage = [];
         }
-        currentContent.multiUsage = [];
       }
+
       return currentContent;
     });
 

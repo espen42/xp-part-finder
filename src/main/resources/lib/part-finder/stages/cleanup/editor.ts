@@ -39,14 +39,12 @@ const removeComponentsFromContentItem = (
 
     const originalPath = pathTracker.getOriginalPath(targetPath);
     if (originalPath === null) {
-      throw Error(`Unexpected state - lost track of component paths: handled the component most recently seen at '${targetPath}', but couldn't find its original path. PathTracker for content '${clonedContentItem._path}': ${JSON.stringify(pathTracker.paths)}`)
+      throw Error(
+        `Unexpected state - lost track of component paths: handled the component most recently seen at '${targetPath}', but couldn't find its original path. PathTracker for content '${clonedContentItem._path}': ${JSON.stringify(pathTracker.paths)}`,
+      );
     }
 
-    results.reportSuccess(
-      clonedContentItem,
-      originalPath,
-      targetPath,
-    );
+    results.reportSuccess(clonedContentItem, targetPath, originalPath);
   });
 };
 

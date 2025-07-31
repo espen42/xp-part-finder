@@ -300,7 +300,7 @@ const postprocess = (
       newComponentKey,
     );
 
-    results.reportSuccess(clonedContentItem, trackedComponentPath, oldTargetPath);
+    results.reportSuccess(clonedContentItem, oldTargetPath, trackedComponentPath);
   });
 };
 

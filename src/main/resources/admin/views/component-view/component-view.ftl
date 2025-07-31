@@ -11,7 +11,7 @@
   [#if displayReplacer != '' || displaySummaryAndUndo]
     <form action="./part-finder?${PARAM.key}=${currentItem.key}&${PARAM.type}=${currentItem.type}" method="post">
     [#if displaySummaryAndUndo]
-      [!-- If the summary and undo mode is active, add a hidden input to trigger the cleanup stage on the next post request --]
+      [#-- If the displaySummaryAndUndo mode is active, add a hidden input to trigger the cleanup stage on the next post request --]
       <input type="hidden" name="${PARAM.cleanup}" value="${PARAM_VAL.true}"></input>
     [/#if]
   [/#if]
@@ -121,7 +121,7 @@
                     <li title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
                     ❌ <strong>Failed</strong>
                   [#else]
-                    <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
+                    <li title="Ok so far - content '${content.displayName}' is changed:&#10;&#13;original component path was '${usage.path}'.&#10;&#13;Temporary paths to review: the updated version of the component is at '${usage.newPath}', and an unchanged copy of the original is at '${usage.oldPath}'">
                     <span class="okay-check">✓</span> <span class="multi-usage-label">${usage.path}</span>
                   [/#if]
                   </li>
@@ -179,7 +179,7 @@
                         <p>Component path:<br/>${usage.path}</p><br/>
                         <p>Error message:<br/><span class="usage-error">${usage.error}</span></p>
                       [#else]
-                        <li title="Ok: changed path ${usage.path} on content ${content.displayName}">
+                        <li title="'Accept' keeps the new version of the component (${usage.newPath}) and deletes the copy of the original (${usage.oldPath}).&#10;&#13;'Undo' deletes the new version and keeps the original.">
                       [/#if]
 
                     [#else]

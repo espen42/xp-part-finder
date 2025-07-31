@@ -40,7 +40,7 @@ export class PathChangeTracker {
     throw Error(
       `Unexpected state - it seems more than one component has been tracked to path ${JSON.stringify(updatedPath)}: ${JSON.stringify(this.paths, null, 2)}`,
     );
-  }
+  };
 
   /**
    * Tracks that the path of a component has been changed: looks in the values of this.paths map for the previous path,
