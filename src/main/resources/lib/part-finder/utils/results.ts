@@ -123,19 +123,13 @@ const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracke
   }
 };
 
-const trackCleanupPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracker): void => {
-  if (!usage.error) {
-    const pathAtRemovalTime = pathTracker.getOriginalPath(usage.path);
+const trackCleanupOperation = (usage: MultiUsageInstance): void => {
 
-    if (pathAtRemovalTime === null) {
-      throw Error(
-        `Unexpected state - trying to retrace a deleted component path ${JSON.stringify(usage.path)}, but it's not (unambiguously) in the tracker.`,
-      );
-    }
-    usage.oldPath = pathTracker.paths[pathAtRemovalTime];
-    usage.newPath = usage.path;
-    usage.path = pathAtRemovalTime;
-  }
+  // @ts-ignore
+  usage.operation = usage.operation === Operation.Accept ? PARAM_VAL.accept : usage.operation === Operation.Undo ? PARAM_VAL.undo : undefined
+  /*if (!usage.operation) {
+    throw Error("Couldn't determine which operation was attempted on the component: " + JSON.stringify(usage));
+  }*/
 };
 
 enum ComponentPathType {
@@ -158,12 +152,12 @@ const getComponenPathType = (result: EditorResult) => {
 };
 
 const setMultiUsage = (currentContent: ContentUsage, result: EditorResult, pathTracker: PathChangeTracker) => {
-  const trackingFunciton = result.operation === Operation.Add ? trackAddedPath : trackCleanupPath;
+  const trackingFunction = result.operation === Operation.Add ? trackAddedPath : trackCleanupOperation;
 
   switch (getComponenPathType(result)) {
     case ComponentPathType.String:
       const usage: MultiUsageInstance = getUsage(result);
-      trackingFunciton(usage, pathTracker);
+      trackingFunction(usage, pathTracker);
       currentContent.multiUsage.push(usage);
       setHasMultiUsage(currentContent, true);
 
@@ -172,7 +166,7 @@ const setMultiUsage = (currentContent: ContentUsage, result: EditorResult, pathT
     case ComponentPathType.Array:
       const usages: MultiUsageInstance[] = (result.componentPath as string[]).map((componentPath) => {
         const usage = getUsage(result, componentPath);
-        trackingFunciton(usage, pathTracker);
+        trackingFunction(usage, pathTracker);
         return usage;
       });
 
@@ -321,7 +315,7 @@ export class Results {
         const errorUsages = currentContent.multiUsage.filter((usage) => !!usage?.error);
         if (errorUsages.length > 0) {
           currentContent.error = currentContent.multiUsage[0].error;
-          currentContent.multiUsage = [];
+          currentContent.multiUsage = [currentContent.multiUsage[0]];
         }
       }
 

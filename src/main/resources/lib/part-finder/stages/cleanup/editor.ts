@@ -11,7 +11,7 @@ const verifyUnchangedContent = (contentItem: ContentItem, controlHashes: Record<
   const contentHash = hashContentItem(contentItem);
   if (contentHash !== controlHashes[contentItem._id]) {
     throw Error(
-      `Control hash mismatch (${JSON.stringify(contentHash)} != ${JSON.stringify(controlHashes[contentItem._id])}). This suggests that the content has been changed (has someone edited it in the meantime?) after the component rewrite in step 1, before before step 2. Investigate and handle manually: THE CONTENT IS LEFT IN THE INTERMEDIATE STATE - POSSIBLE DUPLICATE COMPONENTS!`,
+      `Control hash mismatch (${JSON.stringify(contentHash)} != ${JSON.stringify(controlHashes[contentItem._id])}). This suggests that the content has been changed (has someone edited it in the meantime?) between the 'replace' stage (step 1) and the cleanup stage (step 2). Investigate and handle manually: THE CONTENT IS LEFT IN THE INTERMEDIATE STATE - POSSIBLE DUPLICATE COMPONENTS!`,
     );
   }
 };

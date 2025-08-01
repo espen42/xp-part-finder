@@ -81,35 +81,48 @@
           [#-- table column 1, multi-path option --]
           [#if content.hasMultiUsage]
             <td class="name-column">
-              <div>${content.displayName}<br/><span class="repo-name">Repo: ${content.repo}</span></div>
+              <div>
+                ${content.displayName}<br/>
+                <span class="repo-name">Repo: ${content.repo}</span>
+              </div>
 
-              [#if (content.id?? && content.controlHash??)]
-                <input type="hidden" name="${PREFIX.contentHash}${content.id}" value="${content.controlHash}">
+              [#if content.error??]
+                <div
+                      title="Failed: content ${content.displayName}.&#10;&#13;Error message: ${content.error}">
+                      ❌ <strong>Failed</strong>
+                </div>
+
+              [#else]
+                [#if (content.id?? && content.controlHash??)]
+                  <input type="hidden" name="${PREFIX.contentHash}${content.id}" value="${content.controlHash}">
+                [/#if]
+                <ul class="multi-usage-selectors">
+
+                  [#list content.multiUsage as usage]
+                    <li title="Ok so far - content '${content.displayName}' is changed:&#10;&#13;Original component path was '${usage.path}'.&#10;&#13;Temporary paths to review: the updated version of the component is at '${usage.newPath}', and an unchanged copy of the original is at '${usage.oldPath}'">
+                      <span class="okay-check">✓</span> <span class="multi-usage-label">${usage.path}</span>
+                    </li>
+                  [/#list]
+                </ul>
               [/#if]
 
-              <ul class="multi-usage-selectors">
-                [#list content.multiUsage as usage]
-                  [#if usage.error??]
-                  <li
-                    title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
-                    ❌ <strong>Failed</strong>
-                  [#else]
-                    <li title="Ok so far - content '${content.displayName}' is changed:&#10;&#13;original component path was '${usage.path}'.&#10;&#13;Temporary paths to review: the updated version of the component is at '${usage.newPath}', and an unchanged copy of the original is at '${usage.oldPath}'">
-                    <span class="okay-check">✓</span> <span class="multi-usage-label">${usage.path}</span>
-                  [/#if]
-                  </li>
-                [/#list]
-              </ul>
             </td>
 
           [#-- table column 1, single-path option --]
           [#else]
             [#if content.error??]
-            <td class="name-column" title="Failed: content ${content.displayName}. Error message: ${content.error}">
-              ❌<strong>Failed</strong>
+              <td class="name-column" title="Failed: content '${content.displayName}'.&#10;&#13;Error message: ${content.error}">
+                <div>
+                  ${content.displayName}<br/>
+                  <span class="repo-name">Repo: ${content.repo}</span>
+                </div>
+                ❌<strong>Failed</strong>
             [#else]
-              <td  class="name-column" title="Ok: changed content ${content.displayName}">
-              <span class="okay-check">✓</span> <span class="summary-name">${content.displayName}</span>
+              <td class="name-column" title="Ok: changed content ${content.displayName}">
+                <div>
+                  <span class="okay-check">✓</span> <span class="summary-name">${content.displayName}</span><br/>
+                  <span class="repo-name">Repo: ${content.repo}</span>
+                </div>
             [/#if]
             </td>
           [/#if]
@@ -128,53 +141,42 @@
           [#if content.hasMultiUsage]
             <td>
               <ul class="multi-usage-selectors radio-rows">
-                [#list content.multiUsage as usage]
-
-                  [#if usage.error??]
+                [#if content.error??]
                   <li
-                    title="Failed: path ${usage.path} on content ${content.displayName}. Error message: ${usage.error}">
-                    <p>Component path:<br/>${usage.path}</p><br/>
-                    <p>Error message:<br/><span class="usage-error">${usage.error}</span></p>
-                  [#else]
+                    title="Failed: path ${content.path} on content ${content.displayName}. Error message: ${content.error}"
+                  >
+                    <p>Component: ${content.multiUsage[0].path}</p><br/>
+                    <p>Error message:<br/><span class="usage-error">${content.error}</span></p>
+                [#else]
+                  [#list content.multiUsage as usage]
                     <li title="'Accept' keeps the new version of the component (${usage.newPath}) and deletes the copy of the original (${usage.oldPath}).&#10;&#13;'Undo' deletes the new version and keeps the original.">
-                  [/#if]
-
-                  [#if !usage.error??]
-                    <div class="review-radio-row">
-                          <span class="part-accept">
-                            <input type="radio"
-                                   id="${PREFIX.deleteOld}${content.id}__${usage.oldPath}"
-                                   name="${PREFIX.radioButtonGroup}${content.id}__${usage.path}"
-                                   value="${PREFIX.deleteOld}${content.id}__${usage.oldPath}"
-                                   class="part-select-radio"
-                            />
-                            <label for="${PREFIX.deleteOld}${content.id}__${usage.oldPath}">
-                              <strong>✓</strong>&nbsp;&nbsp;${usage.newPath}
-                            </label>
-                          </span>
-                      <span class="part-undo">
-                            <label for="${PREFIX.deleteNew}${content.id}__${usage.newPath}"
-                                   class="part-undo-label">❌
-                            </label>
-                            <input type="radio"
-                                   id="${PREFIX.deleteNew}${content.id}__${usage.newPath}"
-                                   name="${PREFIX.radioButtonGroup}${content.id}__${usage.path}"
-                                   value="${PREFIX.deleteNew}${content.id}__${usage.newPath}"
-                                   class="part-select-radio"
-                            />
-                          </span>
-                      [#-- <input type="radio"
-                             id="keep-both--${content.id}__${usage.path}"
-                             name="${PREFIX.radioButtonGroup}${content.id}__${usage.path}"
-                             value="keep-both--${content.id}__${usage.path}"
-                             class="hidden-radio"
-                             checked
-                             /> --]
-                    </div>
-                  [/#if]
-
-                  </li>
-                [/#list]
+                      <div class="review-radio-row">
+                        <span class="part-accept">
+                          <input type="radio"
+                                 id="${PREFIX.deleteOld}${content.id}__${usage.oldPath}"
+                                 name="${PREFIX.radioButtonGroup}${content.id}__${usage.path}"
+                                 value="${PREFIX.deleteOld}${content.id}__${usage.oldPath}"
+                                 class="part-select-radio"
+                          />
+                          <label for="${PREFIX.deleteOld}${content.id}__${usage.oldPath}">
+                            <strong>✓</strong>&nbsp;&nbsp;${usage.newPath}
+                          </label>
+                        </span>
+                        <span class="part-undo">
+                          <label for="${PREFIX.deleteNew}${content.id}__${usage.newPath}"
+                                 class="part-undo-label">❌
+                          </label>
+                          <input type="radio"
+                                 id="${PREFIX.deleteNew}${content.id}__${usage.newPath}"
+                                 name="${PREFIX.radioButtonGroup}${content.id}__${usage.path}"
+                                 value="${PREFIX.deleteNew}${content.id}__${usage.newPath}"
+                                 class="part-select-radio"
+                          />
+                        </span>
+                      </div>
+                    </li>
+                  [/#list]
+                [/#if]
               </ul>
             </td>
 
