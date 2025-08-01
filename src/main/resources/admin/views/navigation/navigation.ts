@@ -204,7 +204,7 @@ type ComponentNavLinkLists = {
 export function getComponentNavLinkList(
   repoIds: string[],
   currentAppKey: string,
-  displayReplacer: string,
+  displayReplaceSelectors: string,
   getconfigParam: string | undefined,
   repoParam: string,
   displayArchives: string,
@@ -230,8 +230,8 @@ export function getComponentNavLinkList(
   handleUppercasedAndNoSchemaKeys(res, currentAppKey, appFilter, displayUnused);
 
   const getDecoratedUrl = (params: UriParams): string => {
-    if (displayReplacer) {
-      params[PARAM.replace] = displayReplacer;
+    if (displayReplaceSelectors) {
+      params[PARAM.replace] = displayReplaceSelectors;
     }
     if (displayArchives) {
       params[PARAM.archive] = displayArchives;

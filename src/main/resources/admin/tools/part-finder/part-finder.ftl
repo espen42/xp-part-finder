@@ -38,7 +38,11 @@
 
       <div class="layout--content">
         [#if currentItem?has_content]
-          [#include "../../views/component-view/component-view.ftl"]
+          [#if displayReplaceSelectors != '']
+              [#include "../../views/component-view/component-select-replace.ftl"]
+            [#else]
+              [#include "../../views/component-view/component-view.ftl"]
+            [/#if]
         [/#if]
       </div>
     </div>

@@ -1,4 +1,3 @@
-import { SORT_FUNCS } from "/lib/part-finder/utils/sorting";
 import type { ComponentDescriptorType } from "/lib/xp/schema";
 import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
 import { parseComponentPathsPerId } from "/lib/part-finder/utils/componentPathsPerId";
@@ -135,7 +134,7 @@ export const getControlHashesParam = (req: XP.Request<PartFinderQueryParams>): R
 
 export const getSortParam = (req: XP.Request<PartFinderQueryParams>): SortParam | "" => {
   const paramValue = getParamBool(req, PARAM.sort);
-  return SORT_FUNCS[paramValue] ? (paramValue as SortParam) : "";
+  return SortKey[paramValue] ? (paramValue as SortParam) : "";
 };
 
 export const getDisplayUnusedParam = (req) => getParamBool(req, PARAM.unused);

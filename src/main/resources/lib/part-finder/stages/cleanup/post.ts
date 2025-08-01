@@ -6,10 +6,12 @@ import { runEditor } from "/lib/part-finder/utils/editors";
 import { PARAM, PARAM_VAL, PREFIX } from "/lib/part-finder/utils/params";
 import { listContentIdsAndUsagePaths } from "/lib/part-finder/utils/contentIdSummary";
 import { getToolUrl } from "/lib/xp/admin";
-import { getAppKey, PAGE_TITLE } from "/admin/tools/part-finder/part-finder";
+import { ComponentViewParams } from "/admin/views/component-view/component-view.freemarker";
+import { render } from "/lib/tineikt/freemarker";
 
-// TODO: parameterize the Request, and type the model
-export const runCleanupAndGetSummary = (req: XP.Request) => {
+const CLEANUP_SUMMARY_VIEW = resolve("../../../admin/views/cleanup-summary/cleanup-summary.ftl");
+
+export const runCleanupAndSummarize = (req: XP.Request): XP.Response => {
   const {
     controlHashes,
     componentPathsPerId,
@@ -31,8 +33,6 @@ export const runCleanupAndGetSummary = (req: XP.Request) => {
 
   runEditor(cleanupEditor, repoIds, componentPathsPerId, results);
 
-  const taskSummary = `${sourceKey} → ${newKey}`;
-  const appKey = getAppKey(newComponentKey);
   const type = componentType.toUpperCase();
 
   const currentItem = {
@@ -61,13 +61,8 @@ export const runCleanupAndGetSummary = (req: XP.Request) => {
 
   const allIds = JSON.stringify(listContentIdsAndUsagePaths(currentItem));
 
-  return {
-    title: `${PAGE_TITLE} - POST-CLEANUP SUMMARY: ${taskSummary}`,
-    displayName: PAGE_TITLE,
-    currentItemKey: newKey,
-    currentAppKey: appKey,
-    displayReplacer: "",
-    displaySummaryAndUndo: true,
+  const model: ComponentViewParams = {
+    displayReplaceSelectors: "",
     oldItemKey: `${sourceKey}`,
     newItemToolUrl: `${getToolUrl("no.item.partfinder", "part-finder")}?${PARAM.key}=${newAppKey}%3A${newComponentKey}&${PARAM.type}=${type}&${PARAM.replace}=${PARAM_VAL.true}${sortParam}${displayArchiveParam}${displayUnusedParam}`,
     currentItem,
@@ -75,5 +70,9 @@ export const runCleanupAndGetSummary = (req: XP.Request) => {
     PARAM,
     PARAM_VAL,
     PREFIX,
+  };
+
+  return {
+    body: render<ComponentViewParams>(CLEANUP_SUMMARY_VIEW, model),
   };
 };

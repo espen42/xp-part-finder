@@ -20,9 +20,10 @@ export type ComponentViewParams = {
   currentItem?: ComponentView;
   configQuery?: string;
   repoParam?: string;
-  displayReplacer?: string;
-  displaySummaryAndUndo?: boolean;
+  displayReplaceSelectors?: string;
   allIds?: string;
+  oldItemKey?: string;
+  newItemToolUrl?: string;
   PARAM: typeof PARAM;
   PARAM_VAL: typeof PARAM_VAL;
   PREFIX: typeof PREFIX;
