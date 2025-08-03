@@ -32,7 +32,6 @@ const removeComponentsFromContentItem = (
   lastAttempted: LastAttemptTracker,
   results: Results,
 ) => {
-  const pathTracker = results.pathTrackers[clonedContentItem._path];
   const plannedOperations = results.plannedOperationsPerId[clonedContentItem._id];
 
   targetComponentPaths.forEach((targetPath: string) => {

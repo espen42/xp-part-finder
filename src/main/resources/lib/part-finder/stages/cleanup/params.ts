@@ -53,7 +53,6 @@ export const getParamsForCleanup = (req: XP.Request<PartFinderQueryParams>): Par
     componentPathsPerId,
   } = getCommonParams(req, [...deleteOldIds, ...deleteNewIds]);
 
-
   return {
     controlHashes: getControlHashesParam(req),
     plannedOperations,
