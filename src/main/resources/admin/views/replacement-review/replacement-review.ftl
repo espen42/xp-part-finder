@@ -100,7 +100,7 @@
 
                   [#list content.multiUsage as usage]
                     <li title="Ok so far - content '${content.displayName}' is changed:&#10;&#13;Original component path was '${usage.path}'.&#10;&#13;Temporary paths to review: the updated version of the component is at '${usage.newPath}', and an unchanged copy of the original is at '${usage.oldPath}'">
-                      <span class="okay-check">✓</span> <span class="multi-usage-label">${usage.path}</span>
+                      <span class="done-icon okay-check">✓</span> <span class="multi-usage-label">${usage.path}</span>
                     </li>
                   [/#list]
                 </ul>
@@ -120,7 +120,7 @@
             [#else]
               <td class="name-column" title="Ok: changed content ${content.displayName}">
                 <div>
-                  <span class="okay-check">✓</span> <span class="summary-name">${content.displayName}</span><br/>
+                  <span class="done-icon okay-check">✓</span> <span class="summary-name">${content.displayName}</span><br/>
                   <span class="repo-name">Repo: ${content.repo}</span>
                 </div>
             [/#if]
@@ -210,7 +210,7 @@
       <div class="new-part-label">
         <h3>Intermediate state!</h3><br/>
         <p>
-              <span class="okay-check"
+              <span class="done-icon okay-check"
                     style="position: relative;display: inline-block !important; margin-right: 8px">✓</span>Wherever
           components have changed, a copy of the
           old component has been kept right below it in the same region (or: an updated component has been inserted

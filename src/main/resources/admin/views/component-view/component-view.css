@@ -117,16 +117,20 @@ table.table {
   display: none;
 }
 
+
+.done-icon {
+  position: absolute;
+  display: block;
+  height: 22px;
+  width: 22px;
+}
+
 .okay-check {
   background-color: green;
   border-radius: 11px;
   color: #fff;
   font-weight: 700;
   padding: 0 4px 2px;
-  position: absolute;
-  display: block;
-  height: 22px;
-  width: 22px;
 }
 
 .multi-usage-label {

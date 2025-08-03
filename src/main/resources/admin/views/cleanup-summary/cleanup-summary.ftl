@@ -57,8 +57,8 @@
                     title="Failed: path '${usage.path}', content '${content.displayName}' is left in the intermediate state!&#10;&#13;Error message: ${usage.error}">
                     ❌ <strong>Failed</strong>
                   [#else]
-                    <li title="Ok - content '${content.displayName}' is changed.&#10;&#13;Component was deleted on path '${usage.path}': successful '${usage.operation}' operation">
-                    [#if usage.operation == PARAM_VAL.accept]<span class="okay-check">✓[#else]<span>✗[/#if]</span> <span class="multi-usage-label">${usage.path}</span>
+                    <li title="Ok - content '${content.displayName}' is changed.&#10;&#13;Successful '${usage.operation}' operation, result is on component path '${usage.path}'">
+                    <span class="done-icon[#if usage.operation == PARAM_VAL.accept] okay-check">✓[#else]">✗[/#if]</span> <span class="multi-usage-label">${usage.path}</span>
                   [/#if]
                   </li>
                 [/#list]
@@ -72,7 +72,7 @@
               ❌ <strong>Failed</strong>
             [#else]
               <td class="name-column" title="Ok: changed content '${content.displayName}'">
-              <span class="okay-check">✓</span> <span class="summary-name">${content.displayName}</span>
+              <span class="done-icon okay-check">✓</span> <span class="summary-name">${content.displayName}</span>
             [/#if]
             </td>
           [/#if]
@@ -105,12 +105,12 @@
                       </p>
                   [#else]
                     <li
-                      title="OK: the '${usage.operation}' operation on the component on path '${usage.path}' has been completed."
+                      title="OK: Successful '${usage.operation}' operation, result is on component path '${usage.path}'."
                     >
                       [#if usage.operation == PARAM_VAL.accept]
-                        <span class="okay-check">✓</span> <span class="multi-usage-label">Change accepted
+                        <span class="done-icon okay-check">✓</span> <span class="multi-usage-label">Change accepted
                       [#else]
-                        ✗ <span class="multi-usage-label">Reverted to original
+                        <span class="done-icon">✗</span> <span class="multi-usage-label">Reverted to original
                       [/#if]</span>
                   [/#if]
                   </li>

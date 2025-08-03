@@ -5,6 +5,7 @@ import { ContentItem } from "/lib/part-finder/stages";
 import { SortedArrayAscending, sortResultsByPathAsc } from "/lib/part-finder/utils/sorting";
 import { hashContentItem } from "/lib/part-finder/utils/contentHashing";
 import { Operation } from "/lib/part-finder/utils/plannedOperations";
+import { PARAM_VAL } from "/lib/part-finder/utils/params";
 
 export class EditorResult {
   id: string;
@@ -123,13 +124,18 @@ const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracke
   }
 };
 
-const trackCleanupOperation = (usage: MultiUsageInstance): void => {
+const trackCleanupPathAndOperation = (usage: MultiUsageInstance, pathTracker: PathChangeTracker): void => {
+  usage.path = pathTracker.paths[usage.path];
 
-  // @ts-ignore
-  usage.operation = usage.operation === Operation.Accept ? PARAM_VAL.accept : usage.operation === Operation.Undo ? PARAM_VAL.undo : undefined
-  /*if (!usage.operation) {
+  usage.operation =
+    usage.operation === Operation.Accept
+      ? PARAM_VAL.accept
+      : usage.operation === Operation.Undo
+        ? PARAM_VAL.undo
+        : undefined;
+  if (!usage.operation) {
     throw Error("Couldn't determine which operation was attempted on the component: " + JSON.stringify(usage));
-  }*/
+  }
 };
 
 enum ComponentPathType {
@@ -152,7 +158,7 @@ const getComponenPathType = (result: EditorResult) => {
 };
 
 const setMultiUsage = (currentContent: ContentUsage, result: EditorResult, pathTracker: PathChangeTracker) => {
-  const trackingFunction = result.operation === Operation.Add ? trackAddedPath : trackCleanupOperation;
+  const trackingFunction = result.operation === Operation.Add ? trackAddedPath : trackCleanupPathAndOperation;
 
   switch (getComponenPathType(result)) {
     case ComponentPathType.String:
@@ -242,7 +248,7 @@ export class Results {
     this.pathTrackers[contentItem._path] = new PathChangeTracker(contentItem);
   }
 
-  reportSuccess(contentItem: ContentItem, targetedComponentPath: string, trackedPath: string) {
+  reportSuccess(contentItem: ContentItem, targetedComponentPath: string, newPath: string) {
     const operation = this.plannedOperationsPerId[contentItem._id][targetedComponentPath];
 
     if (!operation) {
@@ -251,18 +257,12 @@ export class Results {
       );
     }
 
-    const result = new EditorResult(
-      this.repoName,
-      contentItem?._id,
-      contentItem,
-      operation,
-      operation === Operation.Add ? trackedPath : targetedComponentPath,
-    );
+    const result = new EditorResult(this.repoName, contentItem?._id, contentItem, operation, newPath);
     this.results.push(result);
 
     log.info(
       `OK: ${operation} operation succeeded on ${this.targetComponentType} component, on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
-        trackedPath !== null ? ", path: " + JSON.stringify(trackedPath) : ""
+        newPath !== null ? ", path: " + JSON.stringify(newPath) : ""
       }), from '${this.sourceKey}' to '${this.newKey}'`,
     );
   }

@@ -6,6 +6,7 @@ import { getLastAttemptTracker, LastAttemptTracker } from "/lib/part-finder/util
 import { contentRegionMutators } from "/lib/part-finder/utils/regionEditing";
 import { prepareEditorResources } from "/lib/part-finder/utils/editors";
 import { SIGNATURE_MARKER_KEY } from "/lib/part-finder/utils/aliasUser";
+import { Operation } from "/lib/part-finder/utils/plannedOperations";
 
 const verifyUnchangedContent = (contentItem: ContentItem, controlHashes: Record<string, string>) => {
   const contentHash = hashContentItem(contentItem);
@@ -32,19 +33,37 @@ const removeComponentsFromContentItem = (
   results: Results,
 ) => {
   const pathTracker = results.pathTrackers[clonedContentItem._path];
+  const plannedOperations = results.plannedOperationsPerId[clonedContentItem._id];
+
   targetComponentPaths.forEach((targetPath: string) => {
     lastAttempted.componentPath = targetPath;
 
+    const pathPattern = new RegExp(`(.+)\/(\\d+)$`);
+    const pathMatch = targetPath.match(pathPattern);
+    if (!pathMatch) {
+      throw Error(`Unexpected state - targetPath appears to be malformed or missing: ${JSON.stringify(targetPath)}`);
+    }
+
     contentRegionMutators.removeComponent(clonedContentItem, targetPath, results.pathTrackers[clonedContentItem._path]);
 
-    const originalPath = pathTracker.getOriginalPath(targetPath);
-    if (originalPath === null) {
-      throw Error(
-        `Unexpected state - lost track of component paths: handled the component most recently seen at '${targetPath}', but couldn't find its original path. PathTracker for content '${clonedContentItem._path}': ${JSON.stringify(pathTracker.paths)}`,
+    const pathRoot = pathMatch[1];
+    const pathIndex = parseInt(pathMatch[2], 10);
+    let remainingPath;
+
+    const plannedOperation = plannedOperations[targetPath];
+    if (plannedOperation === Operation.Accept) {
+      // The change was accepted and the deleted target was the original. So the remaining path (the component that was not deleted) is the one before the deleted one.
+      remainingPath = `${pathRoot}/${pathIndex - 1}`;
+    } else if (plannedOperation === Operation.Undo) {
+      remainingPath = `${pathRoot}/${pathIndex + 1}`;
+    } else {
+      throw new Error(
+        "Unexpected state - planned operation should have been Accept or Undo. Instead: " +
+          JSON.stringify(plannedOperation),
       );
     }
 
-    results.reportSuccess(clonedContentItem, targetPath, originalPath);
+    results.reportSuccess(clonedContentItem, targetPath, remainingPath);
   });
 };
 

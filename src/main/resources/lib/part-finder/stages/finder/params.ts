@@ -11,7 +11,9 @@ import type { ComponentDescriptorType } from "/lib/xp/schema";
 
 const getConfigRequest = (req: XP.Request<PartFinderQueryParams>): undefined | string => {
   if (typeof (req.params[PARAM.getConfig] || "") !== "string") {
-    throw Error(`The URI parameter ${PARAM.getConfig} must be a string value. Got ${typeof req.params[PARAM.getConfig]} instead: req.params[${JSON.stringify(PARAM.getConfig)}] = ${JSON.stringify(req.params[PARAM.getConfig])}`);
+    throw Error(
+      `The URI parameter ${PARAM.getConfig} must be a string value. Got ${typeof req.params[PARAM.getConfig]} instead: req.params[${JSON.stringify(PARAM.getConfig)}] = ${JSON.stringify(req.params[PARAM.getConfig])}`,
+    );
   }
 
   const getConfigParam = (req.params[PARAM.getConfig] || "").trim();

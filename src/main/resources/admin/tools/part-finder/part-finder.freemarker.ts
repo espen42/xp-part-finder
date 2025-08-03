@@ -44,7 +44,7 @@ export type MultiUsageInstance = {
   hideSelector?: boolean;
   oldPath?: string;
   newPath?: string;
-  operation?: Operation;
+  operation?: Operation | string;
 };
 
 type UsagePaths = Record<string, UsagePathSubvalue[] | null>;
