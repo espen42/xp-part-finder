@@ -26,6 +26,10 @@ const SEED = 0x1dc87f6bae9123;
 // Here, sort the items here to ensure normalization
 const SORT_ARRAYS_BELOW_THESE_KEYS = ["._indexConfig.configs"];
 
+// For the sake of detecting whether the content item has been MEANINGFULLY changed or not, we can ignore cases where
+// something has been changed between empty string, null or undefined: the content is semantically the same.
+const hasInfo = (obj): boolean => obj !== undefined && obj !== null && !(typeof obj === "string" && obj.trim() === "");
+
 // Ensures it's the actual data that matters, not the order of keys of objects (the order of array items, however, does matter).
 // Return a determinstically normalized version of the object, with sorted keys.
 const normalize = (obj, currentKey: string) => {
@@ -38,7 +42,8 @@ const normalize = (obj, currentKey: string) => {
   if (obj instanceof Map) {
     const entries = Array.from(obj.entries())
       .sort(([k1], [k2]) => (k1 < k2 ? -1 : k1 > k2 ? 1 : 0))
-      .map(([k, v]) => [k, normalize(v, currentKey + "." + k)]);
+      .map(([k, v]) => [k, normalize(v, currentKey + "." + k)])
+      .filter(([, v]) => hasInfo(v));
     return Object.fromEntries(entries);
   }
 
@@ -46,7 +51,7 @@ const normalize = (obj, currentKey: string) => {
     if (sortArr) {
       obj.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
     }
-    return obj.map((item, i) => normalize(item, currentKey + "." + i));
+    return obj.map((item, i) => normalize(item, currentKey + "." + i)).filter(hasInfo);
   }
 
   if (obj instanceof Set) {
@@ -54,7 +59,7 @@ const normalize = (obj, currentKey: string) => {
     if (sortArr) {
       arr.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
     }
-    return arr.map((item, i) => normalize(item, currentKey + "." + i));
+    return arr.map((item, i) => normalize(item, currentKey + "." + i)).filter(hasInfo);
   }
 
   // Check for Enonic XP proxy objects using their Java class signatures
@@ -73,14 +78,20 @@ const normalize = (obj, currentKey: string) => {
   sortedKeys.sort();
   const result = {};
   for (const key of sortedKeys) {
-    result[key] = normalize(obj[key], currentKey + "." + key);
+    const newVal = normalize(obj[key], currentKey + "." + key);
+    if (hasInfo(newVal)) {
+      result[key] = newVal;
+    }
   }
   return result;
 };
 
 const getHash = (map): string => {
   const norMap = normalize(map, "");
-  return xxh.h64(JSON.stringify(norMap), SEED).toString(16); // 16-char hex
+
+  const hash = xxh.h64(JSON.stringify(norMap), SEED).toString(16); // 16-char hex
+
+  return hash;
 };
 
 export const hashContentItem = (contentItem: ContentItem): string => {
