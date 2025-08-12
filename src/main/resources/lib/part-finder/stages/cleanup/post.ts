@@ -1,5 +1,4 @@
 import { getParamsForCleanup } from "/lib/part-finder/stages/cleanup/params";
-import { Results } from "/lib/part-finder/utils/results";
 import { Operation } from "/lib/part-finder/utils/plannedOperations";
 import { createCleanupEditor } from "/lib/part-finder/stages/cleanup/editor";
 import { runEditor } from "/lib/part-finder/utils/editors";
@@ -8,13 +7,14 @@ import { listContentIdsAndUsagePaths } from "/lib/part-finder/utils/contentIdSum
 import { getToolUrl } from "/lib/xp/admin";
 import { ComponentViewParams } from "/admin/views/component-view/component-view.freemarker";
 import { render } from "/lib/tineikt/freemarker";
+import { buildContentResult } from "/lib/part-finder/utils/results";
 
 const CLEANUP_SUMMARY_VIEW = resolve("../../../admin/views/cleanup-summary/cleanup-summary.ftl");
 
 export const runCleanupAndSummarize = (req: XP.Request): XP.Response => {
   const {
     controlHashes,
-    componentPathsPerId,
+    componentPathsPerIdPerRepo,
     plannedOperations,
     sourceKey,
     newKey,
@@ -27,11 +27,18 @@ export const runCleanupAndSummarize = (req: XP.Request): XP.Response => {
     displayUnusedParam,
   } = getParamsForCleanup(req);
 
-  const results = new Results(sourceKey, newKey, componentType, plannedOperations, Operation.Cleanup);
+  const cleanupEditor = createCleanupEditor(controlHashes);
 
-  const cleanupEditor = createCleanupEditor(controlHashes, results, componentPathsPerId);
-
-  runEditor(cleanupEditor, repoIds, componentPathsPerId, results);
+  const resultsFromRepos = runEditor(
+    cleanupEditor,
+    repoIds,
+    componentPathsPerIdPerRepo,
+    sourceKey,
+    newKey,
+    componentType,
+    plannedOperations,
+    Operation.Cleanup,
+  );
 
   const type = componentType.toUpperCase();
 
@@ -39,7 +46,7 @@ export const runCleanupAndSummarize = (req: XP.Request): XP.Response => {
     url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?${PARAM.key}=${newAppKey}%3A${newComponentKey}&${PARAM.type}=${type}`,
     key: newKey,
     type: componentType,
-    contents: results.buildContentResult(),
+    contents: buildContentResult(resultsFromRepos),
     headings: [
       {
         text: "Display name",

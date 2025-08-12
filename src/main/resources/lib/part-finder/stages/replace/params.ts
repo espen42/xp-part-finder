@@ -11,7 +11,7 @@ import { Operation, registerOperationAndGetIds } from "/lib/part-finder/utils/pl
 
 type ParamsForReplacementProcessing = {
   requestedPostprocessors: string[];
-  componentPathsPerId: Record<string, string[] | null>;
+  componentPathsPerIdPerRepo: Record<string, Record<string, string[] | null>>;
   plannedOperations: Record<string, Operation>;
   oldAppKey: string;
   oldComponentKey: string;
@@ -47,7 +47,7 @@ export const getParamsForReplacing = (req: XP.Request<PartFinderQueryParams>): P
     sortParam,
     displayArchiveParam,
     displayUnusedParam,
-    componentPathsPerId,
+    componentPathsPerIdPerRepo,
   } = getCommonParams(req, targetIds);
   const [oldAppKey, oldComponentKey] = sourceKey.split(":");
 
@@ -57,7 +57,7 @@ export const getParamsForReplacing = (req: XP.Request<PartFinderQueryParams>): P
       .filter((processorName) => processorName.trim())
       .filter((processorName) => processorName !== PARAM_VAL.undefined),
 
-    componentPathsPerId,
+    componentPathsPerIdPerRepo,
     plannedOperations,
     oldAppKey,
     oldComponentKey,

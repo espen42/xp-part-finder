@@ -5,9 +5,10 @@ import { get as getContent } from "/lib/xp/content";
 import { connect as nodeConnect } from "/lib/xp/node";
 import { run as runInContext } from "/lib/xp/context";
 import { getAliasOrUserKey, SIGNATURE_MARKER_KEY } from "/lib/part-finder/utils/aliasUser";
-import { stringAfterLast } from "/lib/part-finder/utils/utils";
 import { Node, ModifiedNode } from "@enonic-types/lib-node";
 import { Content } from "@enonic-types/core";
+import { Operation } from "/lib/part-finder/utils/plannedOperations";
+import { stringAfterLast } from "/lib/part-finder/utils/utils";
 
 const TARGET_BRANCH = "draft";
 const PRINCIPAL_ADMIN = "role:system.admin";
@@ -38,14 +39,22 @@ export const prepareEditorResources = (
 export const runEditor = (
   editorFunc: EditorFunc,
   repoIds: string[],
-  componentPathsPerId: Record<string, string[] | null>,
-  results: Results,
-) => {
+  componentPathsPerIdPerRepo: Record<string, Record<string, string[] | null>>, // Map: repo -> contentId -> component paths array
+  sourceKey: string,
+  newKey: string,
+  componentType: string,
+  plannedOperations: Record<string, Operation>, // Map: repo::contentId -> Operation
+  mainOperation: Operation,
+): Record<string, Results> => {
   const aliasOrUserKey = getAliasOrUserKey();
 
+  const resultsFromRepos: Record<string, Results> = {}; // Map: repoName -> Results container
+
   repoIds.forEach((targetRepo) => {
+    // Remove the "com.enonic.cms." prefix
     const repoName = stringAfterLast(targetRepo, ".");
-    results.setRepoContext(repoName);
+
+    const results = new Results(repoName, sourceKey, newKey, componentType, plannedOperations, mainOperation);
 
     const repo = nodeConnect({
       repoId: targetRepo,
@@ -60,16 +69,19 @@ export const runEditor = (
       },
       () => {
         let item: Content | null;
+        const componentPathsPerId = componentPathsPerIdPerRepo[targetRepo] || {};
 
-        Object.keys(componentPathsPerId).forEach((key) => {
+        Object.keys(componentPathsPerId).forEach((contentId) => {
+          resultsFromRepos[targetRepo] = results;
+
           item = null;
           try {
-            item = getContent({ key });
+            item = getContent({ key: contentId });
             if (item) {
               repo.modify({
-                key,
+                key: contentId,
                 editor: (contentItem: Node<ContentItem>) => {
-                  const modifiedContentItem = editorFunc(contentItem);
+                  const modifiedContentItem = editorFunc(contentItem, componentPathsPerId, results);
 
                   // If the content item has been changed, sign the modified content item with the alias user or current user.
                   if (modifiedContentItem[SIGNATURE_MARKER_KEY]) {
@@ -81,10 +93,12 @@ export const runEditor = (
               });
             }
           } catch (e) {
-            results.markError(item, null, e, key);
+            results.markError(item, null, e, contentId);
           }
         });
       },
     );
   });
+
+  return resultsFromRepos;
 };

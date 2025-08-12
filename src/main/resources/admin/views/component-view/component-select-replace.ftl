@@ -96,13 +96,13 @@
                     <li>
                       [#if !(usage.hideSelector?? && usage.hideSelector)]
                         <input type="checkbox"
-                               id="${PREFIX.selectItem}${content.id}__${usage.path}"
-                               name="${PREFIX.selectItem}${content.id}__${usage.path}"
-                               value="${content.id}__${usage.path}"
+                               id="${PREFIX.selectItem}${content.repo}::${content.id}__${usage.path}"
+                               name="${PREFIX.selectItem}${content.repo}::${content.id}__${usage.path}"
+                               value="${content.repo}::${content.id}__${usage.path}"
                                class="part-select-check"
                         />
                       [/#if]
-                      <label for="${PREFIX.selectItem}${content.id}__${usage.path}"
+                      <label for="${PREFIX.selectItem}${content.repo}::${content.id}__${usage.path}"
                              class="part-select-label"
                       >${usage.path
                         }[#if configQuery?? && usage.compConfig??] <span class="get-config">
@@ -117,12 +117,12 @@
             [#else]
               <td>
                 <input type="checkbox"
-                       id="${PREFIX.selectItem}${content.id}"
-                       name="${PREFIX.selectItem}${content.id}"
-                       value="${content.id}"
+                       id="${PREFIX.selectItem}${content.repo}::${content.id}"
+                       name="${PREFIX.selectItem}${content.repo}::${content.id}"
+                       value="${content.repo}::${content.id}"
                        class="part-select-check"
                 />
-                <label for="${PREFIX.selectItem}${content.id}" class="part-select-label"/>
+                <label for="${PREFIX.selectItem}${content.repo}::${content.id}" class="part-select-label"/>
               </td>
             [/#if]
         </tr>
@@ -135,7 +135,7 @@
     >
       Replace ${currentItem.type}
       <pre style="cursor:pointer;display:inline"
-           onclick="document.getElementById('${PARAM.newPartName}').value='${currentItem.key}'"
+           onclick="pf.copyPartName()"
       >${currentItem.key}</pre>
       with:
     </label>
@@ -160,7 +160,7 @@
     >
     <input type="submit"
            id="btn_change_part"
-           value="Replace ${currentItem.type} ⚠"
+           value="Run process ⚠"
            class="new-part-button"
            disabled
     />
@@ -179,27 +179,17 @@
     [/#if];
 
     pf.selectAllElem = document.getElementById("_select_change_all_");
-    pf.acceptAllElem = document.getElementById("_select_accept_all_");
-    pf.undoAllElem = document.getElementById("_select_undo_all_");
     pf.targetPartNameElem = document.getElementById("${PARAM.newPartName}");
 
     [#--
       For the radio buttons, add event listeners for checking/unchecking events:
       These are used in the summary/undo mode to mark items for deletion or acceptance.
-      The  arrays 'acceptIds' and 'undoIds' are used to keep track of which items are selected for deletion or acceptance.
     --]
-    pf.reviewRadioRows = document.querySelectorAll("td .review-radio-row")
     pf.selectedIds = [];
-    pf.acceptIds = []
-    pf.undoIds = []
-
-    if (!pf.reviewRadioRows || pf.reviewRadioRows.length < 1) {
-      document.getElementById("review-all") && (document.getElementById("review-all").style.visibility = "hidden")
-      document.getElementById("all-info") && (document.getElementById("all-info").style.visibility = "hidden")
-    }
+    pf.btn = document.getElementById("btn_change_part")
 
     [#--
-      Enable or disable the "Replace part" or "Undo" button.
+      Enable or disable the "Replace part" button.
       Conditions: at least one element selected, part name text field has a value matching the pattern of component names
     --]
     pf.checkSelection = function () {
@@ -208,41 +198,21 @@
         window.clearTimeout(pf.timeoutId)
       }
       pf.timeoutId = window.setTimeout(() => {
-        const btn = document.getElementById("btn_change_part")
-        if (
+        pf.btn.disabled = !(
           pf.selectedIds.length &&
           (pf.targetPartNameElem.value || '')
             .trim()
             .match(/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z_]+)*\:[a-zA-Z][a-zA-Z0-9\-_]*$/)
-        ) {
-          btn.disabled = false;
-        } else {
-          btn.disabled = true;
-        }
+        )
 
         const info = document.getElementById("btn-info")
-        info.style.display = btn.disabled ? "none" : "block"
+        info.style.display = pf.btn.disabled ? "none" : "block"
       }, 100)
     }
 
-    pf.updateReviewGui = function () {
-      const markedCount = pf.acceptIds.length + pf.undoIds.length
-      const unmarkedCount = pf.reviewRadioRows.length - markedCount
-
-      const unmarkedCounterElem = document.getElementById("unmarked-counter")
-      if (unmarkedCounterElem) {
-        unmarkedCounterElem.innerHTML = "" + unmarkedCount
-      }
-
-      const submitButtonElement = document.getElementById("btn_execute_review")
-      if (submitButtonElement) {
-        submitButtonElement.disabled = (unmarkedCount > 0)
-      }
-
-      const unmarkedInfoElem = document.getElementById("unmarked-info")
-      if (unmarkedInfoElem) {
-        unmarkedInfoElem.style.display = (unmarkedCount > 0 && markedCount > 0) ? "block" : "none"
-      }
+    pf.copyPartName = function() {
+      pf.targetPartNameElem.value='${currentItem.key}';
+      pf.checkSelection();
     }
 
     [#--  For each select-item checkbox, add an event listener for checking/unchecking events --]
@@ -272,86 +242,6 @@
       }
     })
 
-    pf.selectionInRow = {}
-    if (pf.reviewRadioRows) {
-      pf.reviewRadioRows.forEach(radioRow => {
-        [#--
-          "Change"-event listener for radio buttons only respond to selection: getting focus, not losing it.
-          So the event listener must be on the common container level for all radiobuttons in a group and wait for a common event to bubble up.
-          Then parse the event.
-        --]
-        radioRow.addEventListener("change", e => {
-          const rowName = e.target.name
-
-          const previousSelection = pf.selectionInRow[rowName]
-          if (previousSelection) {
-            if (previousSelection.startsWith("${PREFIX.deleteOld}")) {
-              pf.acceptIds = pf.acceptIds.filter(id => id !== previousSelection)
-            } else if (previousSelection.startsWith("${PREFIX.deleteNew}")) {
-              pf.undoIds = pf.undoIds.filter(id => id !== previousSelection)
-            }
-          }
-
-          const newSelection = e.target.value
-          if (newSelection) {
-            pf.selectionInRow[rowName] = newSelection
-            if (newSelection.startsWith("${PREFIX.deleteOld}")) {
-              pf.acceptIds.push(newSelection)
-            } else if (newSelection.startsWith("${PREFIX.deleteNew}")) {
-              pf.undoIds.push(newSelection)
-            }
-          }
-
-          pf.acceptAllElem.checked = (pf.acceptIds.length === pf.reviewRadioRows.length)
-          pf.undoAllElem.checked = (pf.undoIds.length === pf.reviewRadioRows.length)
-
-          pf.updateReviewGui();
-        })
-      })
-    }
-
-    if (pf.acceptAllElem) {
-      pf.acceptAllElem.addEventListener("change", function () {
-        pf.undoAllElem.checked = false
-        pf.selectionInRow = {}
-        pf.undoIds = []
-        pf.acceptIds = []
-        pf.reviewRadioRows.forEach(row => {
-          const undo = row.querySelector(".part-undo input[type='radio']")
-          undo.checked = false
-
-          const accept = row.querySelector(".part-accept input[type='radio']")
-          accept.checked = true
-
-          pf.selectionInRow[accept.name] = accept.value
-          pf.acceptIds.push(accept.value)
-        })
-
-        pf.updateReviewGui();
-      })
-    }
-
-    if (pf.undoAllElem) {
-      pf.undoAllElem.addEventListener("change", function () {
-        pf.acceptAllElem.checked = false
-        pf.acceptIds = []
-        pf.undoIds = []
-        pf.reviewRadioRows.forEach(row => {
-          const accept = row.querySelector(".part-accept input[type='radio']")
-          accept.checked = false
-
-          const undo = row.querySelector(".part-undo input[type='radio']")
-          undo.checked = true
-
-          pf.selectionInRow[undo.name] = undo.value
-          pf.undoIds.push(undo.value)
-        })
-
-        pf.updateReviewGui();
-      })
-    }
-
-
     if (pf.selectAllElem) {
       [#--  For the select-all checkbox, add an event listener for checking/unchecking it --]
       pf.selectAllElem.addEventListener("change", function () {
@@ -380,7 +270,6 @@
 
 
     pf.checkSelection();
-    pf.updateReviewGui();
   </script>
 
 </turbo-frame>

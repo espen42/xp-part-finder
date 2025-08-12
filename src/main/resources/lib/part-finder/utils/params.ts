@@ -1,6 +1,6 @@
 import type { ComponentDescriptorType } from "/lib/xp/schema";
 import { getCMSRepoIds } from "/lib/part-finder/utils/repoIds";
-import { parseComponentPathsPerId } from "/lib/part-finder/utils/componentPathsPerId";
+import { parseComponentPathsPerIdPerRepo } from "/lib/part-finder/utils/componentPathsPerId";
 
 // TODO: Before which stage/screen(s) does the server receive these for handling and rendering?
 // Finder? Replace? Cleanup? All of them? Some common, some not?
@@ -154,7 +154,7 @@ export const getCommonParams = (
   newKey: string;
   newAppKey: string;
   newComponentKey: string;
-  componentPathsPerId: Record<string, string[] | null>;
+  componentPathsPerIdPerRepo: Record<string, Record<string, string[] | null>>;
 } => {
   const sourceKey = trimString(req.params[PARAM.key]);
   const newKey = trimString(req.params[PARAM.newPartName]);
@@ -178,7 +178,7 @@ export const getCommonParams = (
     newKey,
     newAppKey,
     newComponentKey,
-    componentPathsPerId: parseComponentPathsPerId(targetIds),
+    componentPathsPerIdPerRepo: parseComponentPathsPerIdPerRepo(targetIds),
     componentType: getParamString(req, PARAM.type),
     sourceKey: trimString(req.params[PARAM.key]),
     repoIds: getCMSRepoIds(getRepoParam(req)),

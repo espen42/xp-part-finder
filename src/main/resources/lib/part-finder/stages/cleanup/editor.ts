@@ -32,7 +32,7 @@ const removeComponentsFromContentItem = (
   lastAttempted: LastAttemptTracker,
   results: Results,
 ) => {
-  const plannedOperations = results.plannedOperationsPerId[clonedContentItem._id];
+  const plannedOperations = results.getPlannedOperationsForContentItem(clonedContentItem._id);
 
   targetComponentPaths.forEach((targetPath: string) => {
     lastAttempted.componentPath = targetPath;
@@ -66,11 +66,7 @@ const removeComponentsFromContentItem = (
   });
 };
 
-export function createCleanupEditor(
-  controlHashes: Record<string, string>,
-  results: Results,
-  componentPathsPerId: Record<string, string[] | null>,
-): EditorFunc {
+export function createCleanupEditor(controlHashes: Record<string, string>): EditorFunc {
   // IMPORTANT!
   // Take care to avoid indirect mutation of 'contentItem'! Don't mutate subobjects and arrays that are read from below
   // the 'contentItem' object ( eg. contentItem?._indexConfig?.configs[i].config ).
@@ -85,7 +81,7 @@ export function createCleanupEditor(
   // 3. only when everything's completed successfully the intermediate objects/arrays overwrite data in contentItem.
   //
   // On errors, report the error and return the original contentItem unchanged.
-  const editor: EditorFunc = (contentItem) => {
+  const editor: EditorFunc = (contentItem, componentPathsPerId, results) => {
     /*
     Example component structure in a content: {
     "type": "layout",

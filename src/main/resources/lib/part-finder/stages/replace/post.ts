@@ -1,5 +1,5 @@
 import { getParamsForReplacing } from "/lib/part-finder/stages/replace/params";
-import { Results } from "/lib/part-finder/utils/results";
+import { buildContentResult } from "/lib/part-finder/utils/results";
 import { Operation } from "/lib/part-finder/utils/plannedOperations";
 import { createReplaceEditor } from "/lib/part-finder/stages/replace/editor";
 import { PARAM, PARAM_VAL, PREFIX } from "/lib/part-finder/utils/params";
@@ -17,7 +17,7 @@ export const runReplaceAndSummarize = (req: XP.Request): XP.Response => {
     oldComponentKey,
     newAppKey,
     newComponentKey,
-    componentPathsPerId,
+    componentPathsPerIdPerRepo,
     plannedOperations,
     requestedPostprocessors,
     sortParam,
@@ -29,20 +29,25 @@ export const runReplaceAndSummarize = (req: XP.Request): XP.Response => {
     displayUnusedParam,
   } = getParamsForReplacing(req);
 
-  const results = new Results(sourceKey, newKey, componentType, plannedOperations, Operation.Add);
-
   const replaceEditor = createReplaceEditor(
     oldAppKey,
     oldComponentKey,
     newAppKey,
     newComponentKey,
     componentType,
-    results,
-    componentPathsPerId,
     requestedPostprocessors,
   );
 
-  runEditor(replaceEditor, repoIds, componentPathsPerId, results);
+  const resultsFromRepos = runEditor(
+    replaceEditor,
+    repoIds,
+    componentPathsPerIdPerRepo,
+    sourceKey,
+    newKey,
+    componentType,
+    plannedOperations,
+    Operation.Add,
+  );
 
   const type = componentType.toUpperCase();
 
@@ -50,7 +55,7 @@ export const runReplaceAndSummarize = (req: XP.Request): XP.Response => {
     url: `/admin/tool/com.enonic.app.contentstudio/main/part-finder?${PARAM.key}=${newAppKey}%3A${newComponentKey}&${PARAM.type}=${type}`,
     key: newKey,
     type: componentType,
-    contents: results.buildContentResult(),
+    contents: buildContentResult(resultsFromRepos),
     headings: [
       {
         text: "Display name",

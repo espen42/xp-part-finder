@@ -310,8 +310,6 @@ export function createReplaceEditor(
   newAppKey: string,
   newComponentKey: string,
   targetComponentType: string,
-  results: Results,
-  componentPathsPerId: Record<string, string[] | null>,
   requestedPostprocessors?: string[] | string,
 ): EditorFunc {
   const oldAppKeyDashed = oldAppKey.replace(/\./g, "-");
@@ -342,7 +340,7 @@ export function createReplaceEditor(
   // 3. only when everything's completed successfully the intermediate objects/arrays overwrite data in contentItem.
   //
   // On errors, report the error and return the original contentItem unchanged.
-  const editor: EditorFunc = (contentItem) => {
+  const editor: EditorFunc = (contentItem, componentPathsPerId, results) => {
     /*
     Example component structure in a content: {
     "type": "layout",

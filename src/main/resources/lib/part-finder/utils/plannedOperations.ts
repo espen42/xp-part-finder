@@ -25,3 +25,24 @@ export const registerOperationAndGetIds = (
   });
   return cleanedIds;
 };
+
+export const parsePlannedOperationsPerId = (
+  incomingPlannedOperations: Record<string, Operation>,
+  currentRepo: string,
+): Record<string, Record<string, Operation>> => {
+  const plannedOperationsPerId: Record<string, Record<string, Operation>> = {};
+  Object.keys(incomingPlannedOperations).forEach((repoIdAndPath) => {
+    const [incomingRepo, contentItemId__componentPath] = repoIdAndPath.split("::");
+    if (incomingRepo !== currentRepo) {
+      return;
+    }
+
+    const [contentItemId, componentPath] = contentItemId__componentPath.split("__");
+    plannedOperationsPerId[contentItemId] = {
+      ...(plannedOperationsPerId[contentItemId] || {}),
+      [componentPath]: incomingPlannedOperations[`${incomingRepo}::${contentItemId__componentPath}`],
+    };
+  });
+
+  return plannedOperationsPerId;
+};

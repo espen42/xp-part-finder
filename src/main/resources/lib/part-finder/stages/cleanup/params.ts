@@ -3,7 +3,7 @@ import { Operation, registerOperationAndGetIds } from "/lib/part-finder/utils/pl
 
 type ParamsForCleanupProcessing = {
   controlHashes: Record<string, string>;
-  componentPathsPerId: Record<string, string[] | null>;
+  componentPathsPerIdPerRepo: Record<string, Record<string, string[] | null>>;
   plannedOperations: Record<string, Operation>;
   sourceKey: string;
   newKey: string;
@@ -50,13 +50,13 @@ export const getParamsForCleanup = (req: XP.Request<PartFinderQueryParams>): Par
     sortParam,
     displayArchiveParam,
     displayUnusedParam,
-    componentPathsPerId,
+    componentPathsPerIdPerRepo,
   } = getCommonParams(req, [...deleteOldIds, ...deleteNewIds]);
 
   return {
     controlHashes: getControlHashesParam(req),
     plannedOperations,
-    componentPathsPerId,
+    componentPathsPerIdPerRepo,
     newAppKey,
     newComponentKey,
     componentType,

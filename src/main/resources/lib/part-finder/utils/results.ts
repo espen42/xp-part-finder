@@ -4,8 +4,46 @@ import { PathChangeTracker, PREFIX_TRACKED_NEWCOMPONENT } from "/lib/part-finder
 import { ContentItem } from "/lib/part-finder/stages";
 import { SortedArrayAscending, sortResultsByPathAsc } from "/lib/part-finder/utils/sorting";
 import { hashContentItem } from "/lib/part-finder/utils/contentHashing";
-import { Operation } from "/lib/part-finder/utils/plannedOperations";
+import { Operation, parsePlannedOperationsPerId } from "/lib/part-finder/utils/plannedOperations";
 import { PARAM_VAL } from "/lib/part-finder/utils/params";
+
+export const buildContentResult = (resultsFromRepos: Record<string, Results>): ContentUsage[] => {
+  const contentResult: ContentUsage[] = [];
+
+  Object.keys(resultsFromRepos).forEach((repoName) => {
+    const resultsFromRepo = resultsFromRepos[repoName];
+
+    // Sort the results back into ascending componentpath order (less weird presentation)
+    const sortedResults = sortResultsByPathAsc(resultsFromRepo.results);
+
+    // summarize the results for output
+    const contents = summarizeResultsIntoContents(
+      sortedResults,
+      resultsFromRepo.contentHashes,
+      resultsFromRepo.pathTrackers,
+    );
+
+    // Aggregate the usages into one ContentUsage, which corresponds to one contentItem with usage of components in it, and results for each of those (or an error for the whole contentItem).
+    contentResult.push(
+      ...Object.keys(contents).map((contentId) => {
+        const currentContent = contents[contentId];
+        if (currentContent.multiUsage.length === 0) {
+          currentContent.hasMultiUsage = false;
+        } else if (!currentContent.error) {
+          const errorUsages = currentContent.multiUsage.filter((usage) => !!usage?.error);
+          if (errorUsages.length > 0) {
+            currentContent.error = currentContent.multiUsage[0].error;
+            currentContent.multiUsage = [currentContent.multiUsage[0]];
+          }
+        }
+
+        return currentContent;
+      }),
+    );
+  });
+
+  return contentResult;
+};
 
 export class EditorResult {
   id: string;
@@ -69,10 +107,11 @@ const setHasMultiUsage = (currentContent, wantedValue: boolean) => {
  */
 const summarizeResultsIntoContents = (
   results: SortedArrayAscending<EditorResult>,
-  contents: Record<string, ContentUsage>,
   controlHashes: Record<string, string | null>,
   pathTrackers: Record<string, PathChangeTracker>,
-): void => {
+): Record<string, ContentUsage> => {
+  const contents: Record<string, ContentUsage> = {};
+
   results.forEach((result) => {
     const controlHash = controlHashes[result.id];
     const pathTracker = pathTrackers[result.path];
@@ -94,6 +133,8 @@ const summarizeResultsIntoContents = (
 
     setMultiUsage(currentContent, result, pathTracker);
   });
+
+  return contents;
 };
 
 const getUsage = (result: EditorResult, overrideComponentPath?: string): MultiUsageInstance => {
@@ -191,28 +232,13 @@ const setMultiUsage = (currentContent: ContentUsage, result: EditorResult, pathT
   }
 };
 
-const parsePlannedOperationsPerId = (
-  plannedOperations: Record<string, Operation>,
-): Record<string, Record<string, Operation>> => {
-  const plannedOperationsPerId: Record<string, Record<string, Operation>> = {};
-  Object.keys(plannedOperations).forEach((contentItemId__componentPath) => {
-    const [contentItemId, componentPath] = contentItemId__componentPath.split("__");
-    if (!plannedOperationsPerId[contentItemId]) {
-      plannedOperationsPerId[contentItemId] = {};
-    }
-    plannedOperationsPerId[contentItemId][componentPath] = plannedOperations[contentItemId__componentPath];
-  });
-
-  return plannedOperationsPerId;
-};
-
 export class Results {
   results: EditorResult[];
   sourceKey: string;
   newKey: string;
-  repoName: string;
+  repo: string;
   targetComponentType: string;
-  operationInGeneral: Operation;
+  mainOperation: Operation;
   plannedOperationsPerId: Record<string, Record<string, Operation>>; // Nested map: contentItemId -> componentPath -> operation enum (Add, Undo, or Accept)
 
   // If a component is added or deleted, other components in the same region will be pushed up or down, so their paths will change.
@@ -223,25 +249,22 @@ export class Results {
   contentHashes: Record<string, string | null>;
 
   constructor(
+    repo: string,
     sourceKey: string,
     newKey: string,
     targetComponentType: string,
     plannedOperations: Record<string, Operation>,
-    operationInGeneral: Operation,
+    mainOperation: Operation,
   ) {
     this.results = [];
-    this.repoName = ".setRepoContext hasn't run yet";
+    this.repo = repo;
     this.sourceKey = sourceKey;
     this.newKey = newKey;
     this.targetComponentType = targetComponentType;
     this.pathTrackers = {};
     this.contentHashes = {};
-    this.plannedOperationsPerId = parsePlannedOperationsPerId(plannedOperations);
-    this.operationInGeneral = operationInGeneral;
-  }
-
-  setRepoContext(repoName: string) {
-    this.repoName = repoName;
+    this.plannedOperationsPerId = parsePlannedOperationsPerId(plannedOperations, repo);
+    this.mainOperation = mainOperation;
   }
 
   initPathChangeTracker(contentItem: ContentItem) {
@@ -249,7 +272,7 @@ export class Results {
   }
 
   reportSuccess(contentItem: ContentItem, targetedComponentPath: string, newPath: string) {
-    const operation = this.plannedOperationsPerId[contentItem._id][targetedComponentPath];
+    const operation = this.plannedOperationsPerId[contentItem._id]?.[targetedComponentPath];
 
     if (!operation) {
       throw Error(
@@ -257,7 +280,7 @@ export class Results {
       );
     }
 
-    const result = new EditorResult(this.repoName, contentItem?._id, contentItem, operation, newPath);
+    const result = new EditorResult(this.repo, contentItem?._id, contentItem, operation, newPath);
     this.results.push(result);
 
     log.info(
@@ -275,17 +298,17 @@ export class Results {
     this.results = this.results.filter((result) => result.id !== contentItem._id);
     this.results.push(
       new EditorResult(
-        this.repoName,
+        this.repo,
         contentItem?._id || knownId || "",
         contentItem,
-        this.operationInGeneral,
+        this.mainOperation,
         componentPath,
         newError,
       ),
     );
 
     log.warning(
-      `Failed: ${this.operationInGeneral} operation on '${this.targetComponentType}' component, on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
+      `Failed: ${this.mainOperation} operation on '${this.targetComponentType}' component, on content item '${contentItem?.displayName || ""}' (id ${contentItem?._id}${
         componentPath !== null ? ", path: " + JSON.stringify(componentPath) : ""
       }), from '${this.sourceKey}}' to '${this.newKey}':`,
     );
@@ -293,37 +316,17 @@ export class Results {
     log.error(error);
   }
 
+  getPlannedOperationsForContentItem = (contentItemId: string): Record<string, Operation> => {
+    const plannedOperations = this.plannedOperationsPerId[contentItemId];
+    if (!plannedOperations) {
+      throw Error(`Unexpected state - no planned operations found for content item with id ${contentItemId}`);
+    }
+    return plannedOperations;
+  };
+
   hashContentItem = (contentItem: ContentItem): void => {
     this.contentHashes[contentItem._id] = hashContentItem(contentItem);
   };
-
-  buildContentResult(): ContentUsage[] {
-    const contents: Record<string, ContentUsage> = {};
-
-    // Sort the results back into ascending componentpath order (less weird presentation)
-    const sortedResults = sortResultsByPathAsc(this.results);
-
-    // summarize the results for output
-    summarizeResultsIntoContents(sortedResults, contents, this.contentHashes, this.pathTrackers);
-
-    // Aggregate the usages into one ContentUsage, which corresponds to one contentItem with usage of components in it, and results for each of those (or an error for the whole contentItem).
-    const contentResult: ContentUsage[] = Object.keys(contents).map((contentId) => {
-      const currentContent = contents[contentId];
-      if (currentContent.multiUsage.length === 0) {
-        currentContent.hasMultiUsage = false;
-      } else if (!currentContent.error) {
-        const errorUsages = currentContent.multiUsage.filter((usage) => !!usage?.error);
-        if (errorUsages.length > 0) {
-          currentContent.error = currentContent.multiUsage[0].error;
-          currentContent.multiUsage = [currentContent.multiUsage[0]];
-        }
-      }
-
-      return currentContent;
-    });
-
-    return contentResult;
-  }
 
   toString(): string {
     return `

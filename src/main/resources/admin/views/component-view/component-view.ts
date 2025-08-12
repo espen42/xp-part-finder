@@ -1,7 +1,7 @@
 import { getToolUrl } from "/lib/xp/admin";
 import { queryAllRepos } from "/lib/part-finder/nodes";
 import { getPartFinderUrl } from "/lib/part-finder/utils/utils";
-import type { AriaSortDirection, ComponentView, Heading } from "./component-view.freemarker";
+import type { AriaSortDirection, ComponentView, Heading, Usage } from "./component-view.freemarker";
 import type { Content, SortDirection, SortDsl } from "@enonic-types/core";
 import { getUsagePaths } from "/admin/tools/part-finder/usagePaths";
 import { PARAM } from "/lib/part-finder/utils/params";
@@ -37,7 +37,7 @@ export function getComponentUsagesInRepo(
   archiveParam: string,
 ): ComponentView {
   const displayArchive = !!archiveParam;
-  const contents = queryAllRepos<Content>(repositories, {
+  const contents: Usage[] = queryAllRepos<Content>(repositories, {
     count: 1000,
     sort: {
       field: sort.field ?? "_path",
