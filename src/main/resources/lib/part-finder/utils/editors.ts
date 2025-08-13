@@ -93,7 +93,7 @@ export const runEditor = (
               });
             }
           } catch (e) {
-            results.markError(item, null, e, contentId);
+            results.markError(item, null, e, { id: contentId });
           }
         });
       },

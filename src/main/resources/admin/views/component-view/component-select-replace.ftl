@@ -96,13 +96,13 @@
                     <li>
                       [#if !(usage.hideSelector?? && usage.hideSelector)]
                         <input type="checkbox"
-                               id="${PREFIX.selectItem}${content.repo}::${content.id}__${usage.path}"
-                               name="${PREFIX.selectItem}${content.repo}::${content.id}__${usage.path}"
-                               value="${content.repo}::${content.id}__${usage.path}"
+                               id="${PREFIX.selectItem}${content.id}__${usage.path}"
+                               name="${PREFIX.selectItem}${content.id}__${usage.path}"
+                               value="${content.id}__${usage.path}"
                                class="part-select-check"
                         />
                       [/#if]
-                      <label for="${PREFIX.selectItem}${content.repo}::${content.id}__${usage.path}"
+                      <label for="${PREFIX.selectItem}${content.id}__${usage.path}"
                              class="part-select-label"
                       >${usage.path
                         }[#if configQuery?? && usage.compConfig??] <span class="get-config">
@@ -117,12 +117,12 @@
             [#else]
               <td>
                 <input type="checkbox"
-                       id="${PREFIX.selectItem}${content.repo}::${content.id}"
-                       name="${PREFIX.selectItem}${content.repo}::${content.id}"
-                       value="${content.repo}::${content.id}"
+                       id="${PREFIX.selectItem}${content.id}"
+                       name="${PREFIX.selectItem}${content.id}"
+                       value="${content.id}"
                        class="part-select-check"
                 />
-                <label for="${PREFIX.selectItem}${content.repo}::${content.id}" class="part-select-label"/>
+                <label for="${PREFIX.selectItem}${content.id}" class="part-select-label"/>
               </td>
             [/#if]
         </tr>

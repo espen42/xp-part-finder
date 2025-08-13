@@ -6,6 +6,7 @@ import { SortedArrayAscending, sortResultsByPathAsc } from "/lib/part-finder/uti
 import { hashContentItem } from "/lib/part-finder/utils/contentHashing";
 import { Operation, parsePlannedOperationsPerId } from "/lib/part-finder/utils/plannedOperations";
 import { PARAM_VAL } from "/lib/part-finder/utils/params";
+import { getRepoAndIdString } from "/lib/part-finder/utils/repoIdAndPath";
 
 export const buildContentResult = (resultsFromRepos: Record<string, Results>): ContentUsage[] => {
   const contentResult: ContentUsage[] = [];
@@ -79,9 +80,18 @@ export class EditorResult {
   }
 
   toString(): string {
-    return this.error
-      ? `Error:\n\t\t${this.error}\n\t\t${JSON.stringify({ ...JSON.parse(JSON.stringify(this)), error: undefined })}`
-      : `Success:\n\t\t${JSON.stringify(this)}`;
+    return `RESULT: ${JSON.stringify(
+      {
+        contentId: this.id,
+        type: this.type,
+        path: this.path,
+        operation: this.operation,
+        componentPath: this.componentPath,
+        error: this.error,
+      },
+      null,
+      2,
+    )}`;
   }
 }
 
@@ -119,7 +129,7 @@ const summarizeResultsIntoContents = (
 
     if (!currentContent) {
       currentContent = {
-        id: result.id,
+        id: getRepoAndIdString(result.repo, result.id),
         url: result.url,
         displayName: result.displayName,
         type: result.type,
@@ -166,7 +176,7 @@ const trackAddedPath = (usage: MultiUsageInstance, pathTracker: PathChangeTracke
 };
 
 const trackCleanupPathAndOperation = (usage: MultiUsageInstance, pathTracker: PathChangeTracker): void => {
-  usage.path = pathTracker.paths[usage.path];
+  usage.path = usage.error ? usage.path : pathTracker.paths[usage.path];
 
   usage.operation =
     usage.operation === Operation.Accept
@@ -174,9 +184,6 @@ const trackCleanupPathAndOperation = (usage: MultiUsageInstance, pathTracker: Pa
       : usage.operation === Operation.Undo
         ? PARAM_VAL.undo
         : undefined;
-  if (!usage.operation) {
-    throw Error("Couldn't determine which operation was attempted on the component: " + JSON.stringify(usage));
-  }
 };
 
 enum ComponentPathType {
@@ -199,6 +206,11 @@ const getComponenPathType = (result: EditorResult) => {
 };
 
 const setMultiUsage = (currentContent: ContentUsage, result: EditorResult, pathTracker: PathChangeTracker) => {
+  if (!result.operation) {
+    throw Error(
+      "Couldn't determnine tracking function to proceed with, from result.operation: " + JSON.stringify(result),
+    );
+  }
   const trackingFunction = result.operation === Operation.Add ? trackAddedPath : trackCleanupPathAndOperation;
 
   switch (getComponenPathType(result)) {
@@ -292,16 +304,21 @@ export class Results {
 
   // On errors, log them, and since nothing should be changed in the data for that contentItem (atomic change: the original contentitem should
   // be returned), overwrite previous success results for that contentItem.
-  markError(contentItem, componentPath: string | null, error: unknown, knownId?: string) {
+  markError(
+    contentItem,
+    componentPath: string | null,
+    error: unknown,
+    known: { id?: string; operation?: Operation | null } = {},
+  ) {
     const newError =
       error instanceof Error ? error.message : "string" === typeof error ? error : "Unknown error, see log";
     this.results = this.results.filter((result) => result.id !== contentItem._id);
     this.results.push(
       new EditorResult(
         this.repo,
-        contentItem?._id || knownId || "",
+        contentItem?._id || known.id || "",
         contentItem,
-        this.mainOperation,
+        known.operation || this.mainOperation,
         componentPath,
         newError,
       ),

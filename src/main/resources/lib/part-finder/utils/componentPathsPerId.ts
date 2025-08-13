@@ -1,27 +1,6 @@
+import { splitIdFromPath, splitRepoFromIdAndPath } from "/lib/part-finder/utils/repoIdAndPath";
+
 export const fullyQualify = (repoKey) => `com.enonic.cms.${repoKey || ""}`;
-
-const splitInTwo = (
-  str: string | undefined | null,
-  delimiter: string,
-  errorLabel,
-  exactlyTwo: boolean = true,
-): [string, string] => {
-  const arr = (str || "").split(delimiter);
-  const [first, second] = arr;
-
-  if (
-    !Array.isArray(arr) ||
-    (first || "").length < 2 ||
-    (exactlyTwo && arr.length !== 2) ||
-    (exactlyTwo && (second || "").length < 2)
-  ) {
-    throw Error(
-      `Parameter error: ${errorLabel} is not a valid [repo]::[contentId]__[path] format: ${JSON.stringify(str)}`,
-    );
-  }
-
-  return [first, second];
-};
 
 export const parseComponentPathsPerIdPerRepo = (targetIds): Record<string, Record<string, string[] | null>> => {
   let i: number, repoName: string, idAndPath: string;
@@ -29,7 +8,7 @@ export const parseComponentPathsPerIdPerRepo = (targetIds): Record<string, Recor
 
   for (i = 0; i < targetIds.length; i++) {
     const errorLabel = `targetIds[${i}]`;
-    [repoName, idAndPath] = splitInTwo(targetIds[i], "::", errorLabel);
+    [repoName, idAndPath] = splitRepoFromIdAndPath(targetIds[i], errorLabel);
 
     const fullyQualifiedRepoName = fullyQualify(repoName);
     componentPathsPerIdPerRepo[fullyQualifiedRepoName] = componentPathsPerIdPerRepo[fullyQualifiedRepoName] || {};
@@ -42,7 +21,7 @@ export const parseComponentPathsPerIdPerRepo = (targetIds): Record<string, Recor
     // And in that case, all the targets by that id should be multi's. And vice versa. Check that, throw error if mix-up.
     // If no mix-up, register the path or lack of path for that ID, for the editor func to handle.
 
-    const [id, path] = splitInTwo(idAndPath, "__", errorLabel, false);
+    const [id, path] = splitIdFromPath(idAndPath, errorLabel);
     if (path) {
       if (componentPathsPerId[id] === null) {
         throw Error(

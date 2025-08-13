@@ -1,3 +1,5 @@
+import { splitIdFromPath, splitRepoFromIdAndPath } from "/lib/part-finder/utils/repoIdAndPath";
+
 export enum Operation {
   Add = "rewrite-and-add-new",
   Cleanup = "accept-or-undo",
@@ -31,16 +33,17 @@ export const parsePlannedOperationsPerId = (
   currentRepo: string,
 ): Record<string, Record<string, Operation>> => {
   const plannedOperationsPerId: Record<string, Record<string, Operation>> = {};
+  const errorLabel = "incoming planned-operation parameter";
   Object.keys(incomingPlannedOperations).forEach((repoIdAndPath) => {
-    const [incomingRepo, contentItemId__componentPath] = repoIdAndPath.split("::");
+    const [incomingRepo, contentItemId__componentPath] = splitRepoFromIdAndPath(repoIdAndPath, errorLabel);
     if (incomingRepo !== currentRepo) {
       return;
     }
 
-    const [contentItemId, componentPath] = contentItemId__componentPath.split("__");
+    const [contentItemId, componentPath] = splitIdFromPath(contentItemId__componentPath, errorLabel);
     plannedOperationsPerId[contentItemId] = {
       ...(plannedOperationsPerId[contentItemId] || {}),
-      [componentPath]: incomingPlannedOperations[`${incomingRepo}::${contentItemId__componentPath}`],
+      [componentPath]: incomingPlannedOperations[repoIdAndPath],
     };
   });
 

@@ -6,6 +6,7 @@ import type { Content, SortDirection, SortDsl } from "@enonic-types/core";
 import { getUsagePaths } from "/admin/tools/part-finder/usagePaths";
 import { PARAM } from "/lib/part-finder/utils/params";
 import type { ComponentDescriptorType } from "/lib/xp/schema";
+import { getRepoAndIdString } from "/lib/part-finder/utils/repoIdAndPath";
 
 const TABLE_HEADINGS: Omit<Heading, "url">[] = [
   {
@@ -59,7 +60,7 @@ export function getComponentUsagesInRepo(
         path: content._path.replace(/^\/content/, ""),
         type: content.type,
         repo,
-        id: content._id,
+        id: getRepoAndIdString(repo, content._id),
         usagePaths: {
           [component.key]: getUsagePaths(content, component.type, component.key, getconfigParam),
         },

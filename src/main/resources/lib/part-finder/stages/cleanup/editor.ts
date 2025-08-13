@@ -7,10 +7,15 @@ import { contentRegionMutators } from "/lib/part-finder/utils/regionEditing";
 import { prepareEditorResources } from "/lib/part-finder/utils/editors";
 import { SIGNATURE_MARKER_KEY } from "/lib/part-finder/utils/aliasUser";
 import { Operation } from "/lib/part-finder/utils/plannedOperations";
+import { getRepoAndIdString } from "/lib/part-finder/utils/repoIdAndPath";
 
-const verifyUnchangedContent = (contentItem: ContentItem, controlHashes: Record<string, string>) => {
+const verifyUnchangedContent = (
+  currentRepo: string,
+  contentItem: ContentItem,
+  controlHashes: Record<string, string>,
+) => {
   const contentHash = hashContentItem(contentItem);
-  if (contentHash !== controlHashes[contentItem._id]) {
+  if (!contentHash || contentHash !== controlHashes[getRepoAndIdString(currentRepo, contentItem._id)]) {
     throw Error(
       `Control hash mismatch (${JSON.stringify(contentHash)} != ${JSON.stringify(controlHashes[contentItem._id])}). This suggests that the content has been changed (has someone edited it in the meantime?) between the 'replace' stage (step 1) and the cleanup stage (step 2). Investigate and handle manually: THE CONTENT IS LEFT IN THE INTERMEDIATE STATE - POSSIBLE DUPLICATE COMPONENTS!`,
     );
@@ -36,6 +41,8 @@ const removeComponentsFromContentItem = (
 
   targetComponentPaths.forEach((targetPath: string) => {
     lastAttempted.componentPath = targetPath;
+    const plannedOperation = plannedOperations[targetPath];
+    lastAttempted.operation = plannedOperation;
 
     const pathPattern = new RegExp(`(.+)\/(\\d+)$`);
     const pathMatch = targetPath.match(pathPattern);
@@ -49,7 +56,6 @@ const removeComponentsFromContentItem = (
     const pathIndex = parseInt(pathMatch[2], 10);
     let remainingPath;
 
-    const plannedOperation = plannedOperations[targetPath];
     if (plannedOperation === Operation.Accept) {
       // The change was accepted and the deleted target was the original. So the remaining path (the component that was not deleted) is the one before the deleted one.
       remainingPath = `${pathRoot}/${pathIndex - 1}`;
@@ -106,7 +112,7 @@ export function createCleanupEditor(controlHashes: Record<string, string>): Edit
     const lastAttempted = getLastAttemptTracker();
 
     try {
-      verifyUnchangedContent(contentItem, controlHashes);
+      verifyUnchangedContent(results.repo, contentItem, controlHashes);
 
       const { targetComponentPaths, clonedContentItem } = prepareEditorResources(
         contentItem,
@@ -124,7 +130,7 @@ export function createCleanupEditor(controlHashes: Record<string, string>): Edit
       return clonedContentItem;
     } catch (e) {
       // Mark and log any error on this content item, and return the original one. This keeps the original and wipes any changes.
-      results.markError(contentItem, lastAttempted.componentPath, e);
+      results.markError(contentItem, lastAttempted.componentPath, e, { operation: lastAttempted.operation });
       return contentItem;
     }
   };
