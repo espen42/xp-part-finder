@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <tool xmlns="urn:enonic:xp:model:1.0">
-  <display-name>Part finder</display-name>
+  <display-name>Part finder and mover</display-name>
   <description>See where your parts are used!</description>
   <allow>
     <principal>role:system.admin.login</principal>

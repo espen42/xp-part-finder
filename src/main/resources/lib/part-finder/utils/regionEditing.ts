@@ -60,7 +60,7 @@ const verifyNewComponent = (newComponent: Component) => {
   }
 
   // Verify that `addAtPath` is a valid component path (if missing, get it from component path). Expected form: eg. `/main/1`, `/main/2/myRegion/3`, etc.
-  if (!newComponent.path.match(/^(\/\w+\/\d+){1,2}$/)) {
+  if (!newComponent.path.match(/^(\/[A-Za-z0-9][A-Za-z0-9_-]*\/\d+){1,2}$/)) {
     throw new Error(
       `Invalid path value for adding new component: ${JSON.stringify(newComponent.path)} (${typeof newComponent.path})`,
     );
