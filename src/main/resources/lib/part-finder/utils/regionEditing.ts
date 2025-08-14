@@ -97,13 +97,16 @@ const updateAndTrackComponentsBelowAdded = (
   targetComponentPath: string,
   belowInSameRegion: SortedArrayDescending<Component>,
   targetPathIndex: number,
+  inTargetRegionPattern: RegExp,
   pathTracker: PathChangeTracker,
 ) => {
   // Change the others below the updated one first, to make room then insert the new component.
   for (const component of belowInSameRegion) {
-    const [regionPath, pathIndex] = getRootAndIndex(component.path as string);
+    const pathMatch = (component.path as string).match(inTargetRegionPattern);
 
-    if (pathIndex !== null && targetPathIndex != null && pathIndex >= targetPathIndex) {
+    const [, regionPath, pathIndexStr] = pathMatch || [];
+    const pathIndex = parseInt(pathIndexStr, 10);
+    if (pathIndex !== null && !isNaN(pathIndex) && targetPathIndex != null && pathIndex >= targetPathIndex) {
       const previousPath = component.path as string;
       component.path = (component.path as string).replace(`${regionPath}${pathIndex}`, `${regionPath}${pathIndex + 1}`);
       pathTracker.trackPathChange(previousPath, component.path);
@@ -175,6 +178,7 @@ const insertComponent = (
       newComponent.path as string,
       belowInSameRegionDesc,
       targetPathIndex,
+      inTargetRegionPattern,
       pathTracker,
     );
   }
