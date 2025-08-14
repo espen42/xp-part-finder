@@ -48,8 +48,11 @@ export interface ContentitemMutatingPostprocessorFunc {
   ): void;
 }
 
+export type ComponentConfig<T> = NodeIndexConfig & T;
+
 export interface ComponentMutatingPostprocessorFunc {
-  (component: Component, currentComponentConfig: NodeIndexConfig, descriptor: string): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (component: Component, currentComponentConfig: ComponentConfig<any>, descriptor: string): void;
 }
 
 const getConfigAndDescriptor = (component: Component): { config: NodeIndexConfig; descriptor: string } => {
@@ -75,7 +78,7 @@ export const postprocessAndMutateComponent = (
   }
 
   const component = contentItem.components[index];
-  const { config, descriptor } = getConfigAndDescriptor(contentItem.components[index]);
+  const { config, descriptor } = getConfigAndDescriptor(component);
 
   // Do the postprocessing with the function provided by the caller (see the postprocessor modules: cardFullwidth.ts, logger.ts, etc.):
   mutateComponentFunc(component, config, descriptor);
