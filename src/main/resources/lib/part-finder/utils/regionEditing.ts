@@ -388,7 +388,6 @@ export const addComponent = (
   );
 
   contentItem.components = sortComponentsByPathAsc(sortedComponentsDesc);
-
 };
 
 export const removeComponent = (contentItem: ContentItem, targetPath: string, pathTracker: PathChangeTracker) => {
@@ -400,5 +399,4 @@ export const removeComponent = (contentItem: ContentItem, targetPath: string, pa
   deleteComponent(sortedComponentsDesc, targetPath, pathTracker);
 
   contentItem.components = sortComponentsByPathAsc(sortedComponentsDesc);
-
 };

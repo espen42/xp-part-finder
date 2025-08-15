@@ -27,7 +27,7 @@ type LayoutNColumnsConfig = {
   addPadding?: boolean;
 };
 
-export const layoutNColumns: ContentitemMutatingPostprocessorFunc = (
+export const layout2Columns: ContentitemMutatingPostprocessorFunc = (
   contentItem,
   changedPath,
   targetComponentType,
@@ -38,9 +38,11 @@ export const layoutNColumns: ContentitemMutatingPostprocessorFunc = (
     contentItem,
     changedPath,
     (component, currentComponentConfig: ComponentConfig<LayoutNColumnsConfig>) => {
-      log.info(
-        `    Also migrating ${targetComponentType}'s config.layout['${layoutConfig.layout._selected}'] down to .config`,
-      );
+      if (currentComponentConfig.layout?._selected !== "two") {
+        throw Error(
+          `Postprocessor 'layout-2-columns' can only be used where the selected number of coluns is 2 (layout._selected = "two"). Found value: ${currentComponentConfig.layout?._selected}`,
+        );
+      }
 
       if (
         Object.keys(currentComponentConfig).length &&
@@ -53,7 +55,6 @@ export const layoutNColumns: ContentitemMutatingPostprocessorFunc = (
         delete currentComponentConfig.layout;
 
         component[targetComponentType].config[newAppKeyDashed][newComponentKey] = currentComponentConfig;
-
       }
 
       /*
