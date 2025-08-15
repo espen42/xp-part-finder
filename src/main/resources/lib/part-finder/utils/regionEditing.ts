@@ -92,7 +92,8 @@ const prepareForIteration = (targetComponentPath: string, operationErrorLabel: s
   };
 };
 
-// When a component has been added, we need to update the paths of all components below it in the same region - in DESCENDING order to avoid path collisions. This enforces that.
+// When a component has been added, we need to update the paths of all components below it in the same region - in DESCENDING order to avoid path collisions.
+// This function level enforces that.
 const updateAndTrackComponentsBelowAdded = (
   targetComponentPath: string,
   belowInSameRegion: SortedArrayDescending<Component>,
@@ -100,20 +101,66 @@ const updateAndTrackComponentsBelowAdded = (
   inTargetRegionPattern: RegExp,
   pathTracker: PathChangeTracker,
 ) => {
-  // Change the others below the updated one first, to make room then insert the new component.
+  // Change the others below the updated one first to make room then insert the new component, before inserting it.
+  updateAndTrackComponents(belowInSameRegion, targetPathIndex, inTargetRegionPattern, pathTracker, (pathIndex) => pathIndex + 1)
+
+  pathTracker.trackInsertion(targetComponentPath);
+};
+
+
+// When we know the components below the deleted component in the same region, their paths must be updated in ASCENDING order to avoid path collisions.
+// This function level enforces that.
+const updateAndTrackComponentsBelowDeleted = (
+  targetComponentPath: string,
+  belowInSameRegion: SortedArrayAscending<Component>,
+  targetPathIndex: number,
+  inTargetRegionPattern: RegExp,
+  pathTracker: PathChangeTracker,
+) => {
+  // Delete first to make room, then change the others below.
+  pathTracker.trackDelete(targetComponentPath);
+
+  updateAndTrackComponents(belowInSameRegion, targetPathIndex, inTargetRegionPattern, pathTracker, (pathIndex) => {
+  const newPathIndex = pathIndex - 1;
+      if (newPathIndex < 0) {
+        throw Error(
+          `Unexpected state (newPathIndex = ${newPathIndex}}) - trying to update a component path as if an earlier component was deleted before index 0, which should be impossible.`,
+        );
+      }
+      return newPathIndex
+  })
+};
+
+/**
+ * Common for updating paths of components below deleted and added components.
+ * Each component in the array should be components below the deleted or added one, in the same region. For each:
+ * uses a regex pattern (MUST have two groups) on the component's path, to isolate the relevant region's path and index in that region,
+ * uses the index to verify the current component is actually below the inserted or deleted one (which is 'targetPathIndex'),
+ * then gets the new index from a parameter function and updates the component's path,
+ * and tracks the path change in the pathTracker.
+ * It's the caller's responsibility to ensure the components are sorted in the correct order (DESCENDING for added, ASCENDING for deleted).
+ */
+const updateAndTrackComponents = (
+  belowInSameRegion: Component[],
+  targetPathIndex: number,
+  inTargetRegionPattern: RegExp,
+  pathTracker: PathChangeTracker,
+  getNewPathIndex: (currentIndex: number) => number
+) => {
   for (const component of belowInSameRegion) {
     const pathMatch = (component.path as string).match(inTargetRegionPattern);
-
     const [, regionPath, pathIndexStr] = pathMatch || [];
     const pathIndex = parseInt(pathIndexStr, 10);
-    if (pathIndex !== null && !isNaN(pathIndex) && targetPathIndex != null && pathIndex >= targetPathIndex) {
+    if (pathIndex != null && !isNaN(pathIndex) && targetPathIndex != null && pathIndex >= targetPathIndex) {
       const previousPath = component.path as string;
-      component.path = (component.path as string).replace(`${regionPath}${pathIndex}`, `${regionPath}${pathIndex + 1}`);
+      const newPathIndex = getNewPathIndex(pathIndex)
+      const replacePattern = new RegExp(`^${regionPath}${pathIndex}`);
+      component.path = (component.path as string).replace(replacePattern, `${regionPath}${newPathIndex}`);
       pathTracker.trackPathChange(previousPath, component.path);
     }
   }
-  pathTracker.trackInsertion(targetComponentPath);
-};
+}
+
 
 // Enforces that components are handled in descending order, the algorithm depends on that.
 const insertComponent = (
@@ -181,32 +228,7 @@ const insertComponent = (
       inTargetRegionPattern,
       pathTracker,
     );
-  }
-};
 
-// When we know the components below the deleted component in the same region, their paths must be updated in ASCENDING order to avoid path collisions. This enforces that.
-const updateAndTrackComponentsBelowDeleted = (
-  targetComponentPath: string,
-  belowInSameRegion: SortedArrayAscending<Component>,
-  targetPathIndex: number,
-  pathTracker: PathChangeTracker,
-) => {
-  // Delete first to make room, then change the others below
-  pathTracker.trackDelete(targetComponentPath);
-  for (const component of belowInSameRegion) {
-    const [regionPath, pathIndex] = getRootAndIndex(component.path as string);
-
-    if (pathIndex != null && targetPathIndex != null && pathIndex >= targetPathIndex) {
-      const previousPath = component.path as string;
-      const newPathIndex = pathIndex - 1;
-      if (newPathIndex < 0) {
-        throw Error(
-          `Unexpected state (newPathIndex = ${newPathIndex}}) - trying to update a component path as if an earlier component was deleted before index 0, which should be impossible.`,
-        );
-      }
-      component.path = (component.path as string).replace(`${regionPath}${pathIndex}`, `${regionPath}${newPathIndex}`);
-      pathTracker.trackPathChange(previousPath, component.path);
-    }
   }
 };
 
@@ -242,7 +264,8 @@ const deleteComponent = (
   // If the component was deleted, we need to decrement the paths of all components in the same region that have a path index greater than the new component's index.
   if (hasDone) {
     const belowInSameRegionAsc = sortComponentsByPathAsc(belowInSameRegion);
-    updateAndTrackComponentsBelowDeleted(targetComponentPath, belowInSameRegionAsc, targetPathIndex, pathTracker);
+    updateAndTrackComponentsBelowDeleted(targetComponentPath, belowInSameRegionAsc, targetPathIndex, inTargetRegionPattern, pathTracker);
+
   } else {
     // If the component hasn't been added by now, there was no match found. There should have been.
     throw new Error(`No matching region found for path: ${targetComponentPath}`);
