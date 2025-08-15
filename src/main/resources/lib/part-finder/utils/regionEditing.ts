@@ -7,6 +7,7 @@ import {
   sortComponentsByPathAsc,
   SortedArrayAscending,
 } from "/lib/part-finder/utils/sorting";
+import clone from "../../../../../../node_modules/just-clone";
 
 const getRootAndIndex = (path: string): [string, number] => {
   const splitPath = path.replace(/^\//, "").split("/");
@@ -102,11 +103,16 @@ const updateAndTrackComponentsBelowAdded = (
   pathTracker: PathChangeTracker,
 ) => {
   // Change the others below the updated one first to make room then insert the new component, before inserting it.
-  updateAndTrackComponents(belowInSameRegion, targetPathIndex, inTargetRegionPattern, pathTracker, (pathIndex) => pathIndex + 1)
+  updateAndTrackComponents(
+    belowInSameRegion,
+    targetPathIndex,
+    inTargetRegionPattern,
+    pathTracker,
+    (pathIndex) => pathIndex + 1,
+  );
 
   pathTracker.trackInsertion(targetComponentPath);
 };
-
 
 // When we know the components below the deleted component in the same region, their paths must be updated in ASCENDING order to avoid path collisions.
 // This function level enforces that.
@@ -121,14 +127,14 @@ const updateAndTrackComponentsBelowDeleted = (
   pathTracker.trackDelete(targetComponentPath);
 
   updateAndTrackComponents(belowInSameRegion, targetPathIndex, inTargetRegionPattern, pathTracker, (pathIndex) => {
-  const newPathIndex = pathIndex - 1;
-      if (newPathIndex < 0) {
-        throw Error(
-          `Unexpected state (newPathIndex = ${newPathIndex}}) - trying to update a component path as if an earlier component was deleted before index 0, which should be impossible.`,
-        );
-      }
-      return newPathIndex
-  })
+    const newPathIndex = pathIndex - 1;
+    if (newPathIndex < 0) {
+      throw Error(
+        `Unexpected state (newPathIndex = ${newPathIndex}}) - trying to update a component path as if an earlier component was deleted before index 0, which should be impossible.`,
+      );
+    }
+    return newPathIndex;
+  });
 };
 
 /**
@@ -145,7 +151,7 @@ const updateAndTrackComponents = (
   targetPathIndex: number,
   inTargetRegionPattern: RegExp,
   pathTracker: PathChangeTracker,
-  getNewPathIndex: (currentIndex: number) => number
+  getNewPathIndex: (currentIndex: number) => number,
 ) => {
   for (const component of belowInSameRegion) {
     const pathMatch = (component.path as string).match(inTargetRegionPattern);
@@ -153,21 +159,20 @@ const updateAndTrackComponents = (
     const pathIndex = parseInt(pathIndexStr, 10);
     if (pathIndex != null && !isNaN(pathIndex) && targetPathIndex != null && pathIndex >= targetPathIndex) {
       const previousPath = component.path as string;
-      const newPathIndex = getNewPathIndex(pathIndex)
+      const newPathIndex = getNewPathIndex(pathIndex);
       const replacePattern = new RegExp(`^${regionPath}${pathIndex}`);
       component.path = (component.path as string).replace(replacePattern, `${regionPath}${newPathIndex}`);
       pathTracker.trackPathChange(previousPath, component.path);
     }
   }
-}
-
+};
 
 // Enforces that components are handled in descending order, the algorithm depends on that.
 const insertComponent = (
   sortedComponentsDesc: SortedArrayDescending<Component>,
   newComponent: Component,
   pathTracker: PathChangeTracker,
-) => {
+): string | null => {
   // eslint-disable-next-line prefer-const
   let { targetRegionPath, targetPathIndex, hasDone, belowInSameRegion, inTargetRegionPattern } = prepareForIteration(
     newComponent.path as string,
@@ -229,7 +234,10 @@ const insertComponent = (
       pathTracker,
     );
 
+    return newComponent.path as string;
   }
+
+  return null;
 };
 
 // Enforces that components are handled in descending order, the algorithm depends on that.
@@ -264,8 +272,13 @@ const deleteComponent = (
   // If the component was deleted, we need to decrement the paths of all components in the same region that have a path index greater than the new component's index.
   if (hasDone) {
     const belowInSameRegionAsc = sortComponentsByPathAsc(belowInSameRegion);
-    updateAndTrackComponentsBelowDeleted(targetComponentPath, belowInSameRegionAsc, targetPathIndex, inTargetRegionPattern, pathTracker);
-
+    updateAndTrackComponentsBelowDeleted(
+      targetComponentPath,
+      belowInSameRegionAsc,
+      targetPathIndex,
+      inTargetRegionPattern,
+      pathTracker,
+    );
   } else {
     // If the component hasn't been added by now, there was no match found. There should have been.
     throw new Error(`No matching region found for path: ${targetComponentPath}`);
@@ -276,6 +289,22 @@ const getVerifiedSortedComponents = (contentItem: ContentItem): SortedArrayDesce
   // After this, we know every old and new component has a path, hence the "as string"'s below
   verifyContentItem(contentItem);
   return sortComponentsByPathDesc(contentItem.components);
+};
+
+const getChildComponents = (
+  contentItem: ContentItem,
+  componentToAdd: Component,
+): { childComponentPattern?: RegExp; childComponents?: Component[] } => {
+  if (componentToAdd.type === "layout") {
+    const childComponentPattern = new RegExp(`^${componentToAdd.path}/`); // RegEx ending with a slash, so it matches all children of the componentToAdd but not componentToAdd itself
+    const childComponents = contentItem.components
+      .filter((comp) => (comp.path || "").match(childComponentPattern))
+      .map((comp) => clone(comp));
+
+    return { childComponents, childComponentPattern };
+  }
+
+  return {};
 };
 
 export const contentRegionMutators = {
@@ -299,7 +328,15 @@ export const contentRegionMutators = {
     // In order to avoid path collisions on insertion/deletion and path tracking, this ensures component are sorted by their path attribute in descending order
     const sortedComponentsDesc = getVerifiedSortedComponents(contentItem);
 
-    insertComponent(sortedComponentsDesc, newComponent, pathTracker);
+    const { childComponents, childComponentPattern } = getChildComponents(contentItem, newComponent);
+
+    const newComponentPath = insertComponent(sortedComponentsDesc, newComponent, pathTracker);
+
+    if (childComponents && childComponentPattern && newComponentPath) {
+      const replacement = `${newComponentPath}/`;
+      childComponents.forEach((comp) => (comp.path = (comp.path || "").replace(childComponentPattern, replacement)));
+      sortedComponentsDesc.push(...childComponents);
+    }
 
     contentItem.components = sortComponentsByPathAsc(sortedComponentsDesc);
   },
