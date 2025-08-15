@@ -3,7 +3,7 @@ import { ContentItem, EditorFunc } from "/lib/part-finder/stages";
 import { sortComponentPathsDesc, SortedArrayDescending } from "/lib/part-finder/utils/sorting";
 import { hashContentItem } from "/lib/part-finder/utils/contentHashing";
 import { getLastAttemptTracker, LastAttemptTracker } from "/lib/part-finder/utils/lastAttemptTracker";
-import { contentRegionMutators } from "/lib/part-finder/utils/regionEditing";
+import { removeComponent } from "/lib/part-finder/utils/regionEditing";
 import { prepareEditorResources } from "/lib/part-finder/utils/editors";
 import { SIGNATURE_MARKER_KEY } from "/lib/part-finder/utils/aliasUser";
 import { Operation } from "/lib/part-finder/utils/plannedOperations";
@@ -50,7 +50,7 @@ const removeComponentsFromContentItem = (
       throw Error(`Unexpected state - targetPath appears to be malformed or missing: ${JSON.stringify(targetPath)}`);
     }
 
-    contentRegionMutators.removeComponent(clonedContentItem, targetPath, results.pathTrackers[clonedContentItem._path]);
+    removeComponent(clonedContentItem, targetPath, results.pathTrackers[clonedContentItem._path]);
 
     const pathRoot = pathMatch[1];
     const pathIndex = parseInt(pathMatch[2], 10);

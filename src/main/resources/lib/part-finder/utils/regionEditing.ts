@@ -8,6 +8,7 @@ import {
   SortedArrayAscending,
 } from "/lib/part-finder/utils/sorting";
 import clone from "../../../../../../node_modules/just-clone";
+import { findIndex } from "/lib/part-finder/utils/utils";
 
 const getRootAndIndex = (path: string): [string, number] => {
   const splitPath = path.replace(/^\//, "").split("/");
@@ -291,62 +292,113 @@ const getVerifiedSortedComponents = (contentItem: ContentItem): SortedArrayDesce
   return sortComponentsByPathDesc(contentItem.components);
 };
 
-const getChildComponents = (
+const getChildComponentClones = (
   contentItem: ContentItem,
-  componentToAdd: Component,
-): { childComponentPattern?: RegExp; childComponents?: Component[] } => {
-  if (componentToAdd.type === "layout") {
-    const childComponentPattern = new RegExp(`^${componentToAdd.path}/`); // RegEx ending with a slash, so it matches all children of the componentToAdd but not componentToAdd itself
-    const childComponents = contentItem.components
+  targetComponentType: string,
+  targetComponentPath: string,
+): { childComponentPattern?: RegExp; childComponentClones?: Component[] } => {
+  if (targetComponentType === "layout") {
+    const childComponentPattern = new RegExp(`^${targetComponentPath}/`); // RegEx ending with a slash, so it matches all children of the componentToAdd but not componentToAdd itself
+    const childComponentClones = contentItem.components
       .filter((comp) => (comp.path || "").match(childComponentPattern))
-      .map((comp) => clone(comp));
+      .map(clone);
 
-    return { childComponents, childComponentPattern };
+    return { childComponentClones, childComponentPattern };
   }
 
   return {};
 };
 
-export const contentRegionMutators = {
-  /** Updates the contentItem's components when adding a new component to a region.
-   * Specifically, add the component data to the .components array, and update the path of the new component and all components below it in the same region.
-   */
-  addComponent: (
-    contentItem: ContentItem,
-    componentToAdd: Component,
-    pathTracker: PathChangeTracker,
-    overrideAddAtPath?: string,
-  ) => {
-    // contentItem will be mutated, but in order to enable easy component duplication (just pass the old component object
-    // as componentToAdd), componentToAdd shouldn't be mutated. So, spread it:
-    const newComponent: Component = {
-      ...componentToAdd,
-      path: overrideAddAtPath || componentToAdd.path,
-    } as Component;
-    verifyNewComponent(newComponent);
+const copyLayoutChildComponents = (
+  childComponentClones,
+  childComponentPattern,
+  newComponentPath,
+  pathTracker,
+  sortedComponentsDesc,
+) => {
+  if (childComponentClones && childComponentPattern && newComponentPath) {
+    const replacement = `${newComponentPath}/`;
+    childComponentClones.forEach((childComp) => {
+      childComp.path = (childComp.path || "").replace(childComponentPattern, replacement);
+      pathTracker.trackInsertion(childComp.path);
+      sortedComponentsDesc.push(childComp);
+    });
+  }
+};
 
-    // In order to avoid path collisions on insertion/deletion and path tracking, this ensures component are sorted by their path attribute in descending order
-    const sortedComponentsDesc = getVerifiedSortedComponents(contentItem);
+const deleteLayoutChildComponents = (
+  contentItem: ContentItem,
+  targetPath: string,
+  pathTracker: PathChangeTracker,
+  sortedComponentsDesc: SortedArrayDescending<Component>,
+) => {
+  const targetedComponentType = sortedComponentsDesc.filter((comp) => comp.path === targetPath)[0]?.type;
 
-    const { childComponents, childComponentPattern } = getChildComponents(contentItem, newComponent);
+  if (targetedComponentType) {
+    const { childComponentClones } = getChildComponentClones(contentItem, targetedComponentType, targetPath);
 
-    const newComponentPath = insertComponent(sortedComponentsDesc, newComponent, pathTracker);
-
-    if (childComponents && childComponentPattern && newComponentPath) {
-      const replacement = `${newComponentPath}/`;
-      childComponents.forEach((comp) => (comp.path = (comp.path || "").replace(childComponentPattern, replacement)));
-      sortedComponentsDesc.push(...childComponents);
+    // If the deleted component had children, we need to remove them as well.
+    if (childComponentClones && childComponentClones.length > 0) {
+      const componentPathsToRemove = childComponentClones.map((comp) => comp.path as string);
+      const indicesToRemove = componentPathsToRemove.map((path) =>
+        findIndex(sortedComponentsDesc, (comp) => comp.path === path),
+      );
+      indicesToRemove.forEach((index) => {
+        sortedComponentsDesc.splice(index, 1);
+      });
+      componentPathsToRemove.forEach(pathTracker.trackDelete);
     }
+  }
+};
 
-    contentItem.components = sortComponentsByPathAsc(sortedComponentsDesc);
-  },
+/** Updates the contentItem's components when adding a new component to a region.
+ * Specifically, add the component data to the .components array, and update the path of the new component and all components below it in the same region.
+ */
+export const addComponent = (
+  contentItem: ContentItem,
+  componentToAdd: Component,
+  pathTracker: PathChangeTracker,
+  overrideAddAtPath?: string,
+) => {
+  // contentItem will be mutated, but in order to enable easy component duplication (just pass the old component object
+  // as componentToAdd), componentToAdd shouldn't be mutated. So, spread it:
+  const newComponent: Component = {
+    ...componentToAdd,
+    path: overrideAddAtPath || componentToAdd.path,
+  } as Component;
+  verifyNewComponent(newComponent);
 
-  removeComponent: (contentItem: ContentItem, targetPath: string, pathTracker: PathChangeTracker) => {
-    // In order to avoid path collisions on insertion/deletion and path tracking, this ensures components are sorted by their path attribute in descending order
-    const sortedComponentsDesc = getVerifiedSortedComponents(contentItem);
+  // In order to avoid path collisions on insertion/deletion and path tracking, this ensures component are sorted by their path attribute in descending order
+  const sortedComponentsDesc = getVerifiedSortedComponents(contentItem);
 
-    deleteComponent(sortedComponentsDesc, targetPath, pathTracker);
+  const { childComponentClones, childComponentPattern } = getChildComponentClones(
+    contentItem,
+    newComponent.type,
+    newComponent.path as string,
+  );
 
-    contentItem.components = sortComponentsByPathAsc(sortedComponentsDesc);
-  },
+  const insertedComponentPath = insertComponent(sortedComponentsDesc, newComponent, pathTracker);
+
+  copyLayoutChildComponents(
+    childComponentClones,
+    childComponentPattern,
+    insertedComponentPath,
+    pathTracker,
+    sortedComponentsDesc,
+  );
+
+  contentItem.components = sortComponentsByPathAsc(sortedComponentsDesc);
+
+};
+
+export const removeComponent = (contentItem: ContentItem, targetPath: string, pathTracker: PathChangeTracker) => {
+  // In order to avoid path collisions on insertion/deletion and path tracking, this ensures components are sorted by their path attribute in descending order
+  const sortedComponentsDesc = getVerifiedSortedComponents(contentItem);
+
+  deleteLayoutChildComponents(contentItem, targetPath, pathTracker, sortedComponentsDesc);
+
+  deleteComponent(sortedComponentsDesc, targetPath, pathTracker);
+
+  contentItem.components = sortComponentsByPathAsc(sortedComponentsDesc);
+
 };

@@ -2,7 +2,7 @@ import { Results } from "/lib/part-finder/utils/results";
 import { find } from "/lib/part-finder/utils/utils";
 
 import { Component } from "@enonic-types/lib-content";
-import { contentRegionMutators } from "/lib/part-finder/utils/regionEditing";
+import { addComponent } from "/lib/part-finder/utils/regionEditing";
 import { ContentItem, EditorFunc, IndexConfigEntry } from "/lib/part-finder/stages";
 import { ContentitemMutatingPostprocessorFunc, POSTPROCESSORS } from "/lib/part-finder/stages/replace/postprocessors";
 import clone from "../../../../../../../node_modules/just-clone";
@@ -178,11 +178,7 @@ const addComponentsToContentItem = (
     lastAttempted.componentPath = targetComponentPath;
 
     // Duplicate for safer undo: inject the new/changed component before the original
-    contentRegionMutators.addComponent(
-      clonedContentItem,
-      newComponents[targetComponentPath],
-      results.pathTrackers[clonedContentItem._path],
-    );
+    addComponent(clonedContentItem, newComponents[targetComponentPath], results.pathTrackers[clonedContentItem._path]);
   });
 };
 
