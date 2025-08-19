@@ -10,8 +10,16 @@ import { Content } from "@enonic-types/core";
 import { Operation } from "/lib/part-finder/utils/plannedOperations";
 import { stringAfterLast } from "/lib/part-finder/utils/utils";
 
+interface SleeperBean {
+  sleep(millis: number): void;
+}
+const sleeper = __.newBean("no.item.sleeper.Sleeper") as SleeperBean;
+
 const TARGET_BRANCH = "draft";
 const PRINCIPAL_ADMIN = "role:system.admin";
+
+const BATCHSIZE = 10;
+const BATCH_DELAY = 100; // .1 second
 
 export const prepareEditorResources = (
   contentItem: ContentItem,
@@ -50,6 +58,8 @@ export const runEditor = (
 
   const resultsFromRepos: Record<string, Results> = {}; // Map: repoName -> Results container
 
+  let counter = -1;
+
   repoIds.forEach((targetRepo) => {
     // Remove the "com.enonic.cms." prefix
     const repoName = stringAfterLast(targetRepo, ".");
@@ -76,6 +86,16 @@ export const runEditor = (
 
           item = null;
           try {
+            if (counter % BATCHSIZE === 0) {
+              try {
+                log.info("Processing: " + counter);
+                sleeper.sleep(BATCH_DELAY);
+              } catch (e) {
+                log.warning("Batch delay interrupted: " + e);
+              }
+            }
+            counter++;
+
             item = getContent({ key: contentId });
             if (item) {
               repo.modify({

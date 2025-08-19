@@ -58,6 +58,7 @@
 		"src/main/resources/**/*.ts",
 		".xp-codegen/**/*.d.ts",
 		".storybook/**/*",
-		"node_modules/@types/node/globals.d.ts"
+		"node_modules/@types/node/globals.d.ts",
+		"node_modules/@enonic-types/global/global.d.ts"
 	]
 }
