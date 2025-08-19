@@ -27,6 +27,36 @@ type LayoutNColumnsConfig = {
   addPadding?: boolean;
 };
 
+const verifyAndGetConfig = (currentComponentConfig?: ComponentConfig<LayoutNColumnsConfig>): LayoutNColumnsConfig => {
+  if (currentComponentConfig?.layout?._selected !== "two") {
+    throw Error(
+      `Can only convert to layout 'layout-2-columns' when the selected number of columns is 2 (layout._selected = "two"). Found value: ${JSON.stringify(currentComponentConfig?.layout?._selected)}`,
+    );
+  }
+
+  const twoColumnConfig = currentComponentConfig.layout.two;
+
+  if (twoColumnConfig.backgroundLeft || twoColumnConfig.backgroundRight) {
+    throw Error(
+      `Layout 'layout-2-columns' shouldn't have background color set. Handle manually. ${JSON.stringify({ backgroundLeft: twoColumnConfig.backgroundLeft, backgroundRight: twoColumnConfig.backgroundRight })}`,
+    );
+  }
+  const distributionConfig = twoColumnConfig.distribution || "";
+  if (["1-1", "1-2", "2-1"].indexOf(distributionConfig) === -1) {
+    throw Error(
+      `Layout 'layout-2-columns' should only use distribution setting "1-1", "1-2" or "2-1". Handle manually. ${JSON.stringify(distributionConfig)}`,
+    );
+  }
+  const isFlex = twoColumnConfig.isFlex;
+  if (isFlex) {
+    throw Error(
+      `Flex columns (equal height) is not implemented in layout-2-columns yet. Handle manually. ${JSON.stringify({ isFlex })}`,
+    );
+  }
+
+  return twoColumnConfig;
+};
+
 export const layout2Columns: ContentitemMutatingPostprocessorFunc = (
   contentItem,
   changedPath,
@@ -38,24 +68,14 @@ export const layout2Columns: ContentitemMutatingPostprocessorFunc = (
     contentItem,
     changedPath,
     (component, currentComponentConfig: ComponentConfig<LayoutNColumnsConfig>) => {
-      if (currentComponentConfig.layout?._selected !== "two") {
-        throw Error(
-          `Postprocessor 'layout-2-columns' can only be used where the selected number of coluns is 2 (layout._selected = "two"). Found value: ${currentComponentConfig.layout?._selected}`,
-        );
-      }
+      const twoColumnConfig = verifyAndGetConfig(currentComponentConfig);
 
-      if (
-        Object.keys(currentComponentConfig).length &&
-        currentComponentConfig.layout?._selected &&
-        currentComponentConfig.layout[currentComponentConfig.layout._selected]
-      ) {
-        for (const key in currentComponentConfig.layout[currentComponentConfig.layout._selected]) {
-          currentComponentConfig[key] = currentComponentConfig.layout[currentComponentConfig.layout._selected][key];
-        }
-        delete currentComponentConfig.layout;
-
-        component[targetComponentType].config[newAppKeyDashed][newComponentKey] = currentComponentConfig;
+      for (const key in twoColumnConfig) {
+        currentComponentConfig[key] = twoColumnConfig[key];
       }
+      delete currentComponentConfig.layout;
+
+      component[targetComponentType].config[newAppKeyDashed][newComponentKey] = currentComponentConfig;
 
       /*
      const config = currentComponentConfig || {};
