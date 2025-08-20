@@ -47,12 +47,6 @@ const verifyAndGetConfig = (currentComponentConfig?: ComponentConfig<LayoutNColu
       `Layout 'layout-2-columns' should only use distribution setting "1-1", "1-2" or "2-1". Handle manually. ${JSON.stringify(distributionConfig)}`,
     );
   }
-  const isFlex = twoColumnConfig.isFlex;
-  if (isFlex) {
-    throw Error(
-      `Flex columns (equal height) is not implemented in layout-2-columns yet. Handle manually. ${JSON.stringify({ isFlex })}`,
-    );
-  }
 
   return twoColumnConfig;
 };
