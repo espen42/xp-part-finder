@@ -30,7 +30,9 @@ const verifyAllChangesWereMade = (newComponents, requestedComponentPaths) => {
         (requestedComponentPaths || []).filter((path) => !!newComponents[path]),
       )}`,
     );
-    throw Error("Not all requested changes were made.");
+    throw Error(
+      `Not all requested changes were made. requestedComponentPaths: ${JSON.stringify(requestedComponentPaths)}, newComponents: ${JSON.stringify(Object.keys(newComponents))}`,
+    );
   }
 };
 

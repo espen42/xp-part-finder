@@ -58,7 +58,7 @@ export const runEditor = (
 
   const resultsFromRepos: Record<string, Results> = {}; // Map: repoName -> Results container
 
-  let counter = -1;
+  let counter = 0;
 
   repoIds.forEach((targetRepo) => {
     // Remove the "com.enonic.cms." prefix
@@ -88,8 +88,8 @@ export const runEditor = (
           try {
             if (counter % BATCHSIZE === 0) {
               try {
-                log.info("Processing: " + counter);
                 sleeper.sleep(BATCH_DELAY);
+                log.info(`Processing: ${counter} - ${counter + 9}`);
               } catch (e) {
                 log.warning("Batch delay interrupted: " + e);
               }
