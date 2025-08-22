@@ -193,7 +193,7 @@
       Conditions: at least one element selected, part name text field has a value matching the pattern of component names
     --]
     pf.checkSelection = function () {
-      //console.log("CheckSelection... ", pf.selectedIds)
+      [#-- console.log("CheckSelection... ", pf.selectedIds) --]
       if (pf.timeoutId) {
         window.clearTimeout(pf.timeoutId)
       }
@@ -201,12 +201,12 @@
       if (pf.selectedIds.length > 980) {
         const origLength = pf.selectedIds.length;
 
-        // Split away the excess items over 980
+        [#-- Split away the excess items over 980 --]
         const removed = new Set(pf.selectedIds.splice(980) || [])
         pf.selectedIds = pf.selectedIds.splice(0, 980)
 
-        // Build a list of MORE items that are to be removed: don't process only SOME of the paths on a content item,
-        // remove all paths on all content items that were affected (should be little overlap).
+        [#-- Build a list of additional items that are to be removed: don't process only SOME of the paths on a content item,
+             remove all paths on all content items that were affected (should be little overlap). --]
         const removeRestOfPathsOnContent = new Set();
         (removed || []).forEach(selectedId => {
           const contentId = (selectedId || "").split("__")[0];
@@ -223,7 +223,7 @@
           removeRestOfPathsOnContent.forEach(id => removed.add(id));
         }
 
-          // Do the removal:
+        [#-- Do the removal: --]
         if (removed.size > 0) {
           pf.selectedIds = pf.selectedIds.filter(id => !removed.has(id))
           removed.forEach(id => {

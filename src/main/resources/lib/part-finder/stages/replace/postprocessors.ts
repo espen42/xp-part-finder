@@ -3,7 +3,9 @@ import { NodeIndexConfig } from "/lib/xp/node";
 import { Component } from "@enonic-types/lib-content";
 import { ContentItem } from "/lib/part-finder/stages";
 import { cardFullwidth } from "/lib/part-finder/stages/replace/postprocessors/cardFullwidth";
+import { layout1Column } from "/lib/part-finder/stages/replace/postprocessors/layout-1-column";
 import { layout2Columns } from "/lib/part-finder/stages/replace/postprocessors/layout-2-columns";
+import { layout3Columns } from "/lib/part-finder/stages/replace/postprocessors/layout-3-columns";
 import { throwerror } from "/lib/part-finder/stages/replace/postprocessors/throwerror";
 import { logContent } from "/lib/part-finder/stages/replace/postprocessors/logContent";
 import { logConfig } from "/lib/part-finder/stages/replace/postprocessors/logConfig";
@@ -33,8 +35,16 @@ export const POSTPROCESSORS: { [callableName: string]: ContentitemMutatingPostpr
   "card-fullwidth": cardFullwidth,
   fullwidthcard: cardFullwidth,
 
+  layout1columns: layout1Column,
+  "layout-1-columns": layout1Column,
+  layout1column: layout1Column,
+  "layout-1-column": layout1Column,
+
   layout2columns: layout2Columns,
   "layout-2-columns": layout2Columns,
+
+  layout3Columns: layout3Columns,
+  "layout-3-columns": layout3Columns,
 };
 
 export interface ContentitemMutatingPostprocessorFunc {
